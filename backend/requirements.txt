@@ -1,0 +1,14 @@
+# --- Core (Phase 1) ---
+Django==5.1.4
+djangorestframework==3.15.2
+django-cors-headers==4.6.0
+psycopg2-binary==2.9.10
+python-decouple==3.8
+django-redis==5.4.0
+
+# --- Added in later phases, pinned now so builds stay reproducible ---
+# djangorestframework-simplejwt==5.3.1   # Phase 2: auth tokens
+# social-auth-app-django==5.4.2          # Phase 2: Google/Facebook login
+# celery==5.4.0                          # Phase 7: banner expiry, low-stock jobs
+# channels==4.1.0                        # Phase 7: WebSocket stock/dashboard push
+# channels-redis==4.2.0                  # Phase 7

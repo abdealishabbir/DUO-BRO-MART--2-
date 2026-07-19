@@ -4,12 +4,18 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Phase 1 placeholder palette — real brand tokens land with the
-        // Phase 3 storefront design pass, not decided here.
+        // Matched to the ShopNest reference screenshots (see UI_BUILD_TRACKER.md)
         brand: {
-          DEFAULT: "#0f766e",
-          dark: "#0b5a54",
+          DEFAULT: "#C2703C",
+          dark: "#A35A2C",
+          light: "#E8C9AC",
         },
+        gold: {
+          DEFAULT: "#D9A94E",
+          dark: "#C4933A",
+        },
+        cream: "#FDF6EE",
+        ink: "#171512",
       },
     },
   },

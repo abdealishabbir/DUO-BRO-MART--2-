@@ -16,6 +16,8 @@ import Feedback from "../pages/customer/Feedback.jsx";
 import Login from "../pages/customer/Login.jsx";
 import Signup from "../pages/customer/Signup.jsx";
 import ForgotPassword from "../pages/customer/ForgotPassword.jsx";
+import ResetPassword from "../pages/customer/ResetPassword.jsx";
+import VerifyEmail from "../pages/customer/VerifyEmail.jsx";
 
 /**
  * PRD §3.2 page inventory — customer channel. This is the default
@@ -42,6 +44,8 @@ export default function CustomerRoutes() {
       <Route path="login" element={<Login />} />
       <Route path="signup" element={<Signup />} />
       <Route path="forgot-password" element={<ForgotPassword />} />
+      <Route path="reset-password/:token" element={<ResetPassword />} />
+      <Route path="verify-email/:token" element={<VerifyEmail />} />
     </Route>
   );
 }

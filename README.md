@@ -4,39 +4,56 @@ Pakistan-focused multi-vendor marketplace. React frontend, Django/DRF backend,
 PostgreSQL, Redis. Full product/technical requirements live in
 [`DUOBROMART.md`](./DUOBROMART.md) (PRD + R&D, v1.0).
 
-## Status: Phase 1 — Platform Shell, Routing & Role Entry
+## Status: Phase 2 — Authentication, Security & Account Foundation
 
-Per the phase-wise roadmap in the PRD (§14) and the dev checklist we're
-following, nothing beyond Phase 1 is built yet — no real auth, no storefront
-data, no vendor/admin functionality. What **is** done:
+Phase 1 (platform shell, routing, RBAC skeleton) is done — see git history.
+Phase 2 adds real authentication end-to-end. Everything below was actually
+run and verified (Django test suite + live curl integration tests against
+a running dev server), not just written:
 
-- **Repo/monorepo layout**: `backend/` (Django) and `frontend/` (React) as
-  clearly separated folders, per the pre-implementation checklist.
-- **Docker Compose stack**: Postgres, Redis, Django, React dev server — one
-  command boots the full local environment.
-- **Custom `User` model with a `role` field** (`customer` / `vendor` /
-  `admin`) — the single source of truth every RBAC check in this codebase
-  keys off. Initial migration is generated and included.
-- **DRF permission classes** (`IsCustomerRole`, `IsVendorRole`, `IsAdminRole`,
-  `IsOwnerOrAdmin`, `ReadOnlyOrIsAdmin`) — not wired to any endpoints yet
-  (there are none besides the health check), but ready for Phase 2+ views.
-- **React route shell** for all 19 pages in the PRD's page inventory (§3.2),
-  each a wired placeholder that names which phase builds it for real.
-- **Three route trees**: customer (default, at `/`), vendor (hidden, at
-  `/vendor/*`), admin (hidden, at `/admin/*`) — matching the routing rule in
-  §3.2 that normal visitors always land on the customer experience.
-- **Role-based route guard** (`RoleRoute`) protecting `/vendor/*` and
-  `/admin/*` subtrees, backed by a mock `AuthContext` (in-memory only, no
-  real login yet — that's Phase 2).
-- **Mobile-first layouts**: shared customer navbar/footer with a hamburger
-  menu below `md`, separate vendor/admin sidebar shells.
+- **Customer signup/login** (§2.1): email+password, phone (PK format) and
+  password-strength validation client- and server-side, duplicate-email
+  rejection, terms-checkbox enforcement.
+- **JWT auth via secure HttpOnly cookies**, not localStorage (§4.4.3) —
+  `CookieJWTAuthentication` reads `dbm_access`/`dbm_refresh` cookies;
+  access token auto-refreshes on 401 via the frontend's `api.js` wrapper.
+- **Google Sign-In** (§2.2): backend verifies the ID token server-side
+  (`google-auth`), links to an existing email account or creates a new
+  one, prompts for phone number if missing. Renders only if
+  `VITE_GOOGLE_CLIENT_ID`/`GOOGLE_OAUTH_CLIENT_ID` are configured — hidden
+  otherwise rather than shown broken. Facebook follows the same shape once
+  `FACEBOOK_APP_ID`/`SECRET` are set (not wired yet).
+- **Forgot/reset password** (§2.3): 30-minute single-use token, identical
+  response whether or not the email exists (no account enumeration),
+  resetting a password blacklists every other active session.
+- **Vendor & admin login** (§2.4): separate hidden endpoints/pages, reject
+  wrong-role credentials even if otherwise valid, vendor forced
+  first-login password change (`must_change_password`) enforced by both
+  the API and a frontend route guard.
+- **Customer Account page** (§2.5): profile edit, saved addresses
+  (province/city/landmark for rural delivery), change password, order
+  history placeholder (real data in Phase 4).
+- **Security**: Argon2 password hashing, per-IP throttling on all
+  auth-write endpoints, cache-based lockout after 5 failed logins in 15
+  minutes, immutable single-use email-verification/reset tokens.
+- **Dev-only `create_vendor_account` management command** stands in for
+  the admin-approval flow (real UI arrives in Phase 6).
 
-### Explicitly NOT in Phase 1 (by design, per the roadmap)
+### Explicitly NOT in Phase 2 (by design, deferred with a comment at the
+### point they'd be wired in)
 
-- Real authentication (signup/login/social/password reset) — Phase 2.
-- Any storefront content, cart, checkout, vendor or admin functionality.
-- Celery workers, WebSocket consumers (Channels) — reserved in config,
-  wired up in Phase 7.
+- **reCAPTCHA on signup** — no-ops until real site/secret keys exist
+  (Phase 8 hardening).
+- **TOTP two-factor for admin** — "strongly recommended" per §4.3, not a
+  hard requirement; deferred to Phase 8.
+- **Facebook login** — same code shape as Google, not implemented yet.
+- **Saved card tokenization** — that's Phase 4, once a payment gateway is
+  actually chosen.
+- **CSRF tokens** — DRF's `APIView` doesn't enforce Django session-based
+  CSRF for non-`SessionAuthentication` requests (see comment in
+  `authentication.py`); `SameSite=Lax` cookies are the primary mitigation
+  for now. Full double-submit CSRF is a Phase 8 hardening candidate if
+  the cookie's SameSite policy ever needs loosening for a subdomain setup.
 
 ## Getting started
 
@@ -50,7 +67,15 @@ docker compose up --build
 - Frontend: http://localhost:5173
 - Backend API: http://localhost:8000/api/health/
 - Django admin: http://localhost:8000/django-admin/ (create a superuser first:
-  `docker compose exec backend python manage.py createsuperuser`)
+  `docker compose exec backend python manage.py createsuperuser` — this
+  automatically gets `role=admin`, so it also works for `/admin/login` in
+  the React app, not just `/django-admin/`)
+- Create a test vendor account: `docker compose exec backend python manage.py create_vendor_account vendor@example.com --name "Vendor Name"`
+  (prints a temp password to the console since `EMAIL_BACKEND` defaults to
+  console output in dev)
+- Run the backend test suite: `docker compose exec backend python manage.py test apps.accounts` —
+  or locally without Docker: `DJANGO_SETTINGS_MODULE=config.settings_test python manage.py test apps.accounts`
+  (uses SQLite + local-memory cache so it doesn't need Postgres/Redis running)
 
 ## Repo layout
 
@@ -60,28 +85,29 @@ duobromart/
 ├── docker-compose.yml
 ├── .env.example
 ├── backend/              # Django + DRF
-│   ├── config/           # settings, urls, wsgi, asgi
+│   ├── config/           # settings, settings_test (SQLite/locmem for CI), urls, wsgi, asgi
 │   └── apps/
-│       ├── accounts/     # custom User model + RBAC permission classes
+│       ├── accounts/     # User model, RBAC, auth views/serializers/tests, Address, tokens
 │       └── core/         # shared / health check
 └── frontend/              # React + Vite + Tailwind
     └── src/
-        ├── auth/          # AuthContext (mock — replaced in Phase 2)
+        ├── auth/          # AuthContext — real backend-wired session state
+        ├── lib/           # api.js — fetch wrapper with cookie auth + auto-refresh
         ├── routes/        # CustomerRoutes, VendorRoutes, AdminRoutes, RoleRoute guard
         ├── layouts/        # CustomerLayout, VendorLayout, AdminLayout
-        └── pages/          # customer/, vendor/, admin/ placeholder pages
+        ├── components/     # FormField, GoogleSignInButton, PagePlaceholder
+        └── pages/          # customer/, vendor/, admin/ — real Phase 2 auth pages, rest still placeholders
 ```
 
 ## Branching (per the dev checklist)
 
 Suggested branches going forward: `main`, `develop`, `feature/auth`,
-`feature/customer-ui`, `feature/vendor-panel`, `feature/admin-panel`. This
-Phase 1 commit lands directly on `main` as the project's foundation; from
-Phase 2 onward, work should branch off `develop`.
+`feature/customer-ui`, `feature/vendor-panel`, `feature/admin-panel`. Phase
+1 and Phase 2 both landed directly on `main` as foundational commits; from
+Phase 3 onward, work should branch off `develop`.
 
-## Next up: Phase 2 — Authentication, Security & Account Foundation
+## Next up: Phase 3 — Customer Storefront Pages
 
-Customer signup/login (email + Google/Facebook), forgot-password flow,
-vendor/admin login pages with real credential checks, first-login forced
-password change for vendors, and the customer Account page. See PRD §4 and
-§14 Phase 2 for full detail.
+Home page (hero/promo banners, flash deals, featured, new arrivals,
+categories grid, trust strip), Shop page (filters, pagination), Product
+Detail page, Terms pages. See PRD §5 and §14 Phase 3 for full detail.

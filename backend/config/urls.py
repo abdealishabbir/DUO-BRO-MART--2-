@@ -18,4 +18,5 @@ from django.urls import path, include
 urlpatterns = [
     path("django-admin/", admin.site.urls),  # Django's own admin, not the platform Admin Panel (that's /api/admin/ + React /admin/*)
     path("api/", include("apps.core.urls")),
+    path("api/", include("apps.accounts.urls")),
 ]

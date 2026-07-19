@@ -1,42 +1,82 @@
-import { createContext, useContext, useMemo, useState } from "react";
-
-/**
- * Phase 1 scope: this context only tracks a `role` in memory so the route
- * guards (RoleRoute) and layouts have something real to key off of. There
- * is NO real authentication here yet — no tokens, no persistence, no
- * backend calls. Phase 2 replaces `login`/`logout` with real calls to
- * /api/auth/... (§4) and persists the session (refresh token, "keep me
- * logged in" per §4.2). The shape of this context (role, user, login,
- * logout, isAuthenticated) is deliberately kept stable so Phase 2 can
- * swap the implementation without touching every consumer.
- */
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { api } from "../lib/api.js";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [role, setRole] = useState(null); // null | "customer" | "vendor" | "admin"
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true); // true until the initial /account/me/ check resolves
 
-  // Dev-only helper until Phase 2 wires real auth endpoints.
-  const login = (nextRole, nextUser = { name: "Dev User" }) => {
-    setRole(nextRole);
-    setUser(nextUser);
+  // On first mount, check whether we already have a valid session (cookie
+  // survives a page refresh — that's the point of using cookies over
+  // in-memory state). Fails silently (401) if there's no session yet.
+  useEffect(() => {
+    api
+      .get("/account/me/")
+      .then(setUser)
+      .catch(() => setUser(null))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const login = async (email, password, keepLoggedIn = false) => {
+    const data = await api.post("/auth/login/", { email, password, keep_logged_in: keepLoggedIn });
+    setUser(data.user);
+    return data.user;
   };
 
-  const logout = () => {
-    setRole(null);
-    setUser(null);
+  const vendorLogin = async (email, password) => {
+    const data = await api.post("/auth/vendor/login/", { email, password });
+    setUser(data.user);
+    return data.user;
+  };
+
+  const adminLogin = async (email, password) => {
+    const data = await api.post("/auth/admin/login/", { email, password });
+    setUser(data.user);
+    return data.user;
+  };
+
+  const googleLogin = async (idToken) => {
+    const data = await api.post("/auth/google/", { id_token: idToken });
+    setUser(data.user);
+    return data;
+  };
+
+  const signup = async (payload) => {
+    const data = await api.post("/auth/signup/", payload);
+    setUser(data.user);
+    return data;
+  };
+
+  const logout = async () => {
+    try {
+      await api.post("/auth/logout/");
+    } finally {
+      setUser(null);
+    }
+  };
+
+  const refreshUser = async () => {
+    const data = await api.get("/account/me/");
+    setUser(data);
+    return data;
   };
 
   const value = useMemo(
     () => ({
-      role,
       user,
-      isAuthenticated: role !== null,
+      role: user?.role ?? null,
+      isAuthenticated: !!user,
+      loading,
       login,
+      vendorLogin,
+      adminLogin,
+      googleLogin,
+      signup,
       logout,
+      refreshUser,
     }),
-    [role, user]
+    [user, loading]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

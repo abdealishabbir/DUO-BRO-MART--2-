@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # third-party
     "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",  # refresh-token revocation on logout/reset (S4.2/S4.4)
     "corsheaders",
     # local apps
     "apps.accounts",
@@ -99,6 +100,65 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
+# --- Password hashing (PRD S4.4.1: Argon2 preferred over PBKDF2 default) ---
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
+]
+
+# --- Email (PRD S4.2: verification links, reset links). Dev default prints
+# to the console so signup/reset flows are testable without real SMTP; set
+# real EMAIL_HOST/... in .env for staging/production. ---
+if config("EMAIL_HOST", default=""):
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_HOST = config("EMAIL_HOST")
+    EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
+    EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
+    EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
+    EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="Duo Bro Mart <no-reply@duobromart.com>")
+
+# Used to build absolute links in emails (verification, password reset) that
+# point at the React app, not the API.
+FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:5173")
+
+# --- Social login (PRD S4.2/S2.2): verified server-side per S4.4. Signup/
+# login endpoints degrade to a clear "not configured" error if these are
+# blank, rather than failing in a confusing way — see accounts/views.py. ---
+GOOGLE_OAUTH_CLIENT_ID = config("GOOGLE_OAUTH_CLIENT_ID", default="")
+FACEBOOK_APP_ID = config("FACEBOOK_APP_ID", default="")
+FACEBOOK_APP_SECRET = config("FACEBOOK_APP_SECRET", default="")
+
+# --- reCAPTCHA on signup (PRD S4.4.8). No-ops until a real site/secret key
+# is configured — full wiring happens in Phase 8 hardening; the check
+# point already exists in accounts/utils.py so nothing needs to change
+# structurally later, only the .env values. ---
+RECAPTCHA_SECRET_KEY = config("RECAPTCHA_SECRET_KEY", default="")
+
+# --- JWT (PRD S4.4.3: secure, HttpOnly, SameSite cookies — not localStorage) ---
+from datetime import timedelta  # noqa: E402
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),   # overridden per-login to 30 days if "keep me logged in" (S4.2)
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "UPDATE_LAST_LOGIN": True,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+}
+
+# Cookie names/settings shared between login/refresh/logout views.
+JWT_ACCESS_COOKIE = "dbm_access"
+JWT_REFRESH_COOKIE = "dbm_refresh"
+JWT_REFRESH_LIFETIME_DEFAULT = timedelta(days=1)
+JWT_REFRESH_LIFETIME_KEEP_LOGGED_IN = timedelta(days=30)
+# Secure=False only makes sense over plain HTTP in local dev; anything else must be HTTPS.
+JWT_COOKIE_SECURE = not DEBUG
+JWT_COOKIE_SAMESITE = "Lax"
+
 # --- i18n / tz ---
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "Asia/Karachi"
@@ -121,8 +181,20 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "apps.accounts.authentication.CookieJWTAuthentication",
+    ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,  # matches §5.3.4: max 20 products per page
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.ScopedRateThrottle",
+    ],
+    # PRD §4.4.8: throttle auth endpoints against brute force / bot signup spam.
+    # Account-level lockout (separate from this IP-based throttle) lives in
+    # accounts/utils.py (record_failed_login / is_locked_out).
+    "DEFAULT_THROTTLE_RATES": {
+        "auth-write": "10/min",
+    },
 }
 
 # --- CORS: local Vite dev server only for now; tighten for production ---

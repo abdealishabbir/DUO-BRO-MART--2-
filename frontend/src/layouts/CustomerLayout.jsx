@@ -48,7 +48,7 @@ export default function CustomerLayout() {
           </nav>
 
           <div className="hidden md:flex md:items-center md:gap-4">
-            <Link to="/account" className="text-sm font-medium text-gray-700 hover:text-brand">
+            <Link to={isAuthenticated ? "/account" : "/login"} className="text-sm font-medium text-gray-700 hover:text-brand">
               {isAuthenticated ? "Account" : "Sign in"}
             </Link>
             <Link to="/cart" className="relative text-sm font-medium text-gray-700 hover:text-brand">
@@ -79,7 +79,7 @@ export default function CustomerLayout() {
             {NAV_LINKS.map((link) => (
               <NavItem key={link.to} {...link} />
             ))}
-            <NavItem to="/account" label={isAuthenticated ? "Account" : "Sign in"} />
+            <NavItem to={isAuthenticated ? "/account" : "/login"} label={isAuthenticated ? "Account" : "Sign in"} />
             <NavItem to="/cart" label={`Cart${cartCount > 0 ? ` (${cartCount})` : ""}`} />
           </nav>
         )}

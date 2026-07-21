@@ -42,6 +42,7 @@ class BannerApplicationCreateSerializer(serializers.ModelSerializer):
 class BannerApplicationSerializer(serializers.ModelSerializer):
     vendor_name = serializers.SerializerMethodField()
     vendor_email = serializers.EmailField(source="vendor.email", read_only=True)
+    has_banner = serializers.SerializerMethodField()
 
     class Meta:
         model = BannerApplication
@@ -49,12 +50,18 @@ class BannerApplicationSerializer(serializers.ModelSerializer):
             "id", "vendor", "vendor_name", "vendor_email", "image", "headline", "description",
             "cta_label", "cta_url", "requested_days", "payment_type",
             "price_per_day_snapshot", "total_price", "requested_start_date",
-            "status", "admin_notes", "created_at", "decided_at",
+            "status", "admin_notes", "created_at", "decided_at", "has_banner",
         ]
         read_only_fields = fields
 
     def get_vendor_name(self, obj):
         return f"{obj.vendor.first_name} {obj.vendor.last_name}".strip() or obj.vendor.username
+
+    def get_has_banner(self, obj):
+        # An approved application only gets a Banner once admin actually
+        # publishes it (see BannerApplication.banner, a OneToOne reverse
+        # relation) — used by the admin UI to hide "Publish..." once done.
+        return hasattr(obj, "banner")
 
 
 class BannerPaymentSerializer(serializers.ModelSerializer):

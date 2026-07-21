@@ -155,7 +155,7 @@ function PublishForm({ application, slotLimit, onPublished, onCancel }) {
 
 function ApprovedAwaitingPublish({ applications, slotLimit, onPublished }) {
   const [publishingId, setPublishingId] = useState(null);
-  const unpublished = applications.filter((a) => !a.banner);
+  const unpublished = applications.filter((a) => !a.has_banner);
 
   if (unpublished.length === 0) return null;
 

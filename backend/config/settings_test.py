@@ -20,6 +20,9 @@ CACHES = {
 
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 
+import tempfile  # noqa: E402
+MEDIA_ROOT = tempfile.mkdtemp(prefix="dbm_test_media_")
+
 # Throttling is real infra behavior, but a shared LocMemCache across dozens
 # of sequential test requests would trip it long before any individual
 # test's own logic is exercised. Disabled here; re-enabled explicitly via

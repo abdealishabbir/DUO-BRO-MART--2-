@@ -69,5 +69,32 @@ services:
       - backend
     command: npm run dev -- --host 0.0.0.0
 
+  banner_billing:
+    build:
+      context: ./backend
+    container_name: dbm_banner_billing
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_HOST: db
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ./backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # Runs the banner penalty/activation/expiry job once a day. This is a
+    # simple loop rather than Celery beat (Celery itself is reserved for
+    # Phase 7) — good enough for a single-instance deployment; swap for a
+    # real scheduler (Celery beat / system cron) once there's more than
+    # one backend replica, so the job doesn't run multiple times at once.
+    command: >
+      sh -c "while true; do
+               python manage.py process_banner_billing;
+               sleep 86400;
+             done"
+
 volumes:
   dbm_postgres_data:

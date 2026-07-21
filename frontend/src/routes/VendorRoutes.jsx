@@ -4,6 +4,7 @@ import RoleRoute from "./RoleRoute.jsx";
 import VendorLogin from "../pages/vendor/Login.jsx";
 import VendorDashboard from "../pages/vendor/Dashboard.jsx";
 import VendorChangePassword from "../pages/vendor/ChangePassword.jsx";
+import PromotionBanner from "../pages/vendor/PromotionBanner.jsx";
 
 /**
  * PRD §3.2/§4.1: vendor portal lives on a separate, unadvertised URL
@@ -21,6 +22,7 @@ export default function VendorRoutes() {
         <Route path="change-password" element={<VendorChangePassword />} />
         <Route element={<VendorLayout />}>
           <Route path="dashboard" element={<VendorDashboard />} />
+          <Route path="promotion-banner" element={<PromotionBanner />} />
         </Route>
       </Route>
     </Route>

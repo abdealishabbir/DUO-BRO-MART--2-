@@ -10,6 +10,15 @@ async function rawRequest(path, options) {
   });
 }
 
+// Multipart requests must NOT set Content-Type manually — the browser needs
+// to set it itself (with the correct boundary) when the body is FormData.
+async function rawFormRequest(path, options) {
+  return fetch(`${API_BASE_URL}${path}`, {
+    credentials: "include",
+    ...options,
+  });
+}
+
 async function refreshAccessToken() {
   // Coalesce concurrent 401s into a single refresh call instead of one per request.
   if (!refreshInFlight) {
@@ -53,9 +62,33 @@ async function request(path, { method = "GET", body, skipRefresh = false } = {})
   return data;
 }
 
+async function requestForm(path, { method = "POST", formData }) {
+  let response = await rawFormRequest(path, { method, body: formData });
+
+  if (response.status === 401) {
+    const refreshResponse = await rawRequest("/auth/refresh/", { method: "POST" });
+    if (refreshResponse.ok) {
+      response = await rawFormRequest(path, { method, body: formData });
+    }
+  }
+
+  const contentType = response.headers.get("content-type") || "";
+  const data = contentType.includes("application/json") ? await response.json() : null;
+
+  if (!response.ok) {
+    const error = new Error(data?.detail || "Request failed");
+    error.status = response.status;
+    error.data = data;
+    throw error;
+  }
+
+  return data;
+}
+
 export const api = {
   get: (path) => request(path),
   post: (path, body, opts) => request(path, { method: "POST", body, ...opts }),
   patch: (path, body) => request(path, { method: "PATCH", body }),
   delete: (path) => request(path, { method: "DELETE" }),
+  postForm: (path, formData) => requestForm(path, { method: "POST", formData }),
 };

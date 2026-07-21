@@ -6,6 +6,7 @@ import { useAuth } from "../auth/AuthContext.jsx";
 // Phase 1 wires the shell only.
 const NAV_LINKS = [
   { to: "/admin/dashboard", label: "Dashboard" },
+  { to: "/admin/banners", label: "Banners & Promotion" },
 ];
 
 export default function AdminLayout() {

@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     # local apps
     "apps.accounts",
     "apps.core",
+    "apps.banners",
 ]
 
 MIDDLEWARE = [
@@ -120,6 +121,10 @@ if config("EMAIL_HOST", default=""):
 else:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="Duo Bro Mart <no-reply@duobromart.com>")
+
+# Where auto-suspension notices (banner nonpayment, §banners) get sent.
+# Blank = notification skipped (still logs to console via EMAIL_BACKEND in dev).
+ADMIN_NOTIFICATION_EMAIL = config("ADMIN_NOTIFICATION_EMAIL", default="")
 
 # Used to build absolute links in emails (verification, password reset) that
 # point at the React app, not the API.

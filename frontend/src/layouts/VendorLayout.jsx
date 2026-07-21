@@ -5,6 +5,7 @@ import { useAuth } from "../auth/AuthContext.jsx";
 // Phase 5's actual vendor panel pages (PRD §6); Phase 1 wires the shell only.
 const NAV_LINKS = [
   { to: "/vendor/dashboard", label: "Dashboard" },
+  { to: "/vendor/promotion-banner", label: "Promotion & Banner" },
 ];
 
 export default function VendorLayout() {

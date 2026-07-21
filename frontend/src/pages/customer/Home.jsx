@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight, Zap, ShieldCheck, Truck, RotateCcw, Headphones,
   Laptop, Shirt, Home as HomeIcon, Dumbbell, BookOpen, Sparkles, Gamepad2, Coffee, Star,
 } from "lucide-react";
 import CountdownTimer from "../../components/CountdownTimer.jsx";
+import { api } from "../../lib/api.js";
 import {
-  heroSlides, promoTiles, flashDeals, categories, topSelling, bestOf,
+  heroSlides as fallbackHeroSlides, promoTiles, flashDeals, categories, topSelling, bestOf,
 } from "../../data/homeMockData.js";
 
 const CATEGORY_ICONS = { Laptop, Shirt, Home: HomeIcon, Dumbbell, BookOpen, Sparkles, Gamepad2, Coffee };
@@ -15,9 +16,41 @@ function formatPKR(amount) {
   return `Rs. ${amount.toLocaleString("en-PK")}`;
 }
 
+// Maps a live vendor Banner (from /banners/public/carousel/) to the shape
+// Hero renders. Falls back to the static demo slide when no vendor has a
+// live banner yet, so Home never looks broken on a fresh install.
+function bannerToSlide(banner) {
+  return {
+    id: banner.id,
+    title: banner.headline,
+    subtitle: banner.description,
+    ctaLabel: banner.cta_label,
+    ctaHref: banner.cta_url,
+    image: banner.image,
+  };
+}
+
 function Hero() {
+  const [slides, setSlides] = useState(fallbackHeroSlides);
   const [active, setActive] = useState(0);
-  const slide = heroSlides[active];
+
+  useEffect(() => {
+    api
+      .get("/banners/public/carousel/")
+      .then((banners) => {
+        if (banners.length > 0) setSlides(banners.map(bannerToSlide));
+      })
+      .catch(() => {}); // keep the fallback slide on any error
+  }, []);
+
+  // Auto-advance every 6s when there's more than one live banner.
+  useEffect(() => {
+    if (slides.length <= 1) return;
+    const id = setInterval(() => setActive((i) => (i + 1) % slides.length), 6000);
+    return () => clearInterval(id);
+  }, [slides.length]);
+
+  const slide = slides[active] ?? slides[0];
 
   return (
     <section
@@ -36,9 +69,9 @@ function Hero() {
           </Link>
         </div>
       </div>
-      {heroSlides.length > 1 && (
+      {slides.length > 1 && (
         <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 gap-2">
-          {heroSlides.map((_, i) => (
+          {slides.map((_, i) => (
             <button
               key={i}
               onClick={() => setActive(i)}

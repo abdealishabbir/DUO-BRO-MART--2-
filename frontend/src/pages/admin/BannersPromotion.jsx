@@ -235,6 +235,7 @@ function LiveBannersTable({ banners, onChanged }) {
             <th className="p-2">Vendor</th>
             <th className="p-2">Slot</th>
             <th className="p-2">Status</th>
+            <th className="p-2">Dates</th>
             <th className="p-2">Price</th>
             <th className="p-2">Paid</th>
             <th className="p-2">Penalty</th>
@@ -252,6 +253,13 @@ function LiveBannersTable({ banners, onChanged }) {
               <td className="p-2">{b.vendor_name}</td>
               <td className="p-2">#{b.slot_position}</td>
               <td className="p-2"><StatusBadge status={b.status} /></td>
+              <td className="p-2 whitespace-nowrap text-gray-500">
+                {b.live_start_date ? (
+                  <>{b.live_start_date} → {b.live_end_date}</>
+                ) : (
+                  <span className="italic">not scheduled yet</span>
+                )}
+              </td>
               <td className="p-2">{formatPKR(b.total_price)}</td>
               <td className="p-2 text-green-700">{formatPKR(b.paid_amount)}</td>
               <td className="p-2 text-red-600">{formatPKR(b.penalty_amount)}</td>

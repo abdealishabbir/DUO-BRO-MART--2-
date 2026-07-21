@@ -12,6 +12,8 @@ Reserved namespaces (filled in starting Phase 2, per PRD §10.4):
   /api/feedback/, /api/complaints/
 """
 
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
 
@@ -21,3 +23,9 @@ urlpatterns = [
     path("api/", include("apps.accounts.urls")),
     path("api/banners/", include("apps.banners.urls")),
 ]
+
+# Django's dev server does not serve uploaded media files on its own — this
+# wiring is required in DEBUG. In production, a real web server (nginx/S3)
+# serves MEDIA_URL directly and this block is skipped entirely.
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

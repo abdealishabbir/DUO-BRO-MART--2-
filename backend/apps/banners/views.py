@@ -131,7 +131,7 @@ class VendorMyBannersView(APIView):
 
     def get(self, request):
         banners = Banner.objects.filter(vendor=request.user).prefetch_related("payments")
-        return Response(BannerSerializer(banners, many=True).data)
+        return Response(BannerSerializer(banners, many=True, context={"request": request}).data)
 
 
 # ---------------------------------------------------------------------------
@@ -172,7 +172,7 @@ class AdminApplicationViewSet(viewsets.ReadOnlyModelViewSet):
         application.decided_at = timezone.now()
         application.admin_notes = request.data.get("admin_notes", application.admin_notes)
         application.save(update_fields=["status", "decided_at", "admin_notes"])
-        return Response(BannerApplicationSerializer(application).data)
+        return Response(BannerApplicationSerializer(application, context={"request": request}).data)
 
     @action(detail=True, methods=["post"])
     def reject(self, request, pk=None):
@@ -183,7 +183,7 @@ class AdminApplicationViewSet(viewsets.ReadOnlyModelViewSet):
         application.decided_at = timezone.now()
         application.admin_notes = request.data.get("admin_notes", application.admin_notes)
         application.save(update_fields=["status", "decided_at", "admin_notes"])
-        return Response(BannerApplicationSerializer(application).data)
+        return Response(BannerApplicationSerializer(application, context={"request": request}).data)
 
 
 class AdminPublishView(APIView):
@@ -240,7 +240,7 @@ class AdminPublishView(APIView):
             live_start_date=None if is_prepaid else today + timedelta(days=1),
             live_end_date=None if is_prepaid else today + timedelta(days=application.requested_days),
         )
-        return Response(BannerSerializer(banner).data, status=status.HTTP_201_CREATED)
+        return Response(BannerSerializer(banner, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
 
 class AdminBannerViewSet(viewsets.ReadOnlyModelViewSet):
@@ -278,7 +278,7 @@ class AdminBannerViewSet(viewsets.ReadOnlyModelViewSet):
 
             banner.save()
 
-        return Response(BannerSerializer(banner).data)
+        return Response(BannerSerializer(banner, context={"request": request}).data)
 
     @action(detail=True, methods=["post"])
     def suspend(self, request, pk=None):
@@ -288,4 +288,4 @@ class AdminBannerViewSet(viewsets.ReadOnlyModelViewSet):
         banner.save(update_fields=["status"])
         banner.vendor.is_active = False
         banner.vendor.save(update_fields=["is_active"])
-        return Response(BannerSerializer(banner).data)
+        return Response(BannerSerializer(banner, context={"request": request}).data)

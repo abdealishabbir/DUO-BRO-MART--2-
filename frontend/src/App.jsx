@@ -3,6 +3,7 @@ import CustomerRoutes from "./routes/CustomerRoutes.jsx";
 import VendorRoutes from "./routes/VendorRoutes.jsx";
 import AdminRoutes from "./routes/AdminRoutes.jsx";
 import NotFound from "./pages/NotFound.jsx";
+import ScrollManager from "./components/ScrollManager.jsx";
 
 /**
  * Note: CustomerRoutes()/VendorRoutes()/AdminRoutes() are called as plain
@@ -13,11 +14,14 @@ import NotFound from "./pages/NotFound.jsx";
  */
 export default function App() {
   return (
-    <Routes>
-      {CustomerRoutes()}
-      {VendorRoutes()}
-      {AdminRoutes()}
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <>
+      <ScrollManager />
+      <Routes>
+        {CustomerRoutes()}
+        {VendorRoutes()}
+        {AdminRoutes()}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
   );
 }

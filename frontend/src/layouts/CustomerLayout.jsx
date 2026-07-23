@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
 import { Store, Search, User, ShoppingCart, Menu, X } from "lucide-react";
 import { useAuth } from "../auth/AuthContext.jsx";
+import { useCart } from "../cart/CartContext.jsx";
 
 // Matched to the ShopNest reference (see UI_BUILD_TRACKER.md for the
 // nav/footer -> route mapping). "Vendors" here plays the role our PRD
@@ -33,8 +34,7 @@ function NavItem({ to, label, end }) {
 export default function CustomerLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { isAuthenticated } = useAuth();
-  // Cart badge count wires up to real cart state in Phase 4 (§5.4.2 persistence).
-  const cartCount = 0;
+  const { itemCount: cartCount } = useCart();
 
   return (
     <div className="flex min-h-screen flex-col bg-cream">

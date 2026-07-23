@@ -1,11 +1,148 @@
-import PagePlaceholder from "../../components/PagePlaceholder.jsx";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { CreditCard, Wallet, Truck, ShieldCheck } from "lucide-react";
+import { useCart } from "../../cart/CartContext.jsx";
+import { useCheckout } from "../../cart/CheckoutContext.jsx";
+import CheckoutSteps from "../../components/CheckoutSteps.jsx";
+import OrderSummarySidebar from "../../components/OrderSummarySidebar.jsx";
+import { inputClass } from "../../components/FormField.jsx";
+
+// PRD §5.4: Cash on Delivery is the default/primary payment method for
+// the Pakistani market — selected first here, unlike the card-first
+// reference layout.
+const METHODS = [
+  { id: "cod", label: "Cash on Delivery", icon: Truck },
+  { id: "card", label: "Credit/Debit Card", icon: CreditCard },
+  { id: "wallet", label: "Mobile Wallet", icon: Wallet },
+];
+
+const DELIVERY_PRICE = { standard: 0, express: 6.99, next_day: 14.99 };
 
 export default function CheckoutPayment() {
+  const { lines, subtotal, clearCart } = useCart();
+  const { address, deliveryMethod, paymentMethod, setPaymentMethod, placeOrder } = useCheckout();
+  const navigate = useNavigate();
+  const [placing, setPlacing] = useState(false);
+
+  useEffect(() => {
+    if (lines.length === 0) navigate("/cart", { replace: true });
+    else if (!address) navigate("/checkout/shipping", { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (lines.length === 0 || !address) return null;
+
+  const shipping = DELIVERY_PRICE[deliveryMethod] ?? 0;
+
+  const handlePlaceOrder = () => {
+    setPlacing(true);
+    const order = placeOrder({ lines, subtotal, shipping, total: subtotal + shipping });
+    clearCart();
+    navigate("/checkout/confirmation", { state: { order } });
+  };
+
   return (
-    <PagePlaceholder
-      title="Checkout — Payment"
-      phase="Phase 4"
-      description="Level 3 — card, wallet, COD, admin-toggled gateways (PRD §5.4)."
-    />
+    <div className="mx-auto max-w-6xl px-4 py-8">
+      <CheckoutSteps current={3} />
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
+          <div className="rounded-lg border border-gray-200 bg-white p-5">
+            <h1 className="flex items-center gap-2 font-bold text-gray-900">
+              <CreditCard className="h-4 w-4 text-brand" /> Payment Details
+            </h1>
+
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              {METHODS.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => setPaymentMethod(m.id)}
+                  className={`flex flex-col items-center gap-1 rounded-md py-3 text-xs font-semibold ${
+                    paymentMethod === m.id ? "bg-brand text-white" : "border border-gray-300 text-gray-700 hover:border-brand"
+                  }`}
+                >
+                  <m.icon className="h-4 w-4" />
+                  {m.label}
+                </button>
+              ))}
+            </div>
+
+            {paymentMethod === "cod" && (
+              <div className="mt-5 flex items-start gap-3 rounded-md border border-gray-200 bg-cream p-4 text-sm">
+                <Truck className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
+                <div>
+                  <p className="font-medium text-gray-900">Pay when you receive</p>
+                  <p className="text-gray-500">You'll pay in cash to the courier when your order arrives at your address.</p>
+                </div>
+              </div>
+            )}
+
+            {paymentMethod === "card" && (
+              <div className="mt-5 space-y-4">
+                {/*
+                  Mock-only — no card data is sent anywhere or stored.
+                  Real card tokenization needs an actual payment gateway,
+                  which is a later phase per the roadmap; wiring this
+                  form up for real would need PCI-compliant handling.
+                */}
+                <label className="block text-sm">
+                  <span className="mb-1 block font-medium text-gray-700">Card Number</span>
+                  <input className={inputClass} placeholder="1234 5678 9012 3456" disabled />
+                </label>
+                <div className="grid grid-cols-2 gap-4">
+                  <label className="block text-sm">
+                    <span className="mb-1 block font-medium text-gray-700">Expiry Date</span>
+                    <input className={inputClass} placeholder="MM/YY" disabled />
+                  </label>
+                  <label className="block text-sm">
+                    <span className="mb-1 block font-medium text-gray-700">CVV</span>
+                    <input className={inputClass} placeholder="123" disabled />
+                  </label>
+                </div>
+                <p className="text-xs text-gray-400">Card payments aren't live yet — this is a preview of the upcoming flow.</p>
+              </div>
+            )}
+
+            {paymentMethod === "wallet" && (
+              <div className="mt-5 rounded-md border border-dashed border-gray-300 p-6 text-center">
+                <button disabled className="rounded-full bg-gray-300 px-6 py-2.5 text-sm font-semibold text-white">
+                  Continue with Mobile Wallet
+                </button>
+                <p className="mt-2 text-xs text-gray-400">Easypaisa / JazzCash integration isn't live yet — this is a preview.</p>
+              </div>
+            )}
+
+            <div className="mt-5 flex items-center justify-center gap-4 border-t border-gray-100 pt-4 text-xs text-gray-500">
+              <span className="flex items-center gap-1"><ShieldCheck className="h-3.5 w-3.5 text-green-600" /> SSL Encrypted</span>
+              <span className="flex items-center gap-1"><ShieldCheck className="h-3.5 w-3.5 text-green-600" /> Secure Checkout</span>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-gray-200 bg-white p-5">
+            <h2 className="font-bold text-gray-900">Delivery Address</h2>
+            <p className="mt-2 text-sm text-gray-600">
+              {address.full_name} · {address.phone_number}<br />
+              {address.address_line}, {address.city}
+              {address.landmark && <><br />Landmark: {address.landmark}</>}
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <button onClick={() => navigate("/checkout/shipping")} className="text-sm font-medium text-gray-600 hover:text-brand">
+              Back to Shipping
+            </button>
+            <button
+              onClick={handlePlaceOrder}
+              disabled={placing}
+              className="rounded-md bg-brand px-8 py-3 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-60"
+            >
+              {placing ? "Placing Order..." : "Place Order"}
+            </button>
+          </div>
+        </div>
+
+        <OrderSummarySidebar lines={lines} subtotal={subtotal} shipping={shipping} />
+      </div>
+    </div>
   );
 }

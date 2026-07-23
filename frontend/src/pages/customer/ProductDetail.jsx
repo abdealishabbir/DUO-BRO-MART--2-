@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useParams, Navigate } from "react-router-dom";
 import { Star, Minus, Plus, ShoppingCart, Zap, Store, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
 import { getProductBySlug, getRelatedProducts } from "../../data/productsMockData.js";
+import { useCart } from "../../cart/CartContext.jsx";
 
 function formatPrice(n) {
   return `$${Number(n).toFixed(2)}`;
@@ -102,6 +103,7 @@ function RelatedProducts({ products }) {
 export default function ProductDetail() {
   const { slug } = useParams();
   const product = getProductBySlug(slug);
+  const { addItem } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
 
@@ -109,11 +111,14 @@ export default function ProductDetail() {
 
   const related = getRelatedProducts(product);
 
-  // Cart is real state starting Phase 4 — for now this just gives visible
-  // feedback so the flow is testable end to end without a backend cart yet.
   const handleAddToCart = () => {
+    addItem(product.slug, quantity);
     setAdded(true);
     setTimeout(() => setAdded(false), 1800);
+  };
+
+  const handleBuyNow = () => {
+    addItem(product.slug, quantity);
   };
 
   return (
@@ -173,6 +178,7 @@ export default function ProductDetail() {
             </button>
             <Link
               to="/checkout/shipping"
+              onClick={handleBuyNow}
               className="flex flex-1 items-center justify-center gap-2 rounded-md bg-brand py-3 text-sm font-semibold text-white hover:bg-brand-dark"
             >
               <Zap className="h-4 w-4" /> Buy Now

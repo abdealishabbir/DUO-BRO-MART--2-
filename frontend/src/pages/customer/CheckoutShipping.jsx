@@ -8,12 +8,7 @@ import { api } from "../../lib/api.js";
 import FormField, { inputClass } from "../../components/FormField.jsx";
 import CheckoutSteps from "../../components/CheckoutSteps.jsx";
 import OrderSummarySidebar from "../../components/OrderSummarySidebar.jsx";
-
-const PROVINCES = [
-  ["punjab", "Punjab"], ["sindh", "Sindh"], ["khyber_pakhtunkhwa", "Khyber Pakhtunkhwa"],
-  ["balochistan", "Balochistan"], ["gilgit_baltistan", "Gilgit-Baltistan"],
-  ["azad_kashmir", "Azad Kashmir"], ["islamabad_ct", "Islamabad Capital Territory"],
-];
+import { PROVINCES, citiesFor } from "../../lib/pkLocations.js";
 
 // PRD §5.4: COD is the default/primary delivery+payment pattern for
 // Pakistan, so Standard (free) delivery is the default selection here.
@@ -145,11 +140,20 @@ export default function CheckoutShipping() {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <FormField label="Province">
-                    <select className={inputClass} value={form.province} onChange={(e) => setForm({ ...form, province: e.target.value })}>
+                    <select
+                      className={inputClass}
+                      value={form.province}
+                      onChange={(e) => setForm({ ...form, province: e.target.value, city: "" })}
+                    >
                       {PROVINCES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                     </select>
                   </FormField>
-                  <FormField label="City"><input className={inputClass} value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} /></FormField>
+                  <FormField label="City">
+                    <select className={inputClass} value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })}>
+                      <option value="" disabled>Select a city</option>
+                      {citiesFor(form.province).map((city) => <option key={city} value={city}>{city}</option>)}
+                    </select>
+                  </FormField>
                 </div>
                 <FormField label="Address"><input className={inputClass} placeholder="House / street / area" value={form.address_line} onChange={(e) => setForm({ ...form, address_line: e.target.value })} /></FormField>
                 <FormField label="Nearest Landmark (helps rural/hard-to-find delivery)">

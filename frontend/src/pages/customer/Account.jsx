@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext.jsx";
 import { api } from "../../lib/api.js";
 import FormField, { inputClass } from "../../components/FormField.jsx";
-import { getAllMockOrders } from "../../cart/CheckoutContext.jsx";
+import { getOrdersForUser } from "../../cart/CheckoutContext.jsx";
 import { formatPKR } from "../../lib/currency.js";
 
 const TABS = ["Profile", "Addresses", "Security", "Orders"];
@@ -203,14 +203,17 @@ function SecurityTab() {
 }
 
 function OrdersTab() {
+  const { user } = useAuth();
   const [orders, setOrders] = useState([]);
 
   useEffect(() => {
     // Real Order backend + per-user scoping lands with Phase 5/6 (§10);
     // until then this reads the same localStorage-backed mock orders
-    // that CheckoutContext.placeOrder() writes at checkout.
-    setOrders(getAllMockOrders());
-  }, []);
+    // that CheckoutContext.placeOrder() writes at checkout, filtered to
+    // just this account's email so different accounts on the same
+    // browser don't see each other's orders.
+    setOrders(getOrdersForUser(user?.email));
+  }, [user?.email]);
 
   if (orders.length === 0) {
     return (

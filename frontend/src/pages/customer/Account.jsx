@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext.jsx";
 import { api } from "../../lib/api.js";
 import FormField, { inputClass } from "../../components/FormField.jsx";
+import { getAllMockOrders } from "../../cart/CheckoutContext.jsx";
+import { formatPKR } from "../../lib/currency.js";
 
 const TABS = ["Profile", "Addresses", "Security", "Orders"];
 
@@ -201,7 +203,50 @@ function SecurityTab() {
 }
 
 function OrdersTab() {
-  return <p className="text-sm text-gray-500">Order history lands here in Phase 4, once checkout exists.</p>;
+  const [orders, setOrders] = useState([]);
+
+  useEffect(() => {
+    // Real Order backend + per-user scoping lands with Phase 5/6 (§10);
+    // until then this reads the same localStorage-backed mock orders
+    // that CheckoutContext.placeOrder() writes at checkout.
+    setOrders(getAllMockOrders());
+  }, []);
+
+  if (orders.length === 0) {
+    return (
+      <div className="max-w-lg">
+        <p className="text-sm text-gray-500">You haven't placed any orders yet.</p>
+        <Link to="/shop" className="mt-2 inline-block text-sm font-medium text-brand hover:underline">
+          Start shopping
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-2xl space-y-3">
+      {orders.map((order) => (
+        <div key={order.id} className="rounded-md border border-gray-200 p-4">
+          <div className="flex items-center justify-between">
+            <p className="font-mono text-sm font-semibold text-gray-900">#{order.id}</p>
+            <span className="rounded-full bg-cream px-2.5 py-0.5 text-xs font-medium capitalize text-brand">
+              {order.trackingStatus ?? "pending"}
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-gray-500">
+            Placed {new Date(order.placedAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
+            {" · "}{order.items.length} item{order.items.length !== 1 && "s"}
+          </p>
+          <div className="mt-2 flex items-center justify-between">
+            <p className="text-sm font-semibold text-gray-900">{formatPKR(order.total)}</p>
+            <Link to={`/track-order?order=${order.id}`} className="text-sm font-medium text-brand hover:underline">
+              Track Order
+            </Link>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export default function Account() {

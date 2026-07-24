@@ -3,10 +3,7 @@ import { Link, useParams, Navigate } from "react-router-dom";
 import { Star, Minus, Plus, ShoppingCart, Zap, Store, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
 import { getProductBySlug, getRelatedProducts } from "../../data/productsMockData.js";
 import { useCart } from "../../cart/CartContext.jsx";
-
-function formatPrice(n) {
-  return `$${Number(n).toFixed(2)}`;
-}
+import { formatPKR } from "../../lib/currency.js";
 
 function ImageCarousel({ images, name }) {
   const [active, setActive] = useState(0);
@@ -92,7 +89,7 @@ function RelatedProducts({ products }) {
             <p className="mt-1 flex items-center gap-1 text-xs text-gray-500">
               <Star className="h-3.5 w-3.5 fill-gold text-gold" /> {p.rating}
             </p>
-            <p className="mt-1 text-sm font-bold text-gray-900">{formatPrice(p.price)}</p>
+            <p className="mt-1 text-sm font-bold text-gray-900">{formatPKR(p.price)}</p>
           </Link>
         ))}
       </div>
@@ -140,8 +137,8 @@ export default function ProductDetail() {
           </p>
 
           <div className="mt-4 flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-gray-900">{formatPrice(product.price)}</span>
-            {product.originalPrice && <span className="text-lg text-gray-400 line-through">{formatPrice(product.originalPrice)}</span>}
+            <span className="text-3xl font-bold text-gray-900">{formatPKR(product.price)}</span>
+            {product.originalPrice && <span className="text-lg text-gray-400 line-through">{formatPKR(product.originalPrice)}</span>}
           </div>
 
           <p className="mt-4 text-sm leading-relaxed text-gray-600">{product.description}</p>

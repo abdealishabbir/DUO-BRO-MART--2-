@@ -1,12 +1,39 @@
-import { useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
-import { ChevronLeft, ChevronRight, SlidersHorizontal, Star, Grid2x2, List } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { ChevronLeft, ChevronRight, SlidersHorizontal, Star, Grid2x2, List, X } from "lucide-react";
 import { PRODUCTS, getCategoryCounts, BRANDS } from "../../data/productsMockData.js";
+import { formatPKR } from "../../lib/currency.js";
 
 const PAGE_SIZE = 9;
 
-function formatPrice(n) {
-  return `$${Number(n).toFixed(2)}`;
+const DEFAULT_FILTERS = { categories: [], brands: [], minPrice: "", maxPrice: "", minRating: 0 };
+
+// PRD §14.9.C: pagination (and filters) must appear in the URL, and
+// active filters must render as removable chips. These helpers keep
+// the URL and the filters/sort/view/page state in sync both ways —
+// reading a shared link restores the exact same view, and changing
+// any control updates the URL without a full navigation.
+function filtersFromParams(params) {
+  return {
+    categories: params.get("categories") ? params.get("categories").split(",") : [],
+    brands: params.get("brands") ? params.get("brands").split(",") : [],
+    minPrice: params.get("minPrice") ?? "",
+    maxPrice: params.get("maxPrice") ?? "",
+    minRating: params.get("minRating") ? Number(params.get("minRating")) : 0,
+  };
+}
+
+function paramsFromState({ filters, sort, view, page }) {
+  const params = {};
+  if (filters.categories.length) params.categories = filters.categories.join(",");
+  if (filters.brands.length) params.brands = filters.brands.join(",");
+  if (filters.minPrice) params.minPrice = filters.minPrice;
+  if (filters.maxPrice) params.maxPrice = filters.maxPrice;
+  if (filters.minRating) params.minRating = String(filters.minRating);
+  if (sort !== "newest") params.sort = sort;
+  if (view !== "grid") params.view = view;
+  if (page !== 1) params.page = String(page);
+  return params;
 }
 
 function StarRating({ rating, count }) {
@@ -47,7 +74,7 @@ function ScrollCarousel({ title, badge, products }) {
             <img src={p.images[0]} alt={p.name} className="h-32 w-full rounded-md object-cover sm:h-36" />
             <p className="mt-2 line-clamp-2 text-sm font-medium text-gray-900">{p.name}</p>
             <StarRating rating={p.rating} />
-            <p className="mt-1 text-sm font-bold text-gray-900">{formatPrice(p.price)}</p>
+            <p className="mt-1 text-sm font-bold text-gray-900">{formatPKR(p.price)}</p>
           </Link>
         ))}
       </div>
@@ -87,7 +114,7 @@ function FiltersSidebar({ filters, setFilters, categoryCounts }) {
       </div>
 
       <div>
-        <h4 className="mb-2 text-sm font-semibold text-gray-700">Price Range</h4>
+        <h4 className="mb-2 text-sm font-semibold text-gray-700">Price Range (PKR)</h4>
         <div className="flex items-center gap-2">
           <input
             type="number" placeholder="Min" className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
@@ -135,6 +162,64 @@ function FiltersSidebar({ filters, setFilters, categoryCounts }) {
   );
 }
 
+// PRD §14.9.C: active filters render as removable chips above the
+// results, each with its own "x" to clear just that one filter.
+function ActiveFilterChips({ filters, setFilters, categoryCounts }) {
+  const chips = [];
+
+  filters.categories.forEach((catId) => {
+    const label = categoryCounts.find((c) => c.id === catId)?.label ?? catId;
+    chips.push({
+      key: `cat-${catId}`,
+      label,
+      onRemove: () => setFilters((f) => ({ ...f, categories: f.categories.filter((c) => c !== catId) })),
+    });
+  });
+
+  filters.brands.forEach((brand) => {
+    chips.push({
+      key: `brand-${brand}`,
+      label: brand,
+      onRemove: () => setFilters((f) => ({ ...f, brands: f.brands.filter((b) => b !== brand) })),
+    });
+  });
+
+  if (filters.minPrice || filters.maxPrice) {
+    const label = `${filters.minPrice ? formatPKR(filters.minPrice) : "PKR 0"} - ${filters.maxPrice ? formatPKR(filters.maxPrice) : "Any"}`;
+    chips.push({
+      key: "price",
+      label,
+      onRemove: () => setFilters((f) => ({ ...f, minPrice: "", maxPrice: "" })),
+    });
+  }
+
+  if (filters.minRating) {
+    chips.push({
+      key: "rating",
+      label: `${filters.minRating}★ & Up`,
+      onRemove: () => setFilters((f) => ({ ...f, minRating: 0 })),
+    });
+  }
+
+  if (chips.length === 0) return null;
+
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-2">
+      {chips.map((chip) => (
+        <span key={chip.key} className="flex items-center gap-1 rounded-full border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700">
+          {chip.label}
+          <button onClick={chip.onRemove} aria-label={`Remove ${chip.label} filter`} className="text-gray-400 hover:text-red-600">
+            <X className="h-3 w-3" />
+          </button>
+        </span>
+      ))}
+      <button onClick={() => setFilters(() => DEFAULT_FILTERS)} className="text-xs font-medium text-brand hover:underline">
+        Clear all
+      </button>
+    </div>
+  );
+}
+
 function ProductCard({ product, view }) {
   const isList = view === "list";
   return (
@@ -154,8 +239,8 @@ function ProductCard({ product, view }) {
         <StarRating rating={product.rating} count={product.reviewCount} />
         <div className="mt-2 flex items-center justify-between gap-2">
           <p>
-            <span className="font-bold text-gray-900">{formatPrice(product.price)}</span>{" "}
-            {product.originalPrice && <span className="text-xs text-gray-400 line-through">{formatPrice(product.originalPrice)}</span>}
+            <span className="font-bold text-gray-900">{formatPKR(product.price)}</span>{" "}
+            {product.originalPrice && <span className="text-xs text-gray-400 line-through">{formatPKR(product.originalPrice)}</span>}
           </p>
           <span className="rounded-md bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white">Add to Cart</span>
         </div>
@@ -196,10 +281,19 @@ function Pagination({ page, totalPages, onChange }) {
 }
 
 export default function Shop() {
-  const [filters, setFilters] = useState({ categories: [], brands: [], minPrice: "", maxPrice: "", minRating: 0 });
-  const [sort, setSort] = useState("newest");
-  const [view, setView] = useState("grid");
-  const [page, setPage] = useState(1);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const [filters, setFilters] = useState(() => filtersFromParams(searchParams));
+  const [sort, setSort] = useState(() => searchParams.get("sort") ?? "newest");
+  const [view, setView] = useState(() => searchParams.get("view") ?? "grid");
+  const [page, setPage] = useState(() => Number(searchParams.get("page") ?? 1));
+
+  // Keep the URL in sync whenever any control changes, so the current
+  // page/filters/sort/view are always shareable and survive a refresh.
+  useEffect(() => {
+    setSearchParams(paramsFromState({ filters, sort, view, page }), { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters, sort, view, page]);
 
   const categoryCounts = useMemo(getCategoryCounts, []);
   const trending = useMemo(() => PRODUCTS.filter((p) => p.trending), []);
@@ -223,6 +317,11 @@ export default function Shop() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
+  const updateFilters = (fn) => {
+    setFilters(fn);
+    setPage(1);
+  };
+
   const changePage = (p) => {
     setPage(p);
     window.scrollTo({ top: 300, behavior: "smooth" });
@@ -239,7 +338,7 @@ export default function Shop() {
 
       <section className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
         <div className="flex flex-col gap-6 lg:flex-row">
-          <FiltersSidebar filters={filters} setFilters={(fn) => { setFilters(fn); setPage(1); }} categoryCounts={categoryCounts} />
+          <FiltersSidebar filters={filters} setFilters={updateFilters} categoryCounts={categoryCounts} />
 
           <div className="flex-1">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white p-3">
@@ -249,7 +348,7 @@ export default function Shop() {
               <div className="flex items-center gap-3">
                 <label className="flex items-center gap-2 text-sm text-gray-600">
                   Sort by:
-                  <select className="rounded-md border border-gray-300 px-2 py-1.5 text-sm" value={sort} onChange={(e) => setSort(e.target.value)}>
+                  <select className="rounded-md border border-gray-300 px-2 py-1.5 text-sm" value={sort} onChange={(e) => { setSort(e.target.value); setPage(1); }}>
                     <option value="newest">Newest Arrivals</option>
                     <option value="price-asc">Price: Low to High</option>
                     <option value="price-desc">Price: High to Low</option>
@@ -266,6 +365,8 @@ export default function Shop() {
                 </div>
               </div>
             </div>
+
+            <ActiveFilterChips filters={filters} setFilters={updateFilters} categoryCounts={categoryCounts} />
 
             {pageItems.length === 0 ? (
               <p className="rounded-lg border border-gray-200 bg-white p-10 text-center text-sm text-gray-500">

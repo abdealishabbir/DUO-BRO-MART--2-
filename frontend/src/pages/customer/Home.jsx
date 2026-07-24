@@ -6,15 +6,12 @@ import {
 } from "lucide-react";
 import CountdownTimer from "../../components/CountdownTimer.jsx";
 import { api } from "../../lib/api.js";
+import { formatPKR } from "../../lib/currency.js";
 import {
   heroSlides as fallbackHeroSlides, promoTiles, flashDeals, categories, topSelling, bestOf,
 } from "../../data/homeMockData.js";
 
 const CATEGORY_ICONS = { Laptop, Shirt, Home: HomeIcon, Dumbbell, BookOpen, Sparkles, Gamepad2, Coffee };
-
-function formatPKR(amount) {
-  return `Rs. ${amount.toLocaleString("en-PK")}`;
-}
 
 // Maps a live vendor Banner (from /banners/public/carousel/) to the shape
 // Hero renders. Falls back to the static demo slide when no vendor has a

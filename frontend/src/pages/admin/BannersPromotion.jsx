@@ -1,11 +1,8 @@
 import { useEffect, useState } from "react";
 import { RefreshCw, Check, X, Upload, Ban } from "lucide-react";
 import { api } from "../../lib/api.js";
+import { formatPKR } from "../../lib/currency.js";
 import { inputClass } from "../../components/FormField.jsx";
-
-function formatPKR(amount) {
-  return `Rs. ${Number(amount).toLocaleString("en-PK")}`;
-}
 
 const STATUS_STYLES = {
   pending: "bg-amber-100 text-amber-700",

@@ -9,16 +9,27 @@ import FormField, { inputClass } from "../../components/FormField.jsx";
 import CheckoutSteps from "../../components/CheckoutSteps.jsx";
 import OrderSummarySidebar from "../../components/OrderSummarySidebar.jsx";
 import { PROVINCES, citiesFor } from "../../lib/pkLocations.js";
+import { formatPKR, DEFAULT_SHIPPING_RATE } from "../../lib/currency.js";
 
-// PRD §5.4: COD is the default/primary delivery+payment pattern for
-// Pakistan, so Standard (free) delivery is the default selection here.
-const DELIVERY_METHODS = [
-  { id: "standard", label: "Standard Delivery", desc: "5-7 business days", price: 0, icon: Truck },
-  { id: "express", label: "Express Delivery", desc: "2-3 business days", price: 6.99, icon: Zap },
-  { id: "next_day", label: "Next Day Delivery", desc: "1 business day", price: 14.99, icon: Clock },
+// PRD §5.4: three named tiers — Standard (5-7 days, economical/default,
+// PKR 250 base), Express (3-4 days, moderate), Urgent (24-48 hrs, highest).
+export const DELIVERY_METHODS = [
+  { id: "standard", label: "Standard Delivery", desc: "5-7 business days", price: DEFAULT_SHIPPING_RATE, icon: Truck },
+  { id: "express", label: "Express Delivery", desc: "3-4 business days", price: 450, icon: Zap },
+  { id: "urgent", label: "Urgent Delivery", desc: "24-48 hours", price: 800, icon: Clock },
 ];
 
-const EMPTY_FORM = { label: "Home", full_name: "", phone_number: "", province: "sindh", city: "", address_line: "", landmark: "" };
+const EMPTY_FORM = {
+  label: "Home",
+  full_name: "",
+  phone_number: "",
+  email: "",
+  province: "sindh",
+  city: "",
+  address_line: "",
+  area_type: "city",
+  landmark: "",
+};
 
 export default function CheckoutShipping() {
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -74,8 +85,16 @@ export default function CheckoutShipping() {
       return;
     }
 
-    if (!form.full_name || !form.phone_number || !form.city || !form.address_line) {
+    if (!form.full_name || !form.phone_number || !form.email || !form.city || !form.address_line) {
       setError("Please fill in all required fields.");
+      return;
+    }
+    if (!/^\S+@\S+\.\S+$/.test(form.email)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+    if (form.area_type === "rural" && !form.landmark) {
+      setError("Nearest landmark is required for rural delivery.");
       return;
     }
 
@@ -136,8 +155,11 @@ export default function CheckoutShipping() {
               <div className="mt-4 space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <FormField label="Full Name"><input className={inputClass} value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></FormField>
-                  <FormField label="Phone Number"><input className={inputClass} placeholder="03001234567" value={form.phone_number} onChange={(e) => setForm({ ...form, phone_number: e.target.value })} /></FormField>
+                  <FormField label="Contact No."><input className={inputClass} placeholder="03001234567" value={form.phone_number} onChange={(e) => setForm({ ...form, phone_number: e.target.value })} /></FormField>
                 </div>
+                <FormField label="Email Address">
+                  <input type="email" className={inputClass} placeholder="you@example.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                </FormField>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <FormField label="Province">
                     <select
@@ -155,8 +177,39 @@ export default function CheckoutShipping() {
                     </select>
                   </FormField>
                 </div>
-                <FormField label="Address"><input className={inputClass} placeholder="House / street / area" value={form.address_line} onChange={(e) => setForm({ ...form, address_line: e.target.value })} /></FormField>
-                <FormField label="Nearest Landmark (helps rural/hard-to-find delivery)">
+                <FormField label="Delivery Address (street no., building, flat no., floor)">
+                  <textarea
+                    className={`${inputClass} min-h-[84px] resize-y`}
+                    placeholder="House / street no., building name, flat no., floor"
+                    value={form.address_line}
+                    onChange={(e) => setForm({ ...form, address_line: e.target.value })}
+                  />
+                </FormField>
+
+                <FormField label="Area Type">
+                  <div className="flex gap-2">
+                    {[["city", "City"], ["rural", "Rural"]].map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setForm({ ...form, area_type: value })}
+                        className={`flex-1 rounded-md border px-4 py-2 text-sm font-medium ${
+                          form.area_type === value ? "border-brand bg-cream text-brand" : "border-gray-300 text-gray-600"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </FormField>
+
+                {form.area_type === "rural" && (
+                  <p className="-mt-2 text-xs text-gray-500">
+                    No door-to-door courier coverage here? The courier will deliver to its nearest branch and you'll collect from there — tell us the nearest landmark below.
+                  </p>
+                )}
+
+                <FormField label={form.area_type === "rural" ? "Nearest Landmark (required for rural delivery)" : "Nearest Landmark (optional)"}>
                   <input className={inputClass} placeholder="e.g. Near DHA Phase 6 Gate, behind Agha's Superstore" value={form.landmark} onChange={(e) => setForm({ ...form, landmark: e.target.value })} />
                 </FormField>
                 {isAuthenticated && (
@@ -192,7 +245,7 @@ export default function CheckoutShipping() {
                       <p className="text-xs text-gray-500">{m.desc}</p>
                     </div>
                   </div>
-                  <span className="text-sm font-semibold text-gray-900">{m.price === 0 ? "Free" : `$${m.price.toFixed(2)}`}</span>
+                  <span className="text-sm font-semibold text-gray-900">{m.price === 0 ? "Free" : formatPKR(m.price)}</span>
                 </label>
               ))}
             </div>

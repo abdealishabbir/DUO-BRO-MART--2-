@@ -3,16 +3,16 @@ import { Minus, Plus, Trash2, ShoppingBag, ArrowRight } from "lucide-react";
 import { useCart } from "../../cart/CartContext.jsx";
 import CheckoutSteps from "../../components/CheckoutSteps.jsx";
 import OrderSummarySidebar from "../../components/OrderSummarySidebar.jsx";
-
-function formatPrice(n) {
-  return `$${Number(n).toFixed(2)}`;
-}
-
-const FREE_SHIPPING_THRESHOLD = 50;
-const FLAT_SHIPPING = 4.99;
+import { formatPKR, FREE_SHIPPING_THRESHOLD, DEFAULT_SHIPPING_RATE } from "../../lib/currency.js";
 
 function CartLine({ line, onUpdateQuantity, onRemove }) {
   const { product, quantity } = line;
+  // PRD §5.4: discounts applied per line show a struck-through original
+  // price. `originalPrice` is only present on products that carry a
+  // deal/discount in the catalog — if your mock data uses a different
+  // field name for this, let me know and I'll match it exactly.
+  const hasDiscount = product.originalPrice && product.originalPrice > product.price;
+
   return (
     <div className="flex gap-4 rounded-lg border border-gray-200 bg-white p-4">
       <Link to={`/product/${product.slug}`} className="shrink-0">
@@ -44,7 +44,12 @@ function CartLine({ line, onUpdateQuantity, onRemove }) {
               <Plus className="h-3.5 w-3.5" />
             </button>
           </div>
-          <p className="font-semibold text-gray-900">{formatPrice(product.price * quantity)}</p>
+          <div className="text-right">
+            {hasDiscount && (
+              <p className="text-xs text-gray-400 line-through">{formatPKR(product.originalPrice * quantity)}</p>
+            )}
+            <p className="font-semibold text-gray-900">{formatPKR(product.price * quantity)}</p>
+          </div>
         </div>
       </div>
     </div>
@@ -70,7 +75,11 @@ export default function Cart() {
 
   if (lines.length === 0) return <EmptyCart />;
 
-  const shipping = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : FLAT_SHIPPING;
+  const shipping = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : DEFAULT_SHIPPING_RATE;
+  const discount = lines.reduce((sum, l) => {
+    const orig = l.product.originalPrice;
+    return orig && orig > l.product.price ? sum + (orig - l.product.price) * l.quantity : sum;
+  }, 0);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
@@ -88,7 +97,7 @@ export default function Cart() {
         </div>
 
         <div className="space-y-4">
-          <OrderSummarySidebar lines={lines} subtotal={subtotal} shipping={shipping} showCoupon />
+          <OrderSummarySidebar lines={lines} subtotal={subtotal} shipping={shipping} discount={discount} showCoupon />
           <button
             onClick={() => navigate("/checkout/shipping")}
             className="flex w-full items-center justify-center gap-2 rounded-md bg-brand py-3 text-sm font-semibold text-white hover:bg-brand-dark"

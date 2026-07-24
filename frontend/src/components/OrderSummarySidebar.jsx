@@ -1,11 +1,8 @@
 import { ShieldCheck } from "lucide-react";
+import { formatPKR } from "../lib/currency.js";
 
-function formatPrice(n) {
-  return `$${Number(n).toFixed(2)}`;
-}
-
-export default function OrderSummarySidebar({ lines, subtotal, shipping, tax = 0, showCoupon = false }) {
-  const total = subtotal + shipping + tax;
+export default function OrderSummarySidebar({ lines, subtotal, shipping, tax = 0, discount = 0, showCoupon = false }) {
+  const total = subtotal - discount + shipping + tax;
 
   return (
     <div className="h-fit rounded-lg border border-gray-200 bg-white p-5">
@@ -22,7 +19,7 @@ export default function OrderSummarySidebar({ lines, subtotal, shipping, tax = 0
             <div className="flex-1 text-sm">
               <p className="font-medium text-gray-900">{line.product?.name ?? line.name}</p>
               <p className="text-xs text-gray-500">
-                Qty: {line.quantity} × {formatPrice(line.product?.price ?? line.price)}
+                Qty: {line.quantity} × {formatPKR(line.product?.price ?? line.price)}
               </p>
             </div>
           </div>
@@ -32,21 +29,27 @@ export default function OrderSummarySidebar({ lines, subtotal, shipping, tax = 0
       <div className="mt-4 space-y-2 text-sm">
         <div className="flex justify-between text-gray-600">
           <span>Subtotal</span>
-          <span>{formatPrice(subtotal)}</span>
+          <span>{formatPKR(subtotal)}</span>
         </div>
+        {discount > 0 && (
+          <div className="flex justify-between text-green-700">
+            <span>Discount</span>
+            <span>–{formatPKR(discount)}</span>
+          </div>
+        )}
         <div className="flex justify-between text-gray-600">
           <span>Shipping</span>
-          <span>{shipping === 0 ? <span className="text-green-700">Free</span> : formatPrice(shipping)}</span>
+          <span>{shipping === 0 ? <span className="text-green-700">Free</span> : formatPKR(shipping)}</span>
         </div>
         {tax > 0 && (
           <div className="flex justify-between text-gray-600">
             <span>Estimated Tax</span>
-            <span>{formatPrice(tax)}</span>
+            <span>{formatPKR(tax)}</span>
           </div>
         )}
         <div className="flex justify-between border-t border-gray-100 pt-2 text-base font-bold text-gray-900">
           <span>Total</span>
-          <span>{formatPrice(total)}</span>
+          <span>{formatPKR(total)}</span>
         </div>
       </div>
 

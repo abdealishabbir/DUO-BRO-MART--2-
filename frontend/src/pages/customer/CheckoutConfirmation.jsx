@@ -1,12 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { CheckCircle2, Truck } from "lucide-react";
+import { CheckCircle2, Truck, MapPin } from "lucide-react";
 import { getAllMockOrders } from "../../cart/CheckoutContext.jsx";
 import CheckoutSteps from "../../components/CheckoutSteps.jsx";
-
-function formatPrice(n) {
-  return `$${Number(n).toFixed(2)}`;
-}
+import { formatPKR } from "../../lib/currency.js";
 
 function formatDateRange(isoDate, daysFrom, daysTo) {
   const base = new Date(isoDate);
@@ -71,13 +68,13 @@ export default function CheckoutConfirmation() {
                   <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
                 </div>
               </div>
-              <p className="text-sm font-semibold text-gray-900">{formatPrice(item.price * item.quantity)}</p>
+              <p className="text-sm font-semibold text-gray-900">{formatPKR(item.price * item.quantity)}</p>
             </div>
           ))}
         </div>
         <div className="mt-4 flex justify-between text-base font-bold text-gray-900">
           <span>Total Paid</span>
-          <span>{formatPrice(order.total)}</span>
+          <span>{formatPKR(order.total)}</span>
         </div>
       </div>
 
@@ -88,6 +85,16 @@ export default function CheckoutConfirmation() {
           {formatDateRange(order.placedAt, order.estimatedDeliveryDays, order.estimatedDeliveryDays + 2)}
         </span>
       </div>
+
+      {order.address?.area_type === "rural" && (
+        <div className="mt-3 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+          <span>
+            Collect from nearest courier branch: your area doesn't have door-to-door coverage, so the courier will hold your
+            order at its nearest branch near <strong>{order.address.landmark}</strong>. You'll be notified once it arrives there.
+          </span>
+        </div>
+      )}
 
       <div className="mt-6 flex justify-center gap-3">
         <Link

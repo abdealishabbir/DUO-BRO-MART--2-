@@ -5,7 +5,9 @@ import { useCart } from "../../cart/CartContext.jsx";
 import { useCheckout } from "../../cart/CheckoutContext.jsx";
 import CheckoutSteps from "../../components/CheckoutSteps.jsx";
 import OrderSummarySidebar from "../../components/OrderSummarySidebar.jsx";
-import { inputClass } from "../../components/FormField.jsx";
+import FormField, { inputClass } from "../../components/FormField.jsx";
+import { PROVINCES, citiesFor } from "../../lib/pkLocations.js";
+import { DELIVERY_METHODS } from "./CheckoutShipping.jsx";
 
 // PRD §5.4: Cash on Delivery is the default/primary payment method for
 // the Pakistani market — selected first here, unlike the card-first
@@ -16,13 +18,23 @@ const METHODS = [
   { id: "wallet", label: "Mobile Wallet", icon: Wallet },
 ];
 
-const DELIVERY_PRICE = { standard: 0, express: 6.99, next_day: 14.99 };
+// PRD §5.4: three named wallets, selected individually (gateway
+// redirect/OTP flow isn't live yet — this is the selection UI only).
+const WALLETS = ["NayaPay", "Easypaisa", "JazzCash"];
+
+const DELIVERY_PRICE = Object.fromEntries(DELIVERY_METHODS.map((m) => [m.id, m.price]));
+
+const EMPTY_BILLING = { full_name: "", phone_number: "", province: "sindh", city: "", address_line: "" };
 
 export default function CheckoutPayment() {
   const { lines, subtotal, clearCart } = useCart();
   const { address, deliveryMethod, paymentMethod, setPaymentMethod, placeOrder } = useCheckout();
   const navigate = useNavigate();
   const [placing, setPlacing] = useState(false);
+  const [selectedWallet, setSelectedWallet] = useState(WALLETS[0]);
+  const [saveCard, setSaveCard] = useState(false);
+  const [billingSameAsShipping, setBillingSameAsShipping] = useState(true);
+  const [billingForm, setBillingForm] = useState(EMPTY_BILLING);
 
   useEffect(() => {
     if (lines.length === 0) navigate("/cart", { replace: true });
@@ -36,7 +48,16 @@ export default function CheckoutPayment() {
 
   const handlePlaceOrder = () => {
     setPlacing(true);
-    const order = placeOrder({ lines, subtotal, shipping, total: subtotal + shipping });
+    const billingAddress = billingSameAsShipping ? address : billingForm;
+    const order = placeOrder({
+      lines,
+      subtotal,
+      shipping,
+      total: subtotal + shipping,
+      billingAddress,
+      wallet: paymentMethod === "wallet" ? selectedWallet : null,
+      saveCard: paymentMethod === "card" ? saveCard : false,
+    });
     clearCart();
     navigate("/checkout/confirmation", { state: { order } });
   };
@@ -99,16 +120,36 @@ export default function CheckoutPayment() {
                     <input className={inputClass} placeholder="123" disabled />
                   </label>
                 </div>
+                <label className="flex items-center gap-2 text-sm text-gray-600">
+                  <input type="checkbox" checked={saveCard} onChange={(e) => setSaveCard(e.target.checked)} />
+                  Save this card for future purchases
+                </label>
                 <p className="text-xs text-gray-400">Card payments aren't live yet — this is a preview of the upcoming flow.</p>
               </div>
             )}
 
             {paymentMethod === "wallet" && (
-              <div className="mt-5 rounded-md border border-dashed border-gray-300 p-6 text-center">
-                <button disabled className="rounded-full bg-gray-300 px-6 py-2.5 text-sm font-semibold text-white">
-                  Continue with Mobile Wallet
-                </button>
-                <p className="mt-2 text-xs text-gray-400">Easypaisa / JazzCash integration isn't live yet — this is a preview.</p>
+              <div className="mt-5 space-y-4">
+                <div className="grid grid-cols-3 gap-2">
+                  {WALLETS.map((w) => (
+                    <button
+                      key={w}
+                      type="button"
+                      onClick={() => setSelectedWallet(w)}
+                      className={`rounded-md border px-3 py-2.5 text-sm font-semibold ${
+                        selectedWallet === w ? "border-brand bg-cream text-brand" : "border-gray-300 text-gray-700 hover:border-brand"
+                      }`}
+                    >
+                      {w}
+                    </button>
+                  ))}
+                </div>
+                <div className="rounded-md border border-dashed border-gray-300 p-6 text-center">
+                  <button disabled className="rounded-full bg-gray-300 px-6 py-2.5 text-sm font-semibold text-white">
+                    Continue with {selectedWallet}
+                  </button>
+                  <p className="mt-2 text-xs text-gray-400">{selectedWallet} redirect/OTP integration isn't live yet — this is a preview.</p>
+                </div>
               </div>
             )}
 
@@ -125,6 +166,47 @@ export default function CheckoutPayment() {
               {address.address_line}, {address.city}
               {address.landmark && <><br />Landmark: {address.landmark}</>}
             </p>
+          </div>
+
+          <div className="rounded-lg border border-gray-200 bg-white p-5">
+            <h2 className="font-bold text-gray-900">Billing Address</h2>
+            <label className="mt-3 flex items-center gap-2 text-sm text-gray-600">
+              <input type="checkbox" checked={billingSameAsShipping} onChange={(e) => setBillingSameAsShipping(e.target.checked)} />
+              Same as shipping address
+            </label>
+
+            {!billingSameAsShipping && (
+              <div className="mt-4 space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField label="Full Name">
+                    <input className={inputClass} value={billingForm.full_name} onChange={(e) => setBillingForm({ ...billingForm, full_name: e.target.value })} />
+                  </FormField>
+                  <FormField label="Contact No.">
+                    <input className={inputClass} placeholder="03001234567" value={billingForm.phone_number} onChange={(e) => setBillingForm({ ...billingForm, phone_number: e.target.value })} />
+                  </FormField>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField label="Province">
+                    <select
+                      className={inputClass}
+                      value={billingForm.province}
+                      onChange={(e) => setBillingForm({ ...billingForm, province: e.target.value, city: "" })}
+                    >
+                      {PROVINCES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                    </select>
+                  </FormField>
+                  <FormField label="City">
+                    <select className={inputClass} value={billingForm.city} onChange={(e) => setBillingForm({ ...billingForm, city: e.target.value })}>
+                      <option value="" disabled>Select a city</option>
+                      {citiesFor(billingForm.province).map((city) => <option key={city} value={city}>{city}</option>)}
+                    </select>
+                  </FormField>
+                </div>
+                <FormField label="Address">
+                  <input className={inputClass} placeholder="House / street / area" value={billingForm.address_line} onChange={(e) => setBillingForm({ ...billingForm, address_line: e.target.value })} />
+                </FormField>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center justify-between">

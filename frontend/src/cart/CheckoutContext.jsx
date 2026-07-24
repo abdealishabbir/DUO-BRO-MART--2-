@@ -32,13 +32,21 @@ export function CheckoutProvider({ children }) {
    * checkout flow fully clickable/testable end to end in the meantime,
    * and TrackOrder reads from the same storage.
    */
-  const placeOrder = ({ lines, subtotal, shipping, total }) => {
+  const placeOrder = ({ lines, subtotal, shipping, total, billingAddress, wallet, saveCard }) => {
     const order = {
       id: generateOrderId(),
       status: "confirmed",
+      // PRD §5.4: order tracking timeline — this mock order starts at
+      // "Pending" and moves through Processing/Shipped/Delivered as the
+      // vendor updates it (real status updates land with the Order
+      // backend in Phase 5/6; /track-order reads this field for now).
+      trackingStatus: "pending",
       placedAt: new Date().toISOString(),
       address,
+      billingAddress: billingAddress ?? address,
       paymentMethod,
+      wallet: wallet ?? null,
+      saveCard: !!saveCard,
       items: lines.map((l) => ({
         slug: l.product.slug,
         name: l.product.name,

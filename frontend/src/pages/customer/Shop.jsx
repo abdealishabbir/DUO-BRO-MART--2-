@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight, SlidersHorizontal, Star, Grid2x2, List, X } from "lucide-react";
 import { PRODUCTS, getCategoryCounts, BRANDS } from "../../data/productsMockData.js";
+import { useCart } from "../../cart/CartContext.jsx";
 import { formatPKR } from "../../lib/currency.js";
 
 const PAGE_SIZE = 9;
 
-const DEFAULT_FILTERS = { categories: [], brands: [], minPrice: "", maxPrice: "", minRating: 0 };
+const DEFAULT_FILTERS = { categories: [], brands: [], minPrice: "", maxPrice: "", minRating: 0, dealsOnly: false };
 
 // PRD §14.9.C: pagination (and filters) must appear in the URL, and
 // active filters must render as removable chips. These helpers keep
@@ -20,6 +21,7 @@ function filtersFromParams(params) {
     minPrice: params.get("minPrice") ?? "",
     maxPrice: params.get("maxPrice") ?? "",
     minRating: params.get("minRating") ? Number(params.get("minRating")) : 0,
+    dealsOnly: params.get("deals") === "1",
   };
 }
 
@@ -30,6 +32,7 @@ function paramsFromState({ filters, sort, view, page }) {
   if (filters.minPrice) params.minPrice = filters.minPrice;
   if (filters.maxPrice) params.maxPrice = filters.maxPrice;
   if (filters.minRating) params.minRating = String(filters.minRating);
+  if (filters.dealsOnly) params.deals = "1";
   if (sort !== "newest") params.sort = sort;
   if (view !== "grid") params.view = view;
   if (page !== 1) params.page = String(page);
@@ -41,44 +44,6 @@ function StarRating({ rating, count }) {
     <p className="flex items-center gap-1 text-xs text-gray-500">
       <Star className="h-3.5 w-3.5 fill-gold text-gold" /> {rating} {count != null && <span className="text-gray-400">({count})</span>}
     </p>
-  );
-}
-
-function ScrollCarousel({ title, badge, products }) {
-  const trackRef = useRef(null);
-  const scroll = (dir) => trackRef.current?.scrollBy({ left: dir * 320, behavior: "smooth" });
-
-  return (
-    <section className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-lg font-bold text-gray-900">
-          {title}
-          {badge && <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white">{badge}</span>}
-        </h2>
-        <div className="hidden gap-2 sm:flex">
-          <button onClick={() => scroll(-1)} className="rounded-full border border-gray-300 p-1.5 hover:border-brand">
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <button onClick={() => scroll(1)} className="rounded-full border border-gray-300 p-1.5 hover:border-brand">
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-      <div ref={trackRef} className="flex gap-4 overflow-x-auto pb-2 scroll-smooth [scrollbar-width:none]">
-        {products.map((p) => (
-          <Link
-            key={p.id}
-            to={`/product/${p.slug}`}
-            className="w-44 shrink-0 rounded-lg border border-gray-200 bg-white p-3 hover:shadow-md sm:w-52"
-          >
-            <img src={p.images[0]} alt={p.name} className="h-32 w-full rounded-md object-cover sm:h-36" />
-            <p className="mt-2 line-clamp-2 text-sm font-medium text-gray-900">{p.name}</p>
-            <StarRating rating={p.rating} />
-            <p className="mt-1 text-sm font-bold text-gray-900">{formatPKR(p.price)}</p>
-          </Link>
-        ))}
-      </div>
-    </section>
   );
 }
 
@@ -96,6 +61,14 @@ function FiltersSidebar({ filters, setFilters, categoryCounts }) {
         <h3 className="mb-3 flex items-center gap-2 font-bold text-gray-900">
           <SlidersHorizontal className="h-4 w-4" /> Filters
         </h3>
+      </div>
+
+      <div>
+        <h4 className="mb-2 text-sm font-semibold text-gray-700">Deals</h4>
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <input type="checkbox" checked={filters.dealsOnly} onChange={() => setFilters((f) => ({ ...f, dealsOnly: !f.dealsOnly }))} />
+          On Sale Only
+        </label>
       </div>
 
       <div>
@@ -167,6 +140,14 @@ function FiltersSidebar({ filters, setFilters, categoryCounts }) {
 function ActiveFilterChips({ filters, setFilters, categoryCounts }) {
   const chips = [];
 
+  if (filters.dealsOnly) {
+    chips.push({
+      key: "deals",
+      label: "On Sale",
+      onRemove: () => setFilters((f) => ({ ...f, dealsOnly: false })),
+    });
+  }
+
   filters.categories.forEach((catId) => {
     const label = categoryCounts.find((c) => c.id === catId)?.label ?? catId;
     chips.push({
@@ -221,7 +202,18 @@ function ActiveFilterChips({ filters, setFilters, categoryCounts }) {
 }
 
 function ProductCard({ product, view }) {
+  const { addItem } = useCart();
+  const [added, setAdded] = useState(false);
   const isList = view === "list";
+
+  const handleAdd = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    addItem(product.slug, 1);
+    setAdded(true);
+    setTimeout(() => setAdded(false), 1500);
+  };
+
   return (
     <Link
       to={`/product/${product.slug}`}
@@ -242,7 +234,9 @@ function ProductCard({ product, view }) {
             <span className="font-bold text-gray-900">{formatPKR(product.price)}</span>{" "}
             {product.originalPrice && <span className="text-xs text-gray-400 line-through">{formatPKR(product.originalPrice)}</span>}
           </p>
-          <span className="rounded-md bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white">Add to Cart</span>
+          <button onClick={handleAdd} className="rounded-md bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-ink">
+            {added ? "Added ✓" : "Add to Cart"}
+          </button>
         </div>
       </div>
     </Link>
@@ -296,11 +290,10 @@ export default function Shop() {
   }, [filters, sort, view, page]);
 
   const categoryCounts = useMemo(getCategoryCounts, []);
-  const trending = useMemo(() => PRODUCTS.filter((p) => p.trending), []);
-  const bestDeals = useMemo(() => PRODUCTS.filter((p) => p.badge === "sale").slice(0, 5), []);
 
   const filtered = useMemo(() => {
     let list = PRODUCTS.filter((p) => {
+      if (filters.dealsOnly && p.badge !== "sale") return false;
       if (filters.categories.length && !filters.categories.includes(p.category)) return false;
       if (filters.brands.length && !filters.brands.includes(p.brand)) return false;
       if (filters.minPrice && p.price < Number(filters.minPrice)) return false;
@@ -332,9 +325,6 @@ export default function Shop() {
       <div className="mx-auto max-w-7xl px-4 pt-4 text-sm text-gray-500 lg:px-8">
         <Link to="/" className="hover:text-brand">Home</Link> <span className="mx-1">/</span> <span className="text-gray-900">Shop</span>
       </div>
-
-      <ScrollCarousel title="Trending This Week" badge="HOT" products={trending} />
-      <ScrollCarousel title="Best Deals" badge="UP TO 50% OFF" products={bestDeals} />
 
       <section className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
         <div className="flex flex-col gap-6 lg:flex-row">

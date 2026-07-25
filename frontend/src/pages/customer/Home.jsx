@@ -1,17 +1,32 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowRight, Zap, ShieldCheck, Truck, RotateCcw, Headphones,
   Laptop, Shirt, Home as HomeIcon, Dumbbell, BookOpen, Sparkles, Gamepad2, Coffee, Star,
 } from "lucide-react";
 import CountdownTimer from "../../components/CountdownTimer.jsx";
 import { api } from "../../lib/api.js";
-import { formatPKR } from "../../lib/currency.js";
+import { useCart } from "../../cart/CartContext.jsx";
+import { PRODUCTS } from "../../data/productsMockData.js";
 import {
-  heroSlides as fallbackHeroSlides, promoTiles, flashDeals, categories, topSelling, bestOf,
+  heroSlides as fallbackHeroSlides, promoTiles, categories,
 } from "../../data/homeMockData.js";
 
+// Flash Deals / Top Selling / Best Of all pull from the same shared
+// PRODUCTS catalog Shop, ProductDetail, and Cart use — these used to
+// come from a separate, disconnected homeMockData list with no real
+// slugs, which is why clicking through or adding to cart from Home
+// silently did nothing. Deriving them here instead of duplicating data
+// keeps Home, Shop, and Cart always in sync.
+const flashDeals = PRODUCTS.filter((p) => p.badge === "sale").slice(0, 6);
+const topSelling = [...PRODUCTS].sort((a, b) => b.rating - a.rating).slice(0, 5);
+const bestOf = [...PRODUCTS].sort((a, b) => b.rating - a.rating).slice(0, 4);
+
 const CATEGORY_ICONS = { Laptop, Shirt, Home: HomeIcon, Dumbbell, BookOpen, Sparkles, Gamepad2, Coffee };
+
+function formatPKR(amount) {
+  return `Rs. ${amount.toLocaleString("en-PK")}`;
+}
 
 // Maps a live vendor Banner (from /banners/public/carousel/) to the shape
 // Hero renders. Falls back to the static demo slide when no vendor has a
@@ -106,6 +121,17 @@ function PromoTiles() {
 }
 
 function FlashDeals() {
+  const { addItem } = useCart();
+  const [addedSlug, setAddedSlug] = useState(null);
+
+  const handleAdd = (e, slug) => {
+    e.preventDefault(); // don't trigger the wrapping Link's navigation
+    e.stopPropagation();
+    addItem(slug, 1);
+    setAddedSlug(slug);
+    setTimeout(() => setAddedSlug((s) => (s === slug ? null : s)), 1500);
+  };
+
   return (
     <section className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
       <div className="mb-4 flex items-center justify-between">
@@ -121,28 +147,34 @@ function FlashDeals() {
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-        {flashDeals.map((item) => (
-          <div key={item.id} className="rounded-lg border border-gray-200 bg-white p-3">
-            <div className="relative">
-              <span className="absolute left-0 top-0 rounded-br-md rounded-tl-md bg-red-600 px-2 py-0.5 text-xs font-bold text-white">
-                -{item.discountPct}%
-              </span>
-              <img src={item.image} alt={item.name} className="h-32 w-full rounded-md object-cover" />
-            </div>
-            <p className="mt-2 line-clamp-2 text-sm font-medium text-gray-900">{item.name}</p>
-            <p className="mt-1 text-sm">
-              <span className="font-bold text-red-600">{formatPKR(item.price)}</span>{" "}
-              <span className="text-xs text-gray-400 line-through">{formatPKR(item.originalPrice)}</span>
-            </p>
-            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
-              <div className="h-full w-4/5 rounded-full bg-red-500" />
-            </div>
-            <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-gray-400">Almost sold out</p>
-            <button className="mt-2 w-full rounded-md border border-gray-300 py-1.5 text-xs font-semibold text-gray-700 hover:border-brand hover:text-brand">
-              Add to Cart
-            </button>
-          </div>
-        ))}
+        {flashDeals.map((item) => {
+          const discountPct = Math.round((1 - item.price / item.originalPrice) * 100);
+          return (
+            <Link key={item.id} to={`/product/${item.slug}`} className="rounded-lg border border-gray-200 bg-white p-3 hover:shadow-md">
+              <div className="relative">
+                <span className="absolute left-0 top-0 rounded-br-md rounded-tl-md bg-red-600 px-2 py-0.5 text-xs font-bold text-white">
+                  -{discountPct}%
+                </span>
+                <img src={item.images[0]} alt={item.name} className="h-32 w-full rounded-md object-cover" />
+              </div>
+              <p className="mt-2 line-clamp-2 text-sm font-medium text-gray-900">{item.name}</p>
+              <p className="mt-1 text-sm">
+                <span className="font-bold text-red-600">{formatPKR(item.price)}</span>{" "}
+                <span className="text-xs text-gray-400 line-through">{formatPKR(item.originalPrice)}</span>
+              </p>
+              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+                <div className="h-full w-4/5 rounded-full bg-red-500" />
+              </div>
+              <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-gray-400">Almost sold out</p>
+              <button
+                onClick={(e) => handleAdd(e, item.slug)}
+                className="mt-2 w-full rounded-md border border-gray-300 py-1.5 text-xs font-semibold text-gray-700 hover:border-brand hover:text-brand"
+              >
+                {addedSlug === item.slug ? "Added ✓" : "Add to Cart"}
+              </button>
+            </Link>
+          );
+        })}
       </div>
     </section>
   );
@@ -174,6 +206,25 @@ function CategoryGrid() {
 }
 
 function TopSelling() {
+  const { addItem } = useCart();
+  const navigate = useNavigate();
+  const [addedSlug, setAddedSlug] = useState(null);
+
+  const handleAdd = (e, slug) => {
+    e.preventDefault();
+    e.stopPropagation();
+    addItem(slug, 1);
+    setAddedSlug(slug);
+    setTimeout(() => setAddedSlug((s) => (s === slug ? null : s)), 1500);
+  };
+
+  const handleBuyNow = (e, slug) => {
+    e.preventDefault();
+    e.stopPropagation();
+    addItem(slug, 1);
+    navigate("/cart");
+  };
+
   return (
     <section className="mx-auto max-w-7xl px-4 py-10 lg:px-8">
       <div className="mb-4 flex items-end justify-between">
@@ -181,20 +232,20 @@ function TopSelling() {
           <h2 className="text-xl font-bold text-gray-900">Top Selling Products</h2>
           <p className="text-sm text-gray-500">Loved by our community</p>
         </div>
-        <Link to="/shop?sort=best" className="text-sm font-medium text-brand hover:underline">
+        <Link to="/shop?sort=rating" className="text-sm font-medium text-brand hover:underline">
           View All
         </Link>
       </div>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         {topSelling.map((item) => (
-          <div key={item.id} className="rounded-lg border border-gray-200 bg-white p-3">
+          <Link key={item.id} to={`/product/${item.slug}`} className="rounded-lg border border-gray-200 bg-white p-3 hover:shadow-md">
             <div className="relative">
-              {item.sale && (
+              {item.badge === "sale" && (
                 <span className="absolute left-0 top-0 rounded-br-md rounded-tl-md bg-ink px-2 py-0.5 text-xs font-bold text-white">
                   Sale
                 </span>
               )}
-              <img src={item.image} alt={item.name} className="h-36 w-full rounded-md object-cover" />
+              <img src={item.images[0]} alt={item.name} className="h-36 w-full rounded-md object-cover" />
             </div>
             <p className="mt-2 flex items-center gap-1 text-xs text-gray-500">
               <Star className="h-3.5 w-3.5 fill-gold text-gold" /> {item.rating}
@@ -207,14 +258,20 @@ function TopSelling() {
               )}
             </p>
             <div className="mt-2 flex gap-2">
-              <button className="flex-1 rounded-md border border-gray-300 py-1.5 text-xs font-semibold text-gray-700 hover:border-brand hover:text-brand">
-                Add to Cart
+              <button
+                onClick={(e) => handleAdd(e, item.slug)}
+                className="flex-1 rounded-md border border-gray-300 py-1.5 text-xs font-semibold text-gray-700 hover:border-brand hover:text-brand"
+              >
+                {addedSlug === item.slug ? "Added ✓" : "Add to Cart"}
               </button>
-              <button className="flex-1 rounded-md bg-brand py-1.5 text-xs font-semibold text-white hover:bg-brand-dark">
+              <button
+                onClick={(e) => handleBuyNow(e, item.slug)}
+                className="flex-1 rounded-md bg-brand py-1.5 text-xs font-semibold text-white hover:bg-brand-dark"
+              >
                 Buy Now
               </button>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
     </section>
@@ -228,11 +285,11 @@ function BestOfStrip() {
         <h2 className="mb-8 text-center text-2xl font-bold text-white">Best of Duo Bro Mart</h2>
         <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
           {bestOf.map((item) => (
-            <div key={item.id}>
-              <img src={item.image} alt={item.name} className="aspect-square w-full rounded-lg object-cover" />
+            <Link key={item.id} to={`/product/${item.slug}`} className="group">
+              <img src={item.images[0]} alt={item.name} className="aspect-square w-full rounded-lg object-cover transition group-hover:opacity-90" />
               <p className="mt-3 text-sm font-medium text-white">{item.name}</p>
               <p className="mt-1 text-sm text-gold">{formatPKR(item.price)}</p>
-            </div>
+            </Link>
           ))}
         </div>
       </div>

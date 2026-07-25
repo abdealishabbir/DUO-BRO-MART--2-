@@ -305,3 +305,36 @@ class StockChangeRequestTests(ProductsTestBase):
             "product": other_product.id, "requested_increase": 10,
         })
         self.assertEqual(resp.status_code, 400)
+
+
+class ProductSkuAndActiveTests(ProductsTestBase):
+    def test_can_create_product_with_sku(self):
+        self.login_as(self.vendor)
+        resp = self.client.post(reverse("vendor-product-list"), {
+            "category": self.category.id, "name": "X", "description": "Y",
+            "brand": "Z", "base_price": "10.00", "stock_quantity": 1, "sku": "SN-SP-001",
+        })
+        self.assertEqual(resp.status_code, 201, resp.data)
+        self.assertEqual(resp.data["sku"], "SN-SP-001")
+
+    def test_new_product_defaults_active(self):
+        product = self.make_product()
+        self.assertTrue(product.is_active)
+
+    def test_vendor_can_toggle_active_on_approved_product(self):
+        product = self.make_product(status=Product.Status.APPROVED)
+        self.login_as(self.vendor)
+        resp = self.client.post(reverse("vendor-product-toggle-active", args=[product.id]))
+        self.assertEqual(resp.status_code, 200, resp.data)
+        product.refresh_from_db()
+        self.assertFalse(product.is_active)
+        # toggling again flips it back
+        resp2 = self.client.post(reverse("vendor-product-toggle-active", args=[product.id]))
+        product.refresh_from_db()
+        self.assertTrue(product.is_active)
+
+    def test_cannot_toggle_active_on_draft_product(self):
+        product = self.make_product(status=Product.Status.DRAFT)
+        self.login_as(self.vendor)
+        resp = self.client.post(reverse("vendor-product-toggle-active", args=[product.id]))
+        self.assertEqual(resp.status_code, 400)

@@ -25,8 +25,8 @@ class ProductCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = [
-            "id", "category", "name", "description", "brand",
-            "base_price", "stock_quantity", "attributes",
+            "id", "category", "name", "sku", "description", "brand",
+            "base_price", "stock_quantity", "attributes", "is_active",
             "status", "created_at",
         ]
         read_only_fields = ["id", "status", "created_at"]
@@ -59,10 +59,10 @@ class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = [
-            "id", "vendor", "vendor_name", "category", "category_name", "name", "slug",
+            "id", "vendor", "vendor_name", "category", "category_name", "name", "slug", "sku",
             "description", "brand", "base_price", "selling_price", "discounted_price",
             "active_discount_percent", "deal_starts_at", "deal_ends_at", "is_deal_active",
-            "bogo_eligible", "gift_card_eligible", "stock_quantity",
+            "bogo_eligible", "gift_card_eligible", "stock_quantity", "is_active",
             "attributes", "status", "admin_notes", "images",
             "created_at", "updated_at", "submitted_at", "decided_at",
         ]

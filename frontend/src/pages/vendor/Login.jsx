@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Store, Lock, Mail } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext.jsx";
-import FormField, { inputClass } from "../../components/FormField.jsx";
 
 // §4.1/§4.3: hidden, unadvertised URL. No self-signup — credentials are
 // issued by admin after the vendor application is approved (Phase 6).
@@ -29,28 +29,66 @@ export default function VendorLogin() {
   };
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-4">
-      <h1 className="text-2xl font-bold text-gray-900">Vendor sign in</h1>
-      <p className="mt-1 text-sm text-gray-500">Use the credentials emailed to you after approval.</p>
+    <div className="flex min-h-screen items-center justify-center bg-cream px-4 py-10">
+      <div className="w-full max-w-sm">
+        <div className="mb-6 flex flex-col items-center text-center">
+          <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand text-white">
+            <Store className="h-6 w-6" />
+          </span>
+          <p className="mt-3 text-lg font-bold text-ink">Duo Bro Mart</p>
+          <p className="text-xs font-medium text-brand">Vendor Portal</p>
+        </div>
 
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-        <FormField label="Email">
-          <input type="email" required className={inputClass} value={email} onChange={(e) => setEmail(e.target.value)} />
-        </FormField>
-        <FormField label="Password">
-          <input type="password" required className={inputClass} value={password} onChange={(e) => setPassword(e.target.value)} />
-        </FormField>
+        <div className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
+          <h1 className="text-xl font-bold text-ink">Vendor Sign In</h1>
+          <p className="mt-1 text-sm text-gray-500">Use the credentials emailed to you after approval.</p>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+            <label className="block">
+              <span className="mb-1 block text-sm font-medium text-gray-700">Email</span>
+              <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-cream/60 px-3 py-2.5 focus-within:border-brand focus-within:ring-1 focus-within:ring-brand">
+                <Mail className="h-4 w-4 shrink-0 text-gray-400" />
+                <input
+                  type="email" required autoFocus
+                  className="w-full bg-transparent text-sm text-ink outline-none placeholder:text-gray-400"
+                  placeholder="you@yourstore.pk"
+                  value={email} onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+            </label>
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-60"
-        >
-          {submitting ? "Signing in..." : "Sign in"}
-        </button>
-      </form>
+            <label className="block">
+              <span className="mb-1 block text-sm font-medium text-gray-700">Password</span>
+              <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-cream/60 px-3 py-2.5 focus-within:border-brand focus-within:ring-1 focus-within:ring-brand">
+                <Lock className="h-4 w-4 shrink-0 text-gray-400" />
+                <input
+                  type="password" required
+                  className="w-full bg-transparent text-sm text-ink outline-none placeholder:text-gray-400"
+                  placeholder="••••••••"
+                  value={password} onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+            </label>
+
+            {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="w-full rounded-lg bg-brand py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-dark disabled:opacity-60"
+            >
+              {submitting ? "Signing in..." : "Sign In"}
+            </button>
+          </form>
+        </div>
+
+        <p className="mt-5 text-center text-xs text-gray-400">
+          Not a vendor yet?{" "}
+          <a href="/become-a-vendor" className="font-medium text-brand hover:underline">
+            Apply to sell on Duo Bro Mart
+          </a>
+        </p>
+      </div>
     </div>
   );
 }

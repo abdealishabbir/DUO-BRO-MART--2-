@@ -73,11 +73,17 @@ class Product(models.Model):
 
     name = models.CharField(max_length=200)
     slug = models.SlugField(max_length=220, unique=True, blank=True)
+    sku = models.CharField(max_length=50, blank=True, help_text="Vendor's own inventory reference code (optional).")
     description = models.TextField()
     brand = models.CharField(max_length=100, help_text="Feeds the Shop page Brand filter (§6.4).")
 
     base_price = models.DecimalField(max_digits=10, decimal_places=2, help_text="Vendor's own price, before platform commission.")
     stock_quantity = models.PositiveIntegerField(default=0)
+
+    # Lets a vendor pause an already-approved listing (hide it from the
+    # storefront) without losing its approval — re-enabling doesn't need
+    # another admin review, unlike status changes.
+    is_active = models.BooleanField(default=True)
 
     # Free-form specs (size, color, model, etc.) — shape varies by category
     # so a fixed schema would fight the "any product type" requirement.

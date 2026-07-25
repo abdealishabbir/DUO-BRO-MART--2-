@@ -103,6 +103,18 @@ class VendorProductViewSet(ModelViewSet):
         image = ProductImage.objects.create(product=product, image=image_file, position=position)
         return Response(ProductImageSerializer(image, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
+    @action(detail=True, methods=["post"], url_path="toggle-active")
+    def toggle_active(self, request, pk=None):
+        product = self.get_object()
+        if product.status != Product.Status.APPROVED:
+            return Response(
+                {"detail": "Only approved (live) products can be paused/unpaused."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        product.is_active = not product.is_active
+        product.save(update_fields=["is_active"])
+        return Response(ProductSerializer(product, context={"request": request}).data)
+
 
 class VendorProductChangeRequestViewSet(ModelViewSet):
     """Vendor files discount/deal/price-change requests (§6.3). List/create

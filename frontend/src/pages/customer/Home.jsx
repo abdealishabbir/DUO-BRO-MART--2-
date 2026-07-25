@@ -84,24 +84,20 @@ function Hero() {
         </div>
       </div>
 
-      {slides.length > 1 && (
-        <>
-          <button
-            onClick={goPrev}
-            aria-label="Previous slide"
-            className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-black/30 p-2 text-white hover:bg-black/50 sm:left-5"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <button
-            onClick={goNext}
-            aria-label="Next slide"
-            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-black/30 p-2 text-white hover:bg-black/50 sm:right-5"
-          >
-            <ChevronRight className="h-5 w-5" />
-          </button>
-        </>
-      )}
+      <button
+        onClick={goPrev}
+        aria-label="Previous slide"
+        className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-black/30 p-2 text-white hover:bg-black/50 sm:left-5"
+      >
+        <ChevronLeft className="h-5 w-5" />
+      </button>
+      <button
+        onClick={goNext}
+        aria-label="Next slide"
+        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-black/30 p-2 text-white hover:bg-black/50 sm:right-5"
+      >
+        <ChevronRight className="h-5 w-5" />
+      </button>
 
       {slides.length > 1 && (
         <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 gap-2">
@@ -213,16 +209,24 @@ function CategoryGrid() {
   // Measure how wide one tile should be (4 per row on mobile, 8 on
   // larger screens, matching the old static grid) so the slide
   // distance is always exactly one tile — recalculated on resize.
+  // Measured twice on mount (immediately + after paint) since some
+  // layouts report 0 width on the very first tick before it settles.
   useEffect(() => {
     function measure() {
       const width = containerRef.current?.offsetWidth ?? 0;
       const count = window.innerWidth >= 640 ? 8 : 4;
       setVisibleCount(count);
-      setItemWidth(width / count);
+      if (width > 0) setItemWidth(width / count);
     }
     measure();
+    const raf = requestAnimationFrame(measure);
+    const timeout = setTimeout(measure, 300);
     window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(timeout);
+      window.removeEventListener("resize", measure);
+    };
   }, []);
 
   // Start each cycle with the track shifted one tile-width to the left,

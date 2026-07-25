@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  ArrowRight, Zap, ShieldCheck, Truck, RotateCcw, Headphones,
+  ArrowRight, ChevronLeft, ChevronRight, Zap, ShieldCheck, Truck, RotateCcw, Headphones,
   Laptop, Shirt, Home as HomeIcon, Dumbbell, BookOpen, Sparkles, Gamepad2, Coffee, Star,
 } from "lucide-react";
 import CountdownTimer from "../../components/CountdownTimer.jsx";
@@ -63,6 +63,8 @@ function Hero() {
   }, [slides.length]);
 
   const slide = slides[active] ?? slides[0];
+  const goPrev = () => setActive((i) => (i - 1 + slides.length) % slides.length);
+  const goNext = () => setActive((i) => (i + 1) % slides.length);
 
   return (
     <section
@@ -81,6 +83,26 @@ function Hero() {
           </Link>
         </div>
       </div>
+
+      {slides.length > 1 && (
+        <>
+          <button
+            onClick={goPrev}
+            aria-label="Previous slide"
+            className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-black/30 p-2 text-white hover:bg-black/50 sm:left-5"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <button
+            onClick={goNext}
+            aria-label="Next slide"
+            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-black/30 p-2 text-white hover:bg-black/50 sm:right-5"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        </>
+      )}
+
       {slides.length > 1 && (
         <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 gap-2">
           {slides.map((_, i) => (
@@ -181,25 +203,97 @@ function FlashDeals() {
 }
 
 function CategoryGrid() {
+  const containerRef = useRef(null);
+  const [itemWidth, setItemWidth] = useState(0);
+  const [visibleCount, setVisibleCount] = useState(8);
+  const [order, setOrder] = useState(categories);
+  const [offsetPx, setOffsetPx] = useState(0);
+  const [animating, setAnimating] = useState(false);
+
+  // Measure how wide one tile should be (4 per row on mobile, 8 on
+  // larger screens, matching the old static grid) so the slide
+  // distance is always exactly one tile — recalculated on resize.
+  useEffect(() => {
+    function measure() {
+      const width = containerRef.current?.offsetWidth ?? 0;
+      const count = window.innerWidth >= 640 ? 8 : 4;
+      setVisibleCount(count);
+      setItemWidth(width / count);
+    }
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
+
+  // Start each cycle with the track shifted one tile-width to the left,
+  // hiding a duplicate of the last category just off-screen to the left.
+  useEffect(() => {
+    if (itemWidth > 0) setOffsetPx(-itemWidth);
+  }, [itemWidth]);
+
+  // Every few seconds, slide the whole track right by one tile-width —
+  // slow and smooth (~1.8s), not a fast ticker. The last tile drifts
+  // off the right edge as the hidden duplicate eases in from the left.
+  useEffect(() => {
+    if (!itemWidth) return;
+    const id = setInterval(() => {
+      setAnimating(true);
+      setOffsetPx(0);
+    }, 4200);
+    return () => clearInterval(id);
+  }, [itemWidth]);
+
+  // Once the slide finishes, silently rotate the real order (last
+  // category moves to the front) and snap the track back to its
+  // starting offset with no transition — invisible to the eye, but now
+  // ready to repeat. With only a handful of categories today, the one
+  // that just exited on the right is exactly the one that re-enters
+  // from the left, same as a circular queue; more categories later
+  // just means more of them cycle through in sequence before repeating.
+  const handleTransitionEnd = () => {
+    setOrder((prev) => [prev[prev.length - 1], ...prev.slice(0, -1)]);
+    setAnimating(false);
+    setOffsetPx(-itemWidth);
+  };
+
+  // Always fill the visible row (+ one hidden lead tile), cycling
+  // through `order` via modulo — with fewer categories than slots
+  // (today) this repeats them to fill the width; with more categories
+  // later, this instead shows more of them across the row before any
+  // repeat happens.
+  const slotsNeeded = visibleCount + 1;
+  const startIndex = order.length - 1;
+  const trackItems = Array.from({ length: slotsNeeded }, (_, i) => order[(startIndex + i) % order.length]);
+
   return (
     <section className="mx-auto max-w-7xl px-4 py-10 lg:px-8">
       <h2 className="mb-4 text-xl font-bold text-gray-900">Shop by Category</h2>
-      <div className="grid grid-cols-4 gap-3 sm:grid-cols-8">
-        {categories.map((cat) => {
-          const Icon = CATEGORY_ICONS[cat.icon];
-          return (
-            <Link
-              key={cat.id}
-              to={`/shop?category=${cat.id}`}
-              className="flex flex-col items-center gap-2 rounded-lg bg-white p-4 text-center hover:shadow-md"
-            >
-              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-cream text-brand">
-                <Icon className="h-5 w-5" />
-              </span>
-              <span className="text-xs font-medium text-gray-700">{cat.label}</span>
-            </Link>
-          );
-        })}
+      <div ref={containerRef} className="overflow-hidden">
+        <div
+          className="flex"
+          style={{
+            transform: `translateX(${offsetPx}px)`,
+            transition: animating ? "transform 1.8s ease-in-out" : "none",
+          }}
+          onTransitionEnd={handleTransitionEnd}
+        >
+          {trackItems.map((cat, i) => {
+            const Icon = CATEGORY_ICONS[cat.icon];
+            return (
+              <Link
+                key={`${cat.id}-${i}`}
+                to={`/shop?category=${cat.id}`}
+                style={{ flex: `0 0 ${itemWidth}px` }}
+                className="flex flex-col items-center gap-2 px-1.5 text-center"
+              >
+                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-cream text-brand transition hover:shadow-md">
+                  <Icon className="h-5 w-5" />
+                </span>
+                <span className="text-xs font-medium text-gray-700">{cat.label}</span>
+              </Link>
+            );
+          })}
+        </div>
       </div>
     </section>
   );

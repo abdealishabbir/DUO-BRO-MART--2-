@@ -32,12 +32,45 @@ one-time state transitions (auto-cancel, auto-suspend) that can't be
 from decimal import Decimal
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
+from PIL import Image
 
 PENALTY_PER_DAY = Decimal("100.00")
 MAX_PENALTY_DAYS = 3  # after this many unpaid days past due, vendor is suspended
 PREPAID_GRACE_DAYS = 3  # unpaid prepaid reservations auto-cancel after this many days
+
+# Hero banner renders full-width at a fixed aspect ratio on the storefront
+# (bg-cover) — anything not exactly this size blurs (too small) or crops at
+# the sides (wrong ratio). Mirrors the same check done client-side in
+# PromotionBanner.jsx; kept here too since the API can be called directly,
+# bypassing the frontend's validation.
+REQUIRED_BANNER_WIDTH = 1600
+REQUIRED_BANNER_HEIGHT = 500
+ALLOWED_BANNER_FORMATS = {"JPEG", "PNG"}
+
+
+def validate_banner_image(image_file):
+    try:
+        img = Image.open(image_file)
+        img.verify()
+        image_file.seek(0)
+        img = Image.open(image_file)  # re-open: verify() leaves the image unusable
+        width, height = img.size
+        image_format = img.format
+    except Exception as exc:
+        raise ValidationError("Couldn't read that image file — please upload a valid PNG or JPEG.") from exc
+    finally:
+        image_file.seek(0)
+
+    if image_format not in ALLOWED_BANNER_FORMATS:
+        raise ValidationError("Only PNG, JPG, or JPEG images are allowed.")
+    if width != REQUIRED_BANNER_WIDTH or height != REQUIRED_BANNER_HEIGHT:
+        raise ValidationError(
+            f"Image is {width}x{height}px — it must be exactly {REQUIRED_BANNER_WIDTH}x{REQUIRED_BANNER_HEIGHT}px, "
+            "or it will blur or get cropped on the homepage."
+        )
 
 
 class PlatformSettings(models.Model):
@@ -85,7 +118,7 @@ class BannerApplication(models.Model):
 
     vendor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="banner_applications")
 
-    image = models.ImageField(upload_to=banner_upload_path)
+    image = models.ImageField(upload_to=banner_upload_path, validators=[validate_banner_image])
     headline = models.CharField(max_length=150)
     description = models.TextField(blank=True)
     cta_label = models.CharField(max_length=40, default="Shop Now")
@@ -135,7 +168,7 @@ class Banner(models.Model):
     vendor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="banners")
 
     # Copied from the application at publish time; admin can edit before publishing.
-    image = models.ImageField(upload_to=banner_upload_path)
+    image = models.ImageField(upload_to=banner_upload_path, validators=[validate_banner_image])
     headline = models.CharField(max_length=150)
     description = models.TextField(blank=True)
     cta_label = models.CharField(max_length=40)

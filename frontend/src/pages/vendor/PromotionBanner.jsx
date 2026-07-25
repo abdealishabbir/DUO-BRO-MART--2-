@@ -4,6 +4,42 @@ import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
 import FormField, { inputClass } from "../../components/FormField.jsx";
 
+// Hero banner is rendered full-width at a fixed aspect ratio on Home
+// (see Hero() in customer/Home.jsx) — an image that isn't exactly this
+// size gets stretched/blurred (too small) or cropped at the sides (wrong
+// aspect ratio) by the bg-cover treatment. Enforcing an exact match here
+// means every vendor's banner looks crisp and uncropped once approved.
+const REQUIRED_WIDTH = 1600;
+const REQUIRED_HEIGHT = 500;
+const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/jpg"];
+
+function validateBannerImage(file) {
+  return new Promise((resolve) => {
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      resolve({ valid: false, error: "Only PNG, JPG, or JPEG images are allowed." });
+      return;
+    }
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      if (img.naturalWidth !== REQUIRED_WIDTH || img.naturalHeight !== REQUIRED_HEIGHT) {
+        resolve({
+          valid: false,
+          error: `Image is ${img.naturalWidth}×${img.naturalHeight}px — it must be exactly ${REQUIRED_WIDTH}×${REQUIRED_HEIGHT}px, or it'll blur or get cropped on the homepage.`,
+        });
+        return;
+      }
+      resolve({ valid: true });
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve({ valid: false, error: "Couldn't read that image file. Please try a different one." });
+    };
+    img.src = url;
+  });
+}
+
 const STATUS_STYLES = {
   pending: "bg-amber-100 text-amber-700",
   approved: "bg-blue-100 text-blue-700",
@@ -28,6 +64,7 @@ function StatusBadge({ status }) {
 function ApplicationForm({ platformSettings, availability, onSubmitted }) {
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [imageError, setImageError] = useState("");
   const [headline, setHeadline] = useState("");
   const [description, setDescription] = useState("");
   const [ctaLabel, setCtaLabel] = useState("Shop Now");
@@ -42,17 +79,31 @@ function ApplicationForm({ platformSettings, availability, onSubmitted }) {
   const pricePerDay = platformSettings?.banner_price_per_day ?? 0;
   const totalPrice = useMemo(() => Number(pricePerDay) * Number(days || 0), [pricePerDay, days]);
 
-  const handleImageChange = (e) => {
+  const handleImageChange = async (e) => {
     const file = e.target.files?.[0];
-    setImage(file || null);
-    setImagePreview(file ? URL.createObjectURL(file) : null);
+    setImageError("");
+    if (!file) {
+      setImage(null);
+      setImagePreview(null);
+      return;
+    }
+    const result = await validateBannerImage(file);
+    if (!result.valid) {
+      setImage(null);
+      setImagePreview(null);
+      setImageError(result.error);
+      e.target.value = ""; // let them retry with the same filename if needed
+      return;
+    }
+    setImage(file);
+    setImagePreview(URL.createObjectURL(file));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     if (!image) {
-      setError("Please attach a banner image.");
+      setError(imageError || "Please attach a banner image.");
       return;
     }
 
@@ -111,8 +162,12 @@ function ApplicationForm({ platformSettings, availability, onSubmitted }) {
               Click to attach an image
             </>
           )}
-          <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+          <input type="file" accept="image/png,image/jpeg" className="hidden" onChange={handleImageChange} />
         </label>
+        <p className="mt-1.5 text-xs text-gray-400">
+          Must be exactly <strong>{REQUIRED_WIDTH}×{REQUIRED_HEIGHT}px</strong>, PNG/JPG/JPEG — any other size gets rejected so it doesn't blur or crop on the homepage.
+        </p>
+        {imageError && <p className="mt-1 text-sm text-red-600">{imageError}</p>}
       </FormField>
 
       <FormField label="Headline">

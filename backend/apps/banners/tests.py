@@ -17,7 +17,7 @@ User = get_user_model()
 
 def make_image():
     buf = io.BytesIO()
-    Image.new("RGB", (10, 10), color="red").save(buf, format="PNG")
+    Image.new("RGB", (1600, 500), color="red").save(buf, format="PNG")
     return SimpleUploadedFile("test.png", buf.getvalue(), content_type="image/png")
 
 
@@ -54,6 +54,37 @@ class VendorApplicationTests(BannerTestBase):
         self.assertEqual(resp.data["price_per_day_snapshot"], "200.00")
         self.assertEqual(resp.data["total_price"], "1400.00")
         self.assertEqual(resp.data["status"], "pending")
+
+    def test_wrong_dimensions_rejected(self):
+        self.login_as(self.vendor)
+        buf = io.BytesIO()
+        Image.new("RGB", (800, 300), color="blue").save(buf, format="PNG")
+        wrong_size_image = SimpleUploadedFile("wrong.png", buf.getvalue(), content_type="image/png")
+        resp = self.client.post(reverse("vendor-banner-application-list"), {
+            "image": wrong_size_image, "headline": "x", "cta_url": "/x",
+            "requested_days": 2, "payment_type": "prepaid",
+        }, format="multipart")
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("1600x500", str(resp.data))
+
+    def test_correct_dimensions_accepted(self):
+        self.login_as(self.vendor)
+        resp = self.client.post(reverse("vendor-banner-application-list"), {
+            "image": make_image(), "headline": "x", "cta_url": "/x",
+            "requested_days": 2, "payment_type": "prepaid",
+        }, format="multipart")
+        self.assertEqual(resp.status_code, 201, resp.data)
+
+    def test_non_png_jpeg_format_rejected(self):
+        self.login_as(self.vendor)
+        buf = io.BytesIO()
+        Image.new("RGB", (1600, 500), color="green").save(buf, format="BMP")
+        bmp_image = SimpleUploadedFile("test.bmp", buf.getvalue(), content_type="image/bmp")
+        resp = self.client.post(reverse("vendor-banner-application-list"), {
+            "image": bmp_image, "headline": "x", "cta_url": "/x",
+            "requested_days": 2, "payment_type": "prepaid",
+        }, format="multipart")
+        self.assertEqual(resp.status_code, 400)
 
     def test_vendor_sees_only_own_applications(self):
         other_vendor = make_user(User.Role.VENDOR, "other@example.com")

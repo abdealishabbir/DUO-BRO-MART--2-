@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import {
   Search, Filter, Plus, Pencil, Trash2, Upload, X, Info, ArrowLeft,
 } from "lucide-react";
@@ -369,6 +369,11 @@ export default function VendorProducts() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
+                        {p.status === "approved" && (
+                          <Link to={`/vendor/deals?product=${p.id}`} className="text-xs font-medium text-brand hover:underline">
+                            Request Change
+                          </Link>
+                        )}
                         {(p.status === "draft" || p.status === "rejected") && (
                           <button onClick={() => submitForReview(p)} className="text-xs font-medium text-brand hover:underline">
                             Submit

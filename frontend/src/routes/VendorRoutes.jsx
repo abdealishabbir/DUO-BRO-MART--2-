@@ -6,6 +6,7 @@ import VendorDashboard from "../pages/vendor/Dashboard.jsx";
 import VendorChangePassword from "../pages/vendor/ChangePassword.jsx";
 import VendorProducts from "../pages/vendor/Products.jsx";
 import VendorDeals from "../pages/vendor/Deals.jsx";
+import VendorStock from "../pages/vendor/Stock.jsx";
 import VendorOrders from "../pages/vendor/Orders.jsx";
 import VendorAnalytics from "../pages/vendor/Analytics.jsx";
 import VendorPayouts from "../pages/vendor/Payouts.jsx";
@@ -31,6 +32,7 @@ export default function VendorRoutes() {
           <Route path="dashboard" element={<VendorDashboard />} />
           <Route path="products" element={<VendorProducts />} />
           <Route path="deals" element={<VendorDeals />} />
+          <Route path="stock" element={<VendorStock />} />
           <Route path="orders" element={<VendorOrders />} />
           <Route path="analytics" element={<VendorAnalytics />} />
           <Route path="payouts" element={<VendorPayouts />} />

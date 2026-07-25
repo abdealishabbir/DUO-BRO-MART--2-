@@ -374,6 +374,14 @@ export default function VendorProducts() {
                             Request Change
                           </Link>
                         )}
+                        {p.status === "approved" && (
+                          <Link
+                            to={`/vendor/stock?product=${p.id}`}
+                            className={`text-xs font-medium hover:underline ${p.stock_quantity <= 10 ? "text-amber-600" : "text-gray-500"}`}
+                          >
+                            Restock
+                          </Link>
+                        )}
                         {(p.status === "draft" || p.status === "rejected") && (
                           <button onClick={() => submitForReview(p)} className="text-xs font-medium text-brand hover:underline">
                             Submit

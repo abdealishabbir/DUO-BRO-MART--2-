@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import {
-  Store, LayoutGrid, Package, ClipboardList, BarChart3, Wallet, Settings, HelpCircle, LogOut, Bell, Percent,
+  Store, LayoutGrid, Package, ClipboardList, BarChart3, Wallet, Settings, HelpCircle, LogOut, Bell, Percent, Boxes,
 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext.jsx";
 
@@ -8,6 +8,7 @@ const NAV_LINKS = [
   { to: "/vendor/dashboard", label: "Dashboard", icon: LayoutGrid },
   { to: "/vendor/products", label: "Products", icon: Package },
   { to: "/vendor/deals", label: "Deals & Pricing", icon: Percent },
+  { to: "/vendor/stock", label: "Stock Requests", icon: Boxes },
   { to: "/vendor/orders", label: "Orders", icon: ClipboardList },
   { to: "/vendor/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/vendor/payouts", label: "Payouts", icon: Wallet },

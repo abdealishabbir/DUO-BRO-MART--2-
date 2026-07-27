@@ -143,6 +143,10 @@ class OrderItem(models.Model):
     product_slug = models.SlugField(max_length=220)
     quantity = models.PositiveIntegerField()
     unit_price = models.DecimalField(max_digits=10, decimal_places=2, help_text="Price actually charged per unit at order time.")
+    unit_base_price = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("0.00"),
+        help_text="Vendor's base_price at order time — lets commission/net-to-vendor (§6.4/§6.6) stay correct even after the product's price changes or the product itself is deleted.",
+    )
 
     class Meta:
         ordering = ["id"]
@@ -153,3 +157,13 @@ class OrderItem(models.Model):
     @property
     def line_total(self):
         return (self.unit_price * self.quantity).quantize(Decimal("0.01"))
+
+    @property
+    def net_to_vendor(self):
+        """What the vendor actually receives — their base_price snapshot × quantity, regardless of any discount applied to the customer-facing price."""
+        return (self.unit_base_price * self.quantity).quantize(Decimal("0.01"))
+
+    @property
+    def commission_amount(self):
+        """Platform's cut — sale price minus what goes to the vendor. Uses the flat provisional rate (§7.7 will make per-category rates admin-editable — see apps/products/models.py)."""
+        return (self.line_total - self.net_to_vendor).quantize(Decimal("0.01"))

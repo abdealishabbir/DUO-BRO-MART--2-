@@ -3,11 +3,12 @@ import { useAuth } from "../auth/AuthContext.jsx";
 
 // Full 7-section nav (dashboard, products, banners, orders, vendors,
 // pricing, settings) lands with Phase 6's admin panel pages (PRD §7);
-// Phase 1 wires the shell only.
+// sections are added here as each one is actually built.
 const NAV_LINKS = [
   { to: "/admin/dashboard", label: "Dashboard" },
   { to: "/admin/products", label: "Products" },
   { to: "/admin/banners", label: "Banners & Promotion" },
+  { to: "/admin/orders", label: "Orders" },
 ];
 
 export default function AdminLayout() {
@@ -15,10 +16,10 @@ export default function AdminLayout() {
 
   return (
     <div className="flex min-h-screen">
-      <aside className="w-56 shrink-0 border-r border-gray-200 bg-gray-900">
-        <div className="border-b border-gray-800 px-4 py-4">
-          <p className="text-sm font-semibold text-white">Admin Panel</p>
-          <p className="text-xs text-gray-400">{user?.name ?? "Duo Bro Mart"}</p>
+      <aside className="w-56 shrink-0 border-r border-gray-800 bg-ink">
+        <div className="border-b border-white/10 px-4 py-4">
+          <p className="text-sm font-bold text-brand">Duo Bro Mart</p>
+          <p className="text-xs text-gray-400">{user?.name ?? "Admin"}</p>
         </div>
         <nav className="flex flex-col gap-1 p-2">
           {NAV_LINKS.map((link) => (
@@ -27,7 +28,7 @@ export default function AdminLayout() {
               to={link.to}
               className={({ isActive }) =>
                 `rounded-md px-3 py-2 text-sm font-medium ${
-                  isActive ? "bg-white/10 text-white" : "text-gray-300 hover:bg-white/5"
+                  isActive ? "bg-brand text-white" : "text-gray-300 hover:bg-white/5"
                 }`
               }
             >
@@ -43,7 +44,7 @@ export default function AdminLayout() {
           </button>
         </nav>
       </aside>
-      <main className="flex-1 bg-gray-50">
+      <main className="flex-1 bg-cream">
         <Outlet />
       </main>
     </div>

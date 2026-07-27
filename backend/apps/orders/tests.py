@@ -155,6 +155,37 @@ class OrderCreateTests(OrdersTestBase):
         )
         self.assertRegex(resp.data["order_code"], r"^DBM-\d{4}-\d{4}$")
 
+    def test_commission_and_net_to_vendor_computed(self):
+        # base_price 1000 -> selling_price 1100 (10% provisional commission)
+        product = self.make_product(base_price=Decimal("1000.00"))
+        resp = self.client.post(
+            reverse("order-create"),
+            {**VALID_SHIPPING, "items": [{"product": product.id, "quantity": 2}]},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201, resp.data)
+        item = resp.data["items"][0]
+        self.assertEqual(Decimal(item["net_to_vendor"]), Decimal("2000.00"))
+        self.assertEqual(Decimal(item["commission_amount"]), Decimal("200.00"))
+        self.assertEqual(Decimal(resp.data["net_to_vendor_total"]), Decimal("2000.00"))
+        self.assertEqual(Decimal(resp.data["commission_total"]), Decimal("200.00"))
+
+    def test_commission_survives_product_deletion(self):
+        product = self.make_product(base_price=Decimal("1000.00"), name="Soon Deleted 2")
+        create_resp = self.client.post(
+            reverse("order-create"),
+            {**VALID_SHIPPING, "items": [{"product": product.id, "quantity": 1}]},
+            format="json",
+        )
+        order_id = create_resp.data["id"]
+        product.delete()
+
+        self.login_as(self.admin)
+        resp = self.client.get(reverse("admin-orders"))
+        results = resp.data["results"] if "results" in resp.data else resp.data
+        order = next(o for o in results if o["id"] == order_id)
+        self.assertEqual(Decimal(order["net_to_vendor_total"]), Decimal("1000.00"))
+
 
 class OrderTrackingTests(OrdersTestBase):
     def _place_order(self, product, **overrides):

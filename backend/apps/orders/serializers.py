@@ -10,12 +10,23 @@ from .models import DELIVERY_ESTIMATE_DAYS, DELIVERY_FEES, Order, OrderItem
 
 class OrderItemSerializer(serializers.ModelSerializer):
     line_total = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    net_to_vendor = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    commission_amount = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    vendor_name = serializers.SerializerMethodField()
     image = serializers.SerializerMethodField()
 
     class Meta:
         model = OrderItem
-        fields = ["id", "product", "product_name", "product_slug", "quantity", "unit_price", "line_total", "image"]
+        fields = [
+            "id", "product", "product_name", "product_slug", "quantity", "unit_price", "line_total",
+            "net_to_vendor", "commission_amount", "vendor_name", "image",
+        ]
         read_only_fields = fields
+
+    def get_vendor_name(self, obj):
+        if not obj.vendor:
+            return None
+        return f"{obj.vendor.first_name} {obj.vendor.last_name}".strip() or obj.vendor.username
 
     def get_image(self, obj):
         if not obj.product:
@@ -38,6 +49,8 @@ class OrderSerializer(serializers.ModelSerializer):
     """Full order detail — customer history, tracking, vendor/admin views."""
 
     items = OrderItemSerializer(many=True, read_only=True)
+    commission_total = serializers.SerializerMethodField()
+    net_to_vendor_total = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
@@ -49,9 +62,16 @@ class OrderSerializer(serializers.ModelSerializer):
             "billing_same_as_shipping", "billing_full_name", "billing_phone_number",
             "billing_province", "billing_city", "billing_address_line",
             "subtotal", "shipping_fee", "total", "estimated_delivery_days",
+            "commission_total", "net_to_vendor_total",
             "items", "created_at", "updated_at",
         ]
         read_only_fields = fields
+
+    def get_commission_total(self, obj):
+        return sum((item.commission_amount for item in obj.items.all()), Decimal("0.00"))
+
+    def get_net_to_vendor_total(self, obj):
+        return sum((item.net_to_vendor for item in obj.items.all()), Decimal("0.00"))
 
 
 class OrderCreateSerializer(serializers.Serializer):
@@ -115,7 +135,7 @@ class OrderCreateSerializer(serializers.Serializer):
                 raise serializers.ValidationError({"items": f'Only {product.stock_quantity} left in stock for "{product.name}".'})
             unit_price = product.discounted_price
             subtotal += unit_price * line["quantity"]
-            line_specs.append((product, line["quantity"], unit_price))
+            line_specs.append((product, line["quantity"], unit_price, product.base_price))
 
         shipping_fee = DELIVERY_FEES[validated_data["delivery_method"]]
         total = subtotal + shipping_fee
@@ -150,7 +170,7 @@ class OrderCreateSerializer(serializers.Serializer):
             estimated_delivery_days=DELIVERY_ESTIMATE_DAYS[validated_data["delivery_method"]],
         )
 
-        for product, quantity, unit_price in line_specs:
+        for product, quantity, unit_price, base_price in line_specs:
             OrderItem.objects.create(
                 order=order,
                 product=product,
@@ -159,6 +179,7 @@ class OrderCreateSerializer(serializers.Serializer):
                 product_slug=product.slug,
                 quantity=quantity,
                 unit_price=unit_price,
+                unit_base_price=base_price,
             )
             product.stock_quantity -= quantity
             product.save(update_fields=["stock_quantity"])

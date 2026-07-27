@@ -22,7 +22,7 @@ class ProductsTestBase(APITestCase):
         self.other_vendor = make_user(User.Role.VENDOR, "other-vendor@example.com")
         self.admin = make_user(User.Role.ADMIN, "admin@example.com")
         self.customer = make_user(User.Role.CUSTOMER, "customer@example.com")
-        self.category = Category.objects.create(name="Electronics")
+        self.category = Category.objects.create(name="Test Category")
 
     def login_as(self, user):
         self.client.force_authenticate(user=user)
@@ -46,7 +46,7 @@ class CategoryTests(ProductsTestBase):
     def test_anyone_can_list_categories(self):
         resp = self.client.get(reverse("category-list"))
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.data["count"], 1)
+        self.assertEqual(resp.data["count"], Category.objects.count())
 
     def test_customer_cannot_create_category(self):
         self.login_as(self.customer)
@@ -55,7 +55,7 @@ class CategoryTests(ProductsTestBase):
 
     def test_admin_can_create_category(self):
         self.login_as(self.admin)
-        resp = self.client.post(reverse("category-list"), {"name": "Books"})
+        resp = self.client.post(reverse("category-list"), {"name": "Automotive"})
         self.assertEqual(resp.status_code, 201)
 
 

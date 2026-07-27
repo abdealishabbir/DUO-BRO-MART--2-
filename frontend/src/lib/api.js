@@ -5,6 +5,9 @@ let refreshInFlight = null;
 async function rawRequest(path, options) {
   return fetch(`${API_BASE_URL}${path}`, {
     credentials: "include", // send/receive the HttpOnly JWT cookies (§4.4.3)
+    cache: "no-store", // never serve a stale response from the browser's HTTP cache —
+    // without this, clicking a "Refresh" button (or any GET re-fetch) could silently
+    // return old data until a full page reload forced a real network request.
     headers: { "Content-Type": "application/json", ...(options.headers || {}) },
     ...options,
   });
@@ -15,6 +18,7 @@ async function rawRequest(path, options) {
 async function rawFormRequest(path, options) {
   return fetch(`${API_BASE_URL}${path}`, {
     credentials: "include",
+    cache: "no-store",
     ...options,
   });
 }

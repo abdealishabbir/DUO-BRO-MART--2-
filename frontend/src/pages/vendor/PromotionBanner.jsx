@@ -9,8 +9,8 @@ import FormField, { inputClass } from "../../components/FormField.jsx";
 // size gets stretched/blurred (too small) or cropped at the sides (wrong
 // aspect ratio) by the bg-cover treatment. Enforcing an exact match here
 // means every vendor's banner looks crisp and uncropped once approved.
-const REQUIRED_WIDTH = 1600;
-const REQUIRED_HEIGHT = 500;
+const REQUIRED_WIDTH = 1920;
+const REQUIRED_HEIGHT = 600;
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/jpg"];
 
 function validateBannerImage(file) {

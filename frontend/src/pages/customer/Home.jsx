@@ -68,16 +68,16 @@ function Hero() {
 
   return (
     <section
-      className="relative flex min-h-[420px] items-center bg-cover bg-center px-4 lg:px-8"
+      className="relative flex min-h-[440px] items-center bg-cover bg-center px-4 sm:min-h-[520px] lg:min-h-[600px] lg:px-8"
       style={{ backgroundImage: `linear-gradient(to right, rgba(0,0,0,0.55), rgba(0,0,0,0.15)), url(${slide.image})` }}
     >
-      <div className="mx-auto w-full max-w-7xl py-16">
+      <div className="mx-auto w-full max-w-7xl py-20">
         <div className="max-w-xl">
-          <h1 className="text-4xl font-extrabold leading-tight text-white sm:text-5xl">{slide.title}</h1>
-          <p className="mt-4 text-lg text-white/90">{slide.subtitle}</p>
+          <h1 className="text-4xl font-extrabold leading-tight text-white sm:text-5xl lg:text-6xl">{slide.title}</h1>
+          <p className="mt-5 text-lg text-white/90 sm:text-xl">{slide.subtitle}</p>
           <Link
             to={slide.ctaHref}
-            className="mt-6 inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 text-sm font-semibold text-white hover:bg-brand-dark"
+            className="mt-8 inline-flex items-center gap-2 rounded-full bg-brand px-7 py-3.5 text-base font-semibold text-white hover:bg-brand-dark"
           >
             {slide.ctaLabel} <ArrowRight className="h-4 w-4" />
           </Link>

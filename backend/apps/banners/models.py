@@ -46,8 +46,8 @@ PREPAID_GRACE_DAYS = 3  # unpaid prepaid reservations auto-cancel after this man
 # the sides (wrong ratio). Mirrors the same check done client-side in
 # PromotionBanner.jsx; kept here too since the API can be called directly,
 # bypassing the frontend's validation.
-REQUIRED_BANNER_WIDTH = 1600
-REQUIRED_BANNER_HEIGHT = 500
+REQUIRED_BANNER_WIDTH = 1920
+REQUIRED_BANNER_HEIGHT = 600
 ALLOWED_BANNER_FORMATS = {"JPEG", "PNG"}
 
 

@@ -17,7 +17,7 @@ User = get_user_model()
 
 def make_image():
     buf = io.BytesIO()
-    Image.new("RGB", (1600, 500), color="red").save(buf, format="PNG")
+    Image.new("RGB", (1920, 600), color="red").save(buf, format="PNG")
     return SimpleUploadedFile("test.png", buf.getvalue(), content_type="image/png")
 
 
@@ -58,14 +58,14 @@ class VendorApplicationTests(BannerTestBase):
     def test_wrong_dimensions_rejected(self):
         self.login_as(self.vendor)
         buf = io.BytesIO()
-        Image.new("RGB", (800, 300), color="blue").save(buf, format="PNG")
+        Image.new("RGB", (960, 300), color="blue").save(buf, format="PNG")
         wrong_size_image = SimpleUploadedFile("wrong.png", buf.getvalue(), content_type="image/png")
         resp = self.client.post(reverse("vendor-banner-application-list"), {
             "image": wrong_size_image, "headline": "x", "cta_url": "/x",
             "requested_days": 2, "payment_type": "prepaid",
         }, format="multipart")
         self.assertEqual(resp.status_code, 400)
-        self.assertIn("1600x500", str(resp.data))
+        self.assertIn("1920x600", str(resp.data))
 
     def test_correct_dimensions_accepted(self):
         self.login_as(self.vendor)
@@ -78,7 +78,7 @@ class VendorApplicationTests(BannerTestBase):
     def test_non_png_jpeg_format_rejected(self):
         self.login_as(self.vendor)
         buf = io.BytesIO()
-        Image.new("RGB", (1600, 500), color="green").save(buf, format="BMP")
+        Image.new("RGB", (1920, 600), color="green").save(buf, format="BMP")
         bmp_image = SimpleUploadedFile("test.bmp", buf.getvalue(), content_type="image/bmp")
         resp = self.client.post(reverse("vendor-banner-application-list"), {
             "image": bmp_image, "headline": "x", "cta_url": "/x",

@@ -197,6 +197,83 @@ class AdminProductReviewTests(ProductsTestBase):
         names = [p["name"] for p in resp.data["results"]] if "results" in resp.data else [p["name"] for p in resp.data]
         self.assertEqual(names, ["P1"])
 
+    def _names(self, resp):
+        return [p["name"] for p in resp.data["results"]] if "results" in resp.data else [p["name"] for p in resp.data]
+
+    def test_admin_can_filter_by_category(self):
+        other_category = Category.objects.create(name="Other Category")
+        self.make_product(status=Product.Status.APPROVED, name="InCat", category=self.category)
+        self.make_product(status=Product.Status.APPROVED, name="OtherCat", category=other_category)
+        self.login_as(self.admin)
+        resp = self.client.get(reverse("admin-product-list"), {"category": self.category.id})
+        self.assertEqual(self._names(resp), ["InCat"])
+
+    def test_admin_can_search_by_product_name(self):
+        self.make_product(status=Product.Status.APPROVED, name="Wireless Mouse")
+        self.make_product(status=Product.Status.APPROVED, name="Bluetooth Speaker")
+        self.login_as(self.admin)
+        resp = self.client.get(reverse("admin-product-list"), {"search": "mouse"})
+        self.assertEqual(self._names(resp), ["Wireless Mouse"])
+
+    def test_admin_can_search_by_vendor_email(self):
+        self.make_product(status=Product.Status.APPROVED, name="P1", vendor=self.vendor)
+        self.make_product(status=Product.Status.APPROVED, name="P2", vendor=self.other_vendor)
+        self.login_as(self.admin)
+        resp = self.client.get(reverse("admin-product-list"), {"search": "other-vendor"})
+        self.assertEqual(self._names(resp), ["P2"])
+
+    def test_admin_can_edit_product_catalog_fields(self):
+        product = self.make_product(status=Product.Status.APPROVED, name="Old Name", base_price=Decimal("1000.00"))
+        self.login_as(self.admin)
+        resp = self.client.patch(
+            reverse("admin-product-detail", args=[product.id]),
+            {"name": "New Name", "base_price": "1200.00", "stock_quantity": 5},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200, resp.data)
+        product.refresh_from_db()
+        self.assertEqual(product.name, "New Name")
+        self.assertEqual(product.base_price, Decimal("1200.00"))
+        self.assertEqual(product.stock_quantity, 5)
+
+    def test_admin_edit_cannot_change_status_or_vendor(self):
+        product = self.make_product(status=Product.Status.PENDING, vendor=self.vendor)
+        self.login_as(self.admin)
+        resp = self.client.patch(
+            reverse("admin-product-detail", args=[product.id]),
+            {"status": "approved", "vendor": self.other_vendor.id},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        product.refresh_from_db()
+        self.assertEqual(product.status, Product.Status.PENDING)
+        self.assertEqual(product.vendor, self.vendor)
+
+    def test_admin_can_delete_product_with_cascade(self):
+        product = self.make_product(status=Product.Status.APPROVED)
+        change_request = ProductChangeRequest.objects.create(
+            product=product, vendor=product.vendor, change_type=ProductChangeRequest.ChangeType.PRICE_CHANGE,
+            new_price=Decimal("1500.00"),
+        )
+        self.login_as(self.admin)
+        resp = self.client.delete(reverse("admin-product-detail", args=[product.id]))
+        self.assertEqual(resp.status_code, 204)
+        self.assertFalse(Product.objects.filter(id=product.id).exists())
+        self.assertFalse(ProductChangeRequest.objects.filter(id=change_request.id).exists())
+
+    def test_vendor_cannot_edit_via_admin_endpoint(self):
+        product = self.make_product(status=Product.Status.APPROVED)
+        self.login_as(self.vendor)
+        resp = self.client.patch(reverse("admin-product-detail", args=[product.id]), {"name": "Hacked"}, format="json")
+        self.assertEqual(resp.status_code, 403)
+
+    def test_customer_cannot_delete_via_admin_endpoint(self):
+        product = self.make_product(status=Product.Status.APPROVED)
+        self.login_as(self.customer)
+        resp = self.client.delete(reverse("admin-product-detail", args=[product.id]))
+        self.assertEqual(resp.status_code, 403)
+        self.assertTrue(Product.objects.filter(id=product.id).exists())
+
 
 class ProductChangeRequestTests(ProductsTestBase):
     def test_vendor_can_request_price_change(self):

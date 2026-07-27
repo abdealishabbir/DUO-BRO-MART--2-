@@ -11,9 +11,11 @@ implements. Endpoint map:
            GET/POST    /api/products/vendor/change-requests/
            GET/POST    /api/products/vendor/stock-requests/
 
-  Admin:   GET  /api/products/admin/products/?status=pending
-           POST /api/products/admin/products/<id>/approve/
-           POST /api/products/admin/products/<id>/reject/
+  Admin:   GET   /api/products/admin/products/?status=pending&category=<id>&search=<q>
+           PATCH /api/products/admin/products/<id>/   (edit catalog data)
+           DELETE /api/products/admin/products/<id>/  (cascades to images/requests)
+           POST  /api/products/admin/products/<id>/approve/
+           POST  /api/products/admin/products/<id>/reject/
            GET  /api/products/admin/change-requests/?status=pending
            POST /api/products/admin/change-requests/<id>/approve/
            POST /api/products/admin/change-requests/<id>/reject/
@@ -22,6 +24,7 @@ implements. Endpoint map:
            POST /api/products/admin/stock-requests/<id>/reject/
 """
 
+from django.db.models import Q
 from django.utils import timezone
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
@@ -33,6 +36,7 @@ from apps.accounts.permissions import IsAdminRole, IsVendorRole, ReadOnlyOrIsAdm
 
 from .models import Category, Product, ProductChangeRequest, ProductImage, StockChangeRequest
 from .serializers import (
+    AdminProductUpdateSerializer,
     CategorySerializer,
     ProductChangeRequestCreateSerializer,
     ProductChangeRequestSerializer,
@@ -148,16 +152,60 @@ class VendorStockChangeRequestViewSet(ModelViewSet):
 # Admin
 # ---------------------------------------------------------------------------
 
-class AdminProductViewSet(ReadOnlyModelViewSet):
+class AdminProductViewSet(ModelViewSet):
+    """
+    §6.2: search/filter the full catalog, edit any product's catalog data,
+    and delete (cascades to images/change-requests/stock-requests via FK
+    on_delete=CASCADE — no extra cleanup needed here). Creation stays
+    vendor-only; approve/reject stay their own actions below so the
+    decided_at/admin_notes bookkeeping can't be bypassed by a plain edit.
+    """
+
     permission_classes = [permissions.IsAuthenticated, IsAdminRole]
-    serializer_class = ProductSerializer
+    # POST is needed for the approve/reject actions below; plain creation
+    # (POST to the list endpoint) is blocked explicitly via create() since
+    # products can only ever be created by a vendor.
+    http_method_names = ["get", "post", "patch", "delete", "head", "options"]
+
+    def get_serializer_class(self):
+        return AdminProductUpdateSerializer if self.action in ("update", "partial_update") else ProductSerializer
+
+    def create(self, request, *args, **kwargs):
+        return Response({"detail": "Products can only be created by a vendor."}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
     def get_queryset(self):
         qs = Product.objects.select_related("vendor", "category").prefetch_related("images").all()
+
         status_filter = self.request.query_params.get("status")
         if status_filter:
             qs = qs.filter(status=status_filter)
+
+        category_filter = self.request.query_params.get("category")
+        if category_filter:
+            qs = qs.filter(category_id=category_filter)
+
+        search = self.request.query_params.get("search")
+        if search:
+            qs = qs.filter(
+                Q(name__icontains=search)
+                | Q(brand__icontains=search)
+                | Q(sku__icontains=search)
+                | Q(vendor__username__icontains=search)
+                | Q(vendor__email__icontains=search)
+                | Q(vendor__first_name__icontains=search)
+                | Q(vendor__last_name__icontains=search)
+            )
+
         return qs
+
+    def update(self, request, *args, **kwargs):
+        # PATCH-only in practice (see http_method_names) but DRF's generic
+        # update() needs a response built from the full-detail serializer
+        # so the client gets selling_price/vendor_name back, not just the
+        # editable subset.
+        super().update(request, *args, **kwargs)
+        product = self.get_object()
+        return Response(ProductSerializer(product, context={"request": request}).data)
 
     @action(detail=True, methods=["post"])
     def approve(self, request, pk=None):

@@ -72,6 +72,34 @@ class ProductSerializer(serializers.ModelSerializer):
         return f"{obj.vendor.first_name} {obj.vendor.last_name}".strip() or obj.vendor.username
 
 
+class AdminProductUpdateSerializer(serializers.ModelSerializer):
+    """
+    §6.2: admin can edit a product's catalog data directly (separate from
+    the approve/reject decision itself, which stays on the approve/reject
+    actions so decided_at/admin_notes bookkeeping isn't bypassed). Vendor,
+    slug, and status are intentionally left out — status only changes via
+    approve/reject, vendor/slug never change once created.
+    """
+
+    class Meta:
+        model = Product
+        fields = [
+            "id", "category", "name", "sku", "description", "brand",
+            "base_price", "stock_quantity", "attributes", "is_active",
+        ]
+        read_only_fields = ["id"]
+
+    def validate_base_price(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Price must be greater than zero.")
+        return value
+
+    def validate_stock_quantity(self, value):
+        if value < 0:
+            raise serializers.ValidationError("Stock cannot be negative.")
+        return value
+
+
 class ProductChangeRequestCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductChangeRequest

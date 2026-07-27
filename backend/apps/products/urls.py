@@ -5,6 +5,7 @@ from . import views
 
 router = DefaultRouter()
 router.register("categories", views.CategoryViewSet, basename="category")
+router.register("", views.PublicProductViewSet, basename="product")
 
 vendor_router = DefaultRouter()
 vendor_router.register("products", views.VendorProductViewSet, basename="vendor-product")

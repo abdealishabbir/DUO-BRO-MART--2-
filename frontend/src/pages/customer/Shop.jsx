@@ -1,26 +1,27 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ChevronLeft, ChevronRight, SlidersHorizontal, Star, Grid2x2, List, X } from "lucide-react";
-import { PRODUCTS, getCategoryCounts, BRANDS } from "../../data/productsMockData.js";
+import { ChevronLeft, ChevronRight, SlidersHorizontal, Grid2x2, List, X } from "lucide-react";
+import { api } from "../../lib/api.js";
 import { useCart } from "../../cart/CartContext.jsx";
 import { formatPKR } from "../../lib/currency.js";
 
-const PAGE_SIZE = 9;
-
-const DEFAULT_FILTERS = { categories: [], brands: [], minPrice: "", maxPrice: "", minRating: 0, dealsOnly: false };
+const DEFAULT_FILTERS = { categories: [], brands: [], minPrice: "", maxPrice: "", dealsOnly: false };
 
 // PRD §14.9.C: pagination (and filters) must appear in the URL, and
 // active filters must render as removable chips. These helpers keep
 // the URL and the filters/sort/view/page state in sync both ways —
 // reading a shared link restores the exact same view, and changing
 // any control updates the URL without a full navigation.
+//
+// Note: there's no rating filter/sort here — Product has no rating
+// field yet (reviews/ratings are the Phase 7/8 Feedback subsystem,
+// not built yet), so it's left out rather than faked.
 function filtersFromParams(params) {
   return {
     categories: params.get("categories") ? params.get("categories").split(",") : [],
     brands: params.get("brands") ? params.get("brands").split(",") : [],
     minPrice: params.get("minPrice") ?? "",
     maxPrice: params.get("maxPrice") ?? "",
-    minRating: params.get("minRating") ? Number(params.get("minRating")) : 0,
     dealsOnly: params.get("deals") === "1",
   };
 }
@@ -31,7 +32,6 @@ function paramsFromState({ filters, sort, view, page }) {
   if (filters.brands.length) params.brands = filters.brands.join(",");
   if (filters.minPrice) params.minPrice = filters.minPrice;
   if (filters.maxPrice) params.maxPrice = filters.maxPrice;
-  if (filters.minRating) params.minRating = String(filters.minRating);
   if (filters.dealsOnly) params.deals = "1";
   if (sort !== "newest") params.sort = sort;
   if (view !== "grid") params.view = view;
@@ -39,15 +39,7 @@ function paramsFromState({ filters, sort, view, page }) {
   return params;
 }
 
-function StarRating({ rating, count }) {
-  return (
-    <p className="flex items-center gap-1 text-xs text-gray-500">
-      <Star className="h-3.5 w-3.5 fill-gold text-gold" /> {rating} {count != null && <span className="text-gray-400">({count})</span>}
-    </p>
-  );
-}
-
-function FiltersSidebar({ filters, setFilters, categoryCounts }) {
+function FiltersSidebar({ filters, setFilters, categories, brands }) {
   const toggleInArray = (key, value) => {
     setFilters((f) => ({
       ...f,
@@ -74,13 +66,12 @@ function FiltersSidebar({ filters, setFilters, categoryCounts }) {
       <div>
         <h4 className="mb-2 text-sm font-semibold text-gray-700">Categories</h4>
         <ul className="space-y-1.5 text-sm">
-          {categoryCounts.map((cat) => (
-            <li key={cat.id} className="flex items-center justify-between">
+          {categories.map((cat) => (
+            <li key={cat.id}>
               <label className="flex items-center gap-2 text-gray-700">
-                <input type="checkbox" checked={filters.categories.includes(cat.id)} onChange={() => toggleInArray("categories", cat.id)} />
-                {cat.label}
+                <input type="checkbox" checked={filters.categories.includes(cat.slug)} onChange={() => toggleInArray("categories", cat.slug)} />
+                {cat.name}
               </label>
-              <span className="text-xs text-gray-400">{cat.count}</span>
             </li>
           ))}
         </ul>
@@ -104,28 +95,11 @@ function FiltersSidebar({ filters, setFilters, categoryCounts }) {
       <div>
         <h4 className="mb-2 text-sm font-semibold text-gray-700">Brands</h4>
         <ul className="space-y-1.5 text-sm">
-          {BRANDS.map((brand) => (
+          {brands.map((brand) => (
             <li key={brand}>
               <label className="flex items-center gap-2 text-gray-700">
                 <input type="checkbox" checked={filters.brands.includes(brand)} onChange={() => toggleInArray("brands", brand)} />
                 {brand}
-              </label>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div>
-        <h4 className="mb-2 text-sm font-semibold text-gray-700">Rating</h4>
-        <ul className="space-y-1.5 text-sm">
-          {[5, 4, 3].map((r) => (
-            <li key={r}>
-              <label className="flex items-center gap-2 text-gray-700">
-                <input type="radio" name="rating" checked={filters.minRating === r} onChange={() => setFilters((f) => ({ ...f, minRating: f.minRating === r ? 0 : r }))} />
-                <span className="flex items-center gap-0.5">
-                  {Array.from({ length: r }, (_, i) => <Star key={i} className="h-3.5 w-3.5 fill-gold text-gold" />)}
-                </span>
-                &amp; Up
               </label>
             </li>
           ))}
@@ -137,23 +111,19 @@ function FiltersSidebar({ filters, setFilters, categoryCounts }) {
 
 // PRD §14.9.C: active filters render as removable chips above the
 // results, each with its own "x" to clear just that one filter.
-function ActiveFilterChips({ filters, setFilters, categoryCounts }) {
+function ActiveFilterChips({ filters, setFilters, categories }) {
   const chips = [];
 
   if (filters.dealsOnly) {
-    chips.push({
-      key: "deals",
-      label: "On Sale",
-      onRemove: () => setFilters((f) => ({ ...f, dealsOnly: false })),
-    });
+    chips.push({ key: "deals", label: "On Sale", onRemove: () => setFilters((f) => ({ ...f, dealsOnly: false })) });
   }
 
-  filters.categories.forEach((catId) => {
-    const label = categoryCounts.find((c) => c.id === catId)?.label ?? catId;
+  filters.categories.forEach((slug) => {
+    const label = categories.find((c) => c.slug === slug)?.name ?? slug;
     chips.push({
-      key: `cat-${catId}`,
+      key: `cat-${slug}`,
       label,
-      onRemove: () => setFilters((f) => ({ ...f, categories: f.categories.filter((c) => c !== catId) })),
+      onRemove: () => setFilters((f) => ({ ...f, categories: f.categories.filter((c) => c !== slug) })),
     });
   });
 
@@ -167,19 +137,7 @@ function ActiveFilterChips({ filters, setFilters, categoryCounts }) {
 
   if (filters.minPrice || filters.maxPrice) {
     const label = `${filters.minPrice ? formatPKR(filters.minPrice) : "PKR 0"} - ${filters.maxPrice ? formatPKR(filters.maxPrice) : "Any"}`;
-    chips.push({
-      key: "price",
-      label,
-      onRemove: () => setFilters((f) => ({ ...f, minPrice: "", maxPrice: "" })),
-    });
-  }
-
-  if (filters.minRating) {
-    chips.push({
-      key: "rating",
-      label: `${filters.minRating}★ & Up`,
-      onRemove: () => setFilters((f) => ({ ...f, minRating: 0 })),
-    });
+    chips.push({ key: "price", label, onRemove: () => setFilters((f) => ({ ...f, minPrice: "", maxPrice: "" })) });
   }
 
   if (chips.length === 0) return null;
@@ -209,7 +167,7 @@ function ProductCard({ product, view }) {
   const handleAdd = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    addItem(product.slug, 1);
+    addItem(product, 1);
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
   };
@@ -220,19 +178,22 @@ function ProductCard({ product, view }) {
       className={`rounded-lg border border-gray-200 bg-white p-4 hover:shadow-md ${isList ? "flex items-center gap-4" : ""}`}
     >
       <div className={`relative ${isList ? "w-40 shrink-0" : ""}`}>
-        {product.badge === "sale" && (
+        {product.is_deal_active && (
           <span className="absolute left-0 top-0 rounded-br-md rounded-tl-md bg-ink px-2 py-0.5 text-xs font-bold text-white">Sale</span>
         )}
-        <img src={product.images[0]} alt={product.name} className={`w-full rounded-md object-cover ${isList ? "h-28" : "h-48"}`} />
+        <img
+          src={product.images[0] || "https://placehold.co/300x300?text=No+Image"}
+          alt={product.name}
+          className={`w-full rounded-md object-cover ${isList ? "h-28" : "h-48"}`}
+        />
       </div>
       <div className={isList ? "flex-1" : "mt-3"}>
-        <p className="text-xs font-medium text-brand">{product.categoryLabel}</p>
+        <p className="text-xs font-medium text-brand">{product.category_name}</p>
         <p className="mt-0.5 font-semibold text-gray-900">{product.name}</p>
-        <StarRating rating={product.rating} count={product.reviewCount} />
         <div className="mt-2 flex items-center justify-between gap-2">
           <p>
             <span className="font-bold text-gray-900">{formatPKR(product.price)}</span>{" "}
-            {product.originalPrice && <span className="text-xs text-gray-400 line-through">{formatPKR(product.originalPrice)}</span>}
+            {product.original_price && <span className="text-xs text-gray-400 line-through">{formatPKR(product.original_price)}</span>}
           </p>
           <button onClick={handleAdd} className="rounded-md bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-ink">
             {added ? "Added ✓" : "Add to Cart"}
@@ -282,6 +243,12 @@ export default function Shop() {
   const [view, setView] = useState(() => searchParams.get("view") ?? "grid");
   const [page, setPage] = useState(() => Number(searchParams.get("page") ?? 1));
 
+  const [categories, setCategories] = useState([]);
+  const [brands, setBrands] = useState([]);
+  const [items, setItems] = useState([]);
+  const [count, setCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+
   // Keep the URL in sync whenever any control changes, so the current
   // page/filters/sort/view are always shareable and survive a refresh.
   useEffect(() => {
@@ -289,26 +256,30 @@ export default function Shop() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters, sort, view, page]);
 
-  const categoryCounts = useMemo(getCategoryCounts, []);
+  useEffect(() => {
+    api.get("/products/categories/").then((data) => setCategories(data.results ?? data));
+    api.get("/products/brands/").then(setBrands);
+  }, []);
 
-  const filtered = useMemo(() => {
-    let list = PRODUCTS.filter((p) => {
-      if (filters.dealsOnly && p.badge !== "sale") return false;
-      if (filters.categories.length && !filters.categories.includes(p.category)) return false;
-      if (filters.brands.length && !filters.brands.includes(p.brand)) return false;
-      if (filters.minPrice && p.price < Number(filters.minPrice)) return false;
-      if (filters.maxPrice && p.price > Number(filters.maxPrice)) return false;
-      if (filters.minRating && p.rating < filters.minRating) return false;
-      return true;
+  useEffect(() => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    params.set("page", page);
+    if (filters.categories.length) params.set("category", filters.categories.join(","));
+    if (filters.brands.length) params.set("brand", filters.brands.join(","));
+    if (filters.minPrice) params.set("min_price", filters.minPrice);
+    if (filters.maxPrice) params.set("max_price", filters.maxPrice);
+    if (filters.dealsOnly) params.set("deals", "1");
+    if (sort !== "newest") params.set("sort", sort);
+
+    api.get(`/products/?${params.toString()}`).then((data) => {
+      setItems(data.results ?? data);
+      setCount(data.count ?? (data.results ?? data).length);
+      setLoading(false);
     });
-    if (sort === "price-asc") list = [...list].sort((a, b) => a.price - b.price);
-    if (sort === "price-desc") list = [...list].sort((a, b) => b.price - a.price);
-    if (sort === "rating") list = [...list].sort((a, b) => b.rating - a.rating);
-    return list;
-  }, [filters, sort]);
+  }, [filters, sort, page]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(count / 20));
 
   const updateFilters = (fn) => {
     setFilters(fn);
@@ -328,12 +299,12 @@ export default function Shop() {
 
       <section className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
         <div className="flex flex-col gap-6 lg:flex-row">
-          <FiltersSidebar filters={filters} setFilters={updateFilters} categoryCounts={categoryCounts} />
+          <FiltersSidebar filters={filters} setFilters={updateFilters} categories={categories} brands={brands} />
 
           <div className="flex-1">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white p-3">
               <p className="text-sm text-gray-600">
-                Showing <strong>{filtered.length}</strong> products
+                Showing <strong>{items.length}</strong> of <strong>{count}</strong> products
               </p>
               <div className="flex items-center gap-3">
                 <label className="flex items-center gap-2 text-sm text-gray-600">
@@ -342,7 +313,6 @@ export default function Shop() {
                     <option value="newest">Newest Arrivals</option>
                     <option value="price-asc">Price: Low to High</option>
                     <option value="price-desc">Price: High to Low</option>
-                    <option value="rating">Best Rated</option>
                   </select>
                 </label>
                 <div className="flex gap-1 rounded-md border border-gray-300 p-1">
@@ -356,15 +326,17 @@ export default function Shop() {
               </div>
             </div>
 
-            <ActiveFilterChips filters={filters} setFilters={updateFilters} categoryCounts={categoryCounts} />
+            <ActiveFilterChips filters={filters} setFilters={updateFilters} categories={categories} />
 
-            {pageItems.length === 0 ? (
+            {loading ? (
+              <p className="rounded-lg border border-gray-200 bg-white p-10 text-center text-sm text-gray-500">Loading...</p>
+            ) : items.length === 0 ? (
               <p className="rounded-lg border border-gray-200 bg-white p-10 text-center text-sm text-gray-500">
                 No products match these filters. Try adjusting them.
               </p>
             ) : (
               <div className={view === "grid" ? "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col gap-4"}>
-                {pageItems.map((p) => <ProductCard key={p.id} product={p} view={view} />)}
+                {items.map((p) => <ProductCard key={p.id} product={p} view={view} />)}
               </div>
             )}
 

@@ -7,16 +7,12 @@ import { formatPKR, FREE_SHIPPING_THRESHOLD, DEFAULT_SHIPPING_RATE } from "../..
 
 function CartLine({ line, onUpdateQuantity, onRemove }) {
   const { product, quantity } = line;
-  // PRD §5.4: discounts applied per line show a struck-through original
-  // price. `originalPrice` is only present on products that carry a
-  // deal/discount in the catalog — if your mock data uses a different
-  // field name for this, let me know and I'll match it exactly.
-  const hasDiscount = product.originalPrice && product.originalPrice > product.price;
+  const hasDiscount = product.original_price && product.original_price > product.price;
 
   return (
     <div className="flex gap-4 rounded-lg border border-gray-200 bg-white p-4">
       <Link to={`/product/${product.slug}`} className="shrink-0">
-        <img src={product.images[0]} alt={product.name} className="h-24 w-24 rounded-md object-cover" />
+        <img src={product.images[0] || "https://placehold.co/200x200?text=No+Image"} alt={product.name} className="h-24 w-24 rounded-md object-cover" />
       </Link>
       <div className="flex flex-1 flex-col justify-between">
         <div className="flex items-start justify-between gap-2">
@@ -24,21 +20,21 @@ function CartLine({ line, onUpdateQuantity, onRemove }) {
             <Link to={`/product/${product.slug}`} className="font-medium text-gray-900 hover:text-brand">
               {product.name}
             </Link>
-            <p className="text-xs text-gray-500">{product.categoryLabel} · Sold by {product.vendor.name}</p>
+            <p className="text-xs text-gray-500">{product.category_name} · Sold by {product.vendor_name}</p>
           </div>
-          <button onClick={() => onRemove(product.slug)} className="text-gray-400 hover:text-red-600" aria-label="Remove item">
+          <button onClick={() => onRemove(product.id)} className="text-gray-400 hover:text-red-600" aria-label="Remove item">
             <Trash2 className="h-4 w-4" />
           </button>
         </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center rounded-md border border-gray-300">
-            <button onClick={() => onUpdateQuantity(product.slug, quantity - 1)} className="p-1.5 text-gray-600 hover:text-brand">
+            <button onClick={() => onUpdateQuantity(product.id, quantity - 1)} className="p-1.5 text-gray-600 hover:text-brand">
               <Minus className="h-3.5 w-3.5" />
             </button>
             <span className="w-8 text-center text-sm">{quantity}</span>
             <button
-              onClick={() => onUpdateQuantity(product.slug, Math.min(product.stock, quantity + 1))}
-              disabled={quantity >= product.stock}
+              onClick={() => onUpdateQuantity(product.id, Math.min(product.stock_quantity, quantity + 1))}
+              disabled={quantity >= product.stock_quantity}
               className="p-1.5 text-gray-600 hover:text-brand disabled:opacity-40"
             >
               <Plus className="h-3.5 w-3.5" />
@@ -46,7 +42,7 @@ function CartLine({ line, onUpdateQuantity, onRemove }) {
           </div>
           <div className="text-right">
             {hasDiscount && (
-              <p className="text-xs text-gray-400 line-through">{formatPKR(product.originalPrice * quantity)}</p>
+              <p className="text-xs text-gray-400 line-through">{formatPKR(product.original_price * quantity)}</p>
             )}
             <p className="font-semibold text-gray-900">{formatPKR(product.price * quantity)}</p>
           </div>
@@ -77,7 +73,7 @@ export default function Cart() {
 
   const shipping = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : DEFAULT_SHIPPING_RATE;
   const discount = lines.reduce((sum, l) => {
-    const orig = l.product.originalPrice;
+    const orig = l.product.original_price;
     return orig && orig > l.product.price ? sum + (orig - l.product.price) * l.quantity : sum;
   }, 0);
 
@@ -92,7 +88,7 @@ export default function Cart() {
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <div className="space-y-3 lg:col-span-2">
           {lines.map((line) => (
-            <CartLine key={line.slug} line={line} onUpdateQuantity={updateQuantity} onRemove={removeItem} />
+            <CartLine key={line.product.id} line={line} onUpdateQuantity={updateQuantity} onRemove={removeItem} />
           ))}
         </div>
 

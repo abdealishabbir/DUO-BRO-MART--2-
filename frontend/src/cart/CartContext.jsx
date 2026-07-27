@@ -1,8 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { getProductBySlug } from "../data/productsMockData.js";
 
 const CartContext = createContext(null);
-const STORAGE_KEY = "dbm_cart_v1";
+const STORAGE_KEY = "dbm_cart_v2";
 
 function loadInitialCart() {
   try {
@@ -14,44 +13,44 @@ function loadInitialCart() {
 }
 
 export function CartProvider({ children }) {
-  // items: [{ slug, quantity }] — kept minimal and re-hydrated against
-  // the live product catalog on every render, so price/stock changes
-  // in the catalog are always reflected rather than going stale.
+  // items: [{ product: <snapshot from the public catalog API>, quantity }].
+  // The product is snapshotted at add-time rather than re-fetched live —
+  // there's no "get many products by id" endpoint, and it doesn't matter:
+  // the real Order backend (apps/orders) re-validates current price/
+  // stock/approval status for every line at checkout time regardless, so
+  // a stale cart snapshot can never result in an incorrect charge.
   const [items, setItems] = useState(loadInitialCart);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
   }, [items]);
 
-  const addItem = (slug, quantity = 1) => {
+  const addItem = (product, quantity = 1) => {
     setItems((prev) => {
-      const existing = prev.find((i) => i.slug === slug);
+      const existing = prev.find((i) => i.product.id === product.id);
       if (existing) {
-        return prev.map((i) => (i.slug === slug ? { ...i, quantity: i.quantity + quantity } : i));
+        return prev.map((i) => (i.product.id === product.id ? { ...i, quantity: i.quantity + quantity } : i));
       }
-      return [...prev, { slug, quantity }];
+      return [...prev, { product, quantity }];
     });
   };
 
-  const updateQuantity = (slug, quantity) => {
+  const updateQuantity = (productId, quantity) => {
     setItems((prev) =>
-      quantity <= 0 ? prev.filter((i) => i.slug !== slug) : prev.map((i) => (i.slug === slug ? { ...i, quantity } : i))
+      quantity <= 0
+        ? prev.filter((i) => i.product.id !== productId)
+        : prev.map((i) => (i.product.id === productId ? { ...i, quantity } : i))
     );
   };
 
-  const removeItem = (slug) => setItems((prev) => prev.filter((i) => i.slug !== slug));
+  const removeItem = (productId) => setItems((prev) => prev.filter((i) => i.product.id !== productId));
 
   const clearCart = () => setItems([]);
 
-  // Hydrate against the live catalog; silently drop any line whose
-  // product no longer exists (e.g. removed from the mock catalog).
-  const lines = items
-    .map((i) => {
-      const product = getProductBySlug(i.slug);
-      return product ? { ...i, product } : null;
-    })
-    .filter(Boolean);
-
+  // "lines" kept as the external shape (matches the old mock-data-era
+  // API) so Cart/Checkout components don't need to know about the
+  // { product, quantity } storage shape directly.
+  const lines = items;
   const itemCount = lines.reduce((sum, l) => sum + l.quantity, 0);
   const subtotal = lines.reduce((sum, l) => sum + l.product.price * l.quantity, 0);
 

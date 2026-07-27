@@ -31,6 +31,7 @@ export default function CheckoutPayment() {
   const { address, deliveryMethod, paymentMethod, setPaymentMethod, placeOrder } = useCheckout();
   const navigate = useNavigate();
   const [placing, setPlacing] = useState(false);
+  const [error, setError] = useState("");
   const [selectedWallet, setSelectedWallet] = useState(WALLETS[0]);
   const [saveCard, setSaveCard] = useState(false);
   const [billingSameAsShipping, setBillingSameAsShipping] = useState(true);
@@ -46,20 +47,22 @@ export default function CheckoutPayment() {
 
   const shipping = DELIVERY_PRICE[deliveryMethod] ?? 0;
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
     setPlacing(true);
+    setError("");
     const billingAddress = billingSameAsShipping ? address : billingForm;
-    const order = placeOrder({
-      lines,
-      subtotal,
-      shipping,
-      total: subtotal + shipping,
-      billingAddress,
-      wallet: paymentMethod === "wallet" ? selectedWallet : null,
-      saveCard: paymentMethod === "card" ? saveCard : false,
-    });
-    clearCart();
-    navigate("/checkout/confirmation", { state: { order } });
+    try {
+      const order = await placeOrder({
+        lines,
+        billingAddress,
+        wallet: paymentMethod === "wallet" ? selectedWallet : null,
+      });
+      clearCart();
+      navigate("/checkout/confirmation", { state: { order } });
+    } catch (err) {
+      setError(err.data?.detail || Object.values(err.data || {}).flat().join(" ") || "Could not place your order. Please try again.");
+      setPlacing(false);
+    }
   };
 
   return (
@@ -213,13 +216,16 @@ export default function CheckoutPayment() {
             <button onClick={() => navigate("/checkout/shipping")} className="text-sm font-medium text-gray-600 hover:text-brand">
               Back to Shipping
             </button>
-            <button
-              onClick={handlePlaceOrder}
-              disabled={placing}
-              className="rounded-md bg-brand px-8 py-3 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-60"
-            >
-              {placing ? "Placing Order..." : "Place Order"}
-            </button>
+            <div className="text-right">
+              {error && <p className="mb-2 text-sm text-red-600">{error}</p>}
+              <button
+                onClick={handlePlaceOrder}
+                disabled={placing}
+                className="rounded-md bg-brand px-8 py-3 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-60"
+              >
+                {placing ? "Placing Order..." : "Place Order"}
+              </button>
+            </div>
           </div>
         </div>
 

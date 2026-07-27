@@ -3,6 +3,8 @@ See models.py module docstring for the full business-rule writeup this
 implements. Endpoint map:
 
   Public:  GET  /api/products/categories/
+           GET  /api/products/?category=&brand=&min_price=&max_price=&deals=1&sort=&search=&page=
+           GET  /api/products/<slug>/
 
   Vendor:  GET/POST    /api/products/vendor/products/
            GET/PATCH   /api/products/vendor/products/<id>/
@@ -43,6 +45,8 @@ from .serializers import (
     ProductCreateSerializer,
     ProductImageSerializer,
     ProductSerializer,
+    PublicProductDetailSerializer,
+    PublicProductListSerializer,
     StockChangeRequestCreateSerializer,
     StockChangeRequestSerializer,
 )
@@ -58,6 +62,73 @@ class CategoryViewSet(viewsets.ModelViewSet):
     permission_classes = [ReadOnlyOrIsAdmin]
     serializer_class = CategorySerializer
     queryset = Category.objects.all()
+
+
+class PublicProductViewSet(ReadOnlyModelViewSet):
+    """
+    Storefront catalog (Home/Shop/Product Detail) — the only products a
+    customer can ever see are approved + active (§6.2 approval gate).
+    Looked up by slug, not id, since that's what the storefront URLs use.
+    """
+
+    permission_classes = [permissions.AllowAny]
+    lookup_field = "slug"
+
+    def get_serializer_class(self):
+        return PublicProductDetailSerializer if self.action == "retrieve" else PublicProductListSerializer
+
+    def get_queryset(self):
+        qs = (
+            Product.objects.filter(status=Product.Status.APPROVED, is_active=True)
+            .select_related("vendor", "category")
+            .prefetch_related("images")
+        )
+
+        category = self.request.query_params.get("category")
+        if category:
+            slugs = [s for s in category.split(",") if s]
+            qs = qs.filter(category__slug__in=slugs)
+
+        brand = self.request.query_params.get("brand")
+        if brand:
+            brands = [b for b in brand.split(",") if b]
+            qs = qs.filter(brand__in=brands)
+
+        min_price = self.request.query_params.get("min_price")
+        if min_price:
+            qs = qs.filter(base_price__gte=min_price)
+
+        max_price = self.request.query_params.get("max_price")
+        if max_price:
+            qs = qs.filter(base_price__lte=max_price)
+
+        deals_only = self.request.query_params.get("deals")
+        if deals_only == "1":
+            qs = qs.filter(active_discount_percent__isnull=False)
+
+        search = self.request.query_params.get("search")
+        if search:
+            qs = qs.filter(Q(name__icontains=search) | Q(brand__icontains=search) | Q(description__icontains=search))
+
+        ordering = self.request.query_params.get("sort")
+        if ordering == "price-asc":
+            qs = qs.order_by("base_price")
+        elif ordering == "price-desc":
+            qs = qs.order_by("-base_price")
+        # default (including "newest") keeps Product.Meta's "-created_at"
+
+        return qs
+
+    @action(detail=False, methods=["get"])
+    def brands(self, request):
+        """Distinct brand names across the visible (approved+active) catalog — powers the Shop page brand filter."""
+        names = (
+            Product.objects.filter(status=Product.Status.APPROVED, is_active=True)
+            .order_by("brand")
+            .values_list("brand", flat=True)
+            .distinct()
+        )
+        return Response(list(names))
 
 
 # ---------------------------------------------------------------------------

@@ -23,6 +23,7 @@ urlpatterns = [
     path("api/", include("apps.accounts.urls")),
     path("api/banners/", include("apps.banners.urls")),
     path("api/products/", include("apps.products.urls")),
+    path("api/orders/", include("apps.orders.urls")),
 ]
 
 # Django's dev server does not serve uploaded media files on its own — this

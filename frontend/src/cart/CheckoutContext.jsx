@@ -1,25 +1,8 @@
 import { createContext, useContext, useState } from "react";
 import { useAuth } from "../auth/AuthContext.jsx";
+import { api } from "../lib/api.js";
 
 const CheckoutContext = createContext(null);
-const ORDERS_STORAGE_KEY = "dbm_mock_orders_v1";
-
-function loadOrders() {
-  try {
-    return JSON.parse(localStorage.getItem(ORDERS_STORAGE_KEY) || "[]");
-  } catch {
-    return [];
-  }
-}
-
-function saveOrders(orders) {
-  localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
-}
-
-function generateOrderId() {
-  const rand = Math.floor(1000 + Math.random() * 9000);
-  return `DBM-${new Date().getFullYear()}-${rand}`;
-}
 
 export function CheckoutProvider({ children }) {
   const { user } = useAuth();
@@ -28,48 +11,47 @@ export function CheckoutProvider({ children }) {
   const [paymentMethod, setPaymentMethod] = useState("cod");
 
   /**
-   * Creates a mock order record in localStorage and returns it. Real
-   * order placement (POST /api/orders/) needs a real Product/Order
-   * backend, which doesn't exist until Phase 5/6 — this keeps the
-   * checkout flow fully clickable/testable end to end in the meantime,
-   * and TrackOrder reads from the same storage.
+   * Places a real order against the Order backend (apps/orders) —
+   * replaces the old localStorage mock now that a real Product/Order
+   * backend exists.
    *
-   * All mock orders live in one shared localStorage bucket (there's no
-   * per-user backend table yet), so each order is tagged with the
-   * placing account's email and getOrdersForUser() filters on it —
-   * otherwise every account on the same browser would see every order
-   * ever placed there.
+   * `address` is either:
+   *   - a saved accounts.Address (no `email`/`area_type` field exists on
+   *     that model — see CheckoutShipping — so email falls back to the
+   *     logged-in user's account email, and "rural" is inferred from
+   *     whether a landmark was saved against it), or
+   *   - a fresh guest/new-address form object from CheckoutShipping,
+   *     which *does* carry email/area_type directly.
    */
-  const placeOrder = ({ lines, subtotal, shipping, total, billingAddress, wallet, saveCard }) => {
-    const order = {
-      id: generateOrderId(),
-      status: "confirmed",
-      // PRD §5.4: order tracking timeline — this mock order starts at
-      // "Pending" and moves through Processing/Shipped/Delivered as the
-      // vendor updates it (real status updates land with the Order
-      // backend in Phase 5/6; /track-order reads this field for now).
-      trackingStatus: "pending",
-      placedAt: new Date().toISOString(),
-      userEmail: user?.email ?? null,
-      address,
-      billingAddress: billingAddress ?? address,
-      paymentMethod,
-      wallet: wallet ?? null,
-      saveCard: !!saveCard,
-      items: lines.map((l) => ({
-        slug: l.product.slug,
-        name: l.product.name,
-        image: l.product.images[0],
-        price: l.product.price,
-        quantity: l.quantity,
-      })),
-      subtotal,
-      shipping,
-      total,
-      estimatedDeliveryDays: 5,
+  const placeOrder = async ({ lines, deliveryMethod: method, billingAddress, wallet }) => {
+    const isRural = address.area_type ? address.area_type === "rural" : Boolean(address.landmark);
+
+    const body = {
+      items: lines.map((l) => ({ product: l.product.id, quantity: l.quantity })),
+      shipping_full_name: address.full_name,
+      shipping_phone_number: address.phone_number,
+      shipping_email: address.email || user?.email || "",
+      shipping_province: address.province,
+      shipping_city: address.city,
+      shipping_address_line: address.address_line,
+      shipping_is_rural: isRural,
+      shipping_landmark: address.landmark || "",
+      billing_same_as_shipping: !billingAddress || billingAddress === address,
+      delivery_method: method ?? deliveryMethod,
+      payment_method: paymentMethod,
+      wallet_provider: paymentMethod === "wallet" ? wallet ?? "" : "",
     };
-    saveOrders([order, ...loadOrders()]);
-    return order;
+
+    if (billingAddress && billingAddress !== address) {
+      body.billing_same_as_shipping = false;
+      body.billing_full_name = billingAddress.full_name;
+      body.billing_phone_number = billingAddress.phone_number;
+      body.billing_province = billingAddress.province;
+      body.billing_city = billingAddress.city;
+      body.billing_address_line = billingAddress.address_line;
+    }
+
+    return api.post("/orders/", body);
   };
 
   const value = { address, setAddress, deliveryMethod, setDeliveryMethod, paymentMethod, setPaymentMethod, placeOrder };
@@ -81,23 +63,4 @@ export function useCheckout() {
   const ctx = useContext(CheckoutContext);
   if (!ctx) throw new Error("useCheckout must be used within a CheckoutProvider");
   return ctx;
-}
-
-// Kept for TrackOrder, which looks a single order up by ID + the
-// email/phone typed into that form — intentionally not scoped to
-// "the logged-in user", since tracking works for guests too.
-export function getMockOrder(orderId) {
-  return loadOrders().find((o) => o.id === orderId) || null;
-}
-
-// Use in the account Orders tab: only this account's own orders.
-export function getOrdersForUser(userEmail) {
-  if (!userEmail) return [];
-  return loadOrders().filter((o) => o.userEmail === userEmail);
-}
-
-// Still exported for anything that genuinely needs every mock order
-// regardless of account (none currently — prefer getOrdersForUser).
-export function getAllMockOrders() {
-  return loadOrders();
 }

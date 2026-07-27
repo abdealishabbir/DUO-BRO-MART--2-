@@ -3,7 +3,6 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext.jsx";
 import { api } from "../../lib/api.js";
 import FormField, { inputClass } from "../../components/FormField.jsx";
-import { getOrdersForUser } from "../../cart/CheckoutContext.jsx";
 import { formatPKR } from "../../lib/currency.js";
 
 const TABS = ["Profile", "Addresses", "Security", "Orders"];
@@ -203,17 +202,17 @@ function SecurityTab() {
 }
 
 function OrdersTab() {
-  const { user } = useAuth();
   const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Real Order backend + per-user scoping lands with Phase 5/6 (§10);
-    // until then this reads the same localStorage-backed mock orders
-    // that CheckoutContext.placeOrder() writes at checkout, filtered to
-    // just this account's email so different accounts on the same
-    // browser don't see each other's orders.
-    setOrders(getOrdersForUser(user?.email));
-  }, [user?.email]);
+    api
+      .get("/orders/mine/")
+      .then((data) => setOrders(data.results ?? data))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <p className="text-sm text-gray-500">Loading your orders...</p>;
 
   if (orders.length === 0) {
     return (
@@ -231,18 +230,18 @@ function OrdersTab() {
       {orders.map((order) => (
         <div key={order.id} className="rounded-md border border-gray-200 p-4">
           <div className="flex items-center justify-between">
-            <p className="font-mono text-sm font-semibold text-gray-900">#{order.id}</p>
+            <p className="font-mono text-sm font-semibold text-gray-900">#{order.order_code}</p>
             <span className="rounded-full bg-cream px-2.5 py-0.5 text-xs font-medium capitalize text-brand">
-              {order.trackingStatus ?? "pending"}
+              {order.status}
             </span>
           </div>
           <p className="mt-1 text-xs text-gray-500">
-            Placed {new Date(order.placedAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
+            Placed {new Date(order.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
             {" · "}{order.items.length} item{order.items.length !== 1 && "s"}
           </p>
           <div className="mt-2 flex items-center justify-between">
             <p className="text-sm font-semibold text-gray-900">{formatPKR(order.total)}</p>
-            <Link to={`/track-order?order=${order.id}`} className="text-sm font-medium text-brand hover:underline">
+            <Link to={`/track-order?order=${order.order_code}`} className="text-sm font-medium text-brand hover:underline">
               Track Order
             </Link>
           </div>

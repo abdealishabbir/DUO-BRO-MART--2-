@@ -2,27 +2,35 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowRight, ChevronLeft, ChevronRight, Zap, ShieldCheck, Truck, RotateCcw, Headphones,
-  Laptop, Shirt, Home as HomeIcon, Dumbbell, BookOpen, Sparkles, Gamepad2, Coffee, Star,
+  Laptop, Shirt, Home as HomeIcon, Dumbbell, BookOpen, Sparkles, Gamepad2, Coffee,
 } from "lucide-react";
 import CountdownTimer from "../../components/CountdownTimer.jsx";
 import { api } from "../../lib/api.js";
 import { useCart } from "../../cart/CartContext.jsx";
-import { PRODUCTS } from "../../data/productsMockData.js";
-import {
-  heroSlides as fallbackHeroSlides, promoTiles, categories,
-} from "../../data/homeMockData.js";
-
-// Flash Deals / Top Selling / Best Of all pull from the same shared
-// PRODUCTS catalog Shop, ProductDetail, and Cart use — these used to
-// come from a separate, disconnected homeMockData list with no real
-// slugs, which is why clicking through or adding to cart from Home
-// silently did nothing. Deriving them here instead of duplicating data
-// keeps Home, Shop, and Cart always in sync.
-const flashDeals = PRODUCTS.filter((p) => p.badge === "sale").slice(0, 6);
-const topSelling = [...PRODUCTS].sort((a, b) => b.rating - a.rating).slice(0, 5);
-const bestOf = [...PRODUCTS].sort((a, b) => b.rating - a.rating).slice(0, 4);
+import { heroSlides as fallbackHeroSlides, promoTiles } from "../../data/homeMockData.js";
 
 const CATEGORY_ICONS = { Laptop, Shirt, Home: HomeIcon, Dumbbell, BookOpen, Sparkles, Gamepad2, Coffee };
+
+// Category has no icon field in the real backend model — this maps a
+// handful of common category names to a reasonable icon, falling back
+// to a generic one for anything else. Not exhaustive by design: it
+// only needs to look right for whatever categories admins have
+// actually created.
+const ICON_BY_NAME_FRAGMENT = [
+  [/electronic|laptop|phone|gadget/i, "Laptop"],
+  [/fashion|cloth|apparel|wear/i, "Shirt"],
+  [/home|living|furniture|kitchen/i, "Home"],
+  [/sport|fitness|outdoor|gym/i, "Dumbbell"],
+  [/book|stationery/i, "BookOpen"],
+  [/beauty|personal care|cosmetic/i, "Sparkles"],
+  [/game|gaming|toy/i, "Gamepad2"],
+  [/grocery|food|coffee/i, "Coffee"],
+];
+
+function iconNameFor(categoryName) {
+  const match = ICON_BY_NAME_FRAGMENT.find(([pattern]) => pattern.test(categoryName));
+  return match ? match[1] : "Sparkles";
+}
 
 function formatPKR(amount) {
   return `Rs. ${amount.toLocaleString("en-PK")}`;
@@ -138,17 +146,19 @@ function PromoTiles() {
   );
 }
 
-function FlashDeals() {
+function FlashDeals({ items }) {
   const { addItem } = useCart();
   const [addedSlug, setAddedSlug] = useState(null);
 
-  const handleAdd = (e, slug) => {
+  const handleAdd = (e, item) => {
     e.preventDefault(); // don't trigger the wrapping Link's navigation
     e.stopPropagation();
-    addItem(slug, 1);
-    setAddedSlug(slug);
-    setTimeout(() => setAddedSlug((s) => (s === slug ? null : s)), 1500);
+    addItem(item, 1);
+    setAddedSlug(item.slug);
+    setTimeout(() => setAddedSlug((s) => (s === item.slug ? null : s)), 1500);
   };
+
+  if (items.length === 0) return null;
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
@@ -165,27 +175,27 @@ function FlashDeals() {
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-        {flashDeals.map((item) => {
-          const discountPct = Math.round((1 - item.price / item.originalPrice) * 100);
+        {items.map((item) => {
+          const discountPct = item.original_price ? Math.round((1 - item.price / item.original_price) * 100) : 0;
           return (
             <Link key={item.id} to={`/product/${item.slug}`} className="rounded-lg border border-gray-200 bg-white p-3 hover:shadow-md">
               <div className="relative">
                 <span className="absolute left-0 top-0 rounded-br-md rounded-tl-md bg-red-600 px-2 py-0.5 text-xs font-bold text-white">
                   -{discountPct}%
                 </span>
-                <img src={item.images[0]} alt={item.name} className="h-32 w-full rounded-md object-cover" />
+                <img src={item.images[0] || "https://placehold.co/300x300?text=No+Image"} alt={item.name} className="h-32 w-full rounded-md object-cover" />
               </div>
               <p className="mt-2 line-clamp-2 text-sm font-medium text-gray-900">{item.name}</p>
               <p className="mt-1 text-sm">
                 <span className="font-bold text-red-600">{formatPKR(item.price)}</span>{" "}
-                <span className="text-xs text-gray-400 line-through">{formatPKR(item.originalPrice)}</span>
+                {item.original_price && <span className="text-xs text-gray-400 line-through">{formatPKR(item.original_price)}</span>}
               </p>
               <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
                 <div className="h-full w-4/5 rounded-full bg-red-500" />
               </div>
               <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-gray-400">Almost sold out</p>
               <button
-                onClick={(e) => handleAdd(e, item.slug)}
+                onClick={(e) => handleAdd(e, item)}
                 className="mt-2 w-full rounded-md border border-gray-300 py-1.5 text-xs font-semibold text-gray-700 hover:border-brand hover:text-brand"
               >
                 {addedSlug === item.slug ? "Added ✓" : "Add to Cart"}
@@ -198,13 +208,15 @@ function FlashDeals() {
   );
 }
 
-function CategoryGrid() {
+function CategoryGrid({ categories }) {
   const containerRef = useRef(null);
   const [itemWidth, setItemWidth] = useState(0);
   const [visibleCount, setVisibleCount] = useState(8);
   const [order, setOrder] = useState(categories);
   const [offsetPx, setOffsetPx] = useState(0);
   const [animating, setAnimating] = useState(false);
+
+  useEffect(() => setOrder(categories), [categories]);
 
   // Measure how wide one tile should be (4 per row on mobile, 8 on
   // larger screens, matching the old static grid) so the slide
@@ -267,7 +279,12 @@ function CategoryGrid() {
   // repeat happens.
   const slotsNeeded = visibleCount + 1;
   const startIndex = order.length - 1;
-  const trackItems = Array.from({ length: slotsNeeded }, (_, i) => order[(startIndex + i) % order.length]);
+  const trackItems =
+    order.length === 0
+      ? []
+      : Array.from({ length: slotsNeeded }, (_, i) => order[(startIndex + i) % order.length]);
+
+  if (categories.length === 0) return null;
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-10 lg:px-8">
@@ -282,18 +299,18 @@ function CategoryGrid() {
           onTransitionEnd={handleTransitionEnd}
         >
           {trackItems.map((cat, i) => {
-            const Icon = CATEGORY_ICONS[cat.icon];
+            const Icon = CATEGORY_ICONS[iconNameFor(cat.name)];
             return (
               <Link
-                key={`${cat.id}-${i}`}
-                to={`/shop?category=${cat.id}`}
+                key={`${cat.slug}-${i}`}
+                to={`/shop?category=${cat.slug}`}
                 style={{ flex: `0 0 ${itemWidth}px` }}
                 className="flex flex-col items-center gap-2 px-1.5 text-center"
               >
                 <span className="flex h-11 w-11 items-center justify-center rounded-full bg-cream text-brand transition hover:shadow-md">
                   <Icon className="h-5 w-5" />
                 </span>
-                <span className="text-xs font-medium text-gray-700">{cat.label}</span>
+                <span className="text-xs font-medium text-gray-700">{cat.name}</span>
               </Link>
             );
           })}
@@ -303,25 +320,27 @@ function CategoryGrid() {
   );
 }
 
-function TopSelling() {
+function TopSelling({ items }) {
   const { addItem } = useCart();
   const navigate = useNavigate();
   const [addedSlug, setAddedSlug] = useState(null);
 
-  const handleAdd = (e, slug) => {
+  const handleAdd = (e, item) => {
     e.preventDefault();
     e.stopPropagation();
-    addItem(slug, 1);
-    setAddedSlug(slug);
-    setTimeout(() => setAddedSlug((s) => (s === slug ? null : s)), 1500);
+    addItem(item, 1);
+    setAddedSlug(item.slug);
+    setTimeout(() => setAddedSlug((s) => (s === item.slug ? null : s)), 1500);
   };
 
-  const handleBuyNow = (e, slug) => {
+  const handleBuyNow = (e, item) => {
     e.preventDefault();
     e.stopPropagation();
-    addItem(slug, 1);
+    addItem(item, 1);
     navigate("/cart");
   };
+
+  if (items.length === 0) return null;
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-10 lg:px-8">
@@ -330,40 +349,37 @@ function TopSelling() {
           <h2 className="text-xl font-bold text-gray-900">Top Selling Products</h2>
           <p className="text-sm text-gray-500">Loved by our community</p>
         </div>
-        <Link to="/shop?sort=rating" className="text-sm font-medium text-brand hover:underline">
+        <Link to="/shop" className="text-sm font-medium text-brand hover:underline">
           View All
         </Link>
       </div>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        {topSelling.map((item) => (
+        {items.map((item) => (
           <Link key={item.id} to={`/product/${item.slug}`} className="rounded-lg border border-gray-200 bg-white p-3 hover:shadow-md">
             <div className="relative">
-              {item.badge === "sale" && (
+              {item.is_deal_active && (
                 <span className="absolute left-0 top-0 rounded-br-md rounded-tl-md bg-ink px-2 py-0.5 text-xs font-bold text-white">
                   Sale
                 </span>
               )}
-              <img src={item.images[0]} alt={item.name} className="h-36 w-full rounded-md object-cover" />
+              <img src={item.images[0] || "https://placehold.co/300x300?text=No+Image"} alt={item.name} className="h-36 w-full rounded-md object-cover" />
             </div>
-            <p className="mt-2 flex items-center gap-1 text-xs text-gray-500">
-              <Star className="h-3.5 w-3.5 fill-gold text-gold" /> {item.rating}
-            </p>
-            <p className="mt-1 line-clamp-2 text-sm font-medium text-gray-900">{item.name}</p>
+            <p className="mt-2 line-clamp-2 text-sm font-medium text-gray-900">{item.name}</p>
             <p className="mt-1 text-sm">
               <span className="font-bold text-gray-900">{formatPKR(item.price)}</span>{" "}
-              {item.originalPrice && (
-                <span className="text-xs text-gray-400 line-through">{formatPKR(item.originalPrice)}</span>
+              {item.original_price && (
+                <span className="text-xs text-gray-400 line-through">{formatPKR(item.original_price)}</span>
               )}
             </p>
             <div className="mt-2 flex gap-2">
               <button
-                onClick={(e) => handleAdd(e, item.slug)}
+                onClick={(e) => handleAdd(e, item)}
                 className="flex-1 rounded-md border border-gray-300 py-1.5 text-xs font-semibold text-gray-700 hover:border-brand hover:text-brand"
               >
                 {addedSlug === item.slug ? "Added ✓" : "Add to Cart"}
               </button>
               <button
-                onClick={(e) => handleBuyNow(e, item.slug)}
+                onClick={(e) => handleBuyNow(e, item)}
                 className="flex-1 rounded-md bg-brand py-1.5 text-xs font-semibold text-white hover:bg-brand-dark"
               >
                 Buy Now
@@ -376,15 +392,16 @@ function TopSelling() {
   );
 }
 
-function BestOfStrip() {
+function BestOfStrip({ items }) {
+  if (items.length === 0) return null;
   return (
     <section className="bg-ink py-12">
       <div className="mx-auto max-w-7xl px-4 lg:px-8">
         <h2 className="mb-8 text-center text-2xl font-bold text-white">Best of Duo Bro Mart</h2>
         <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
-          {bestOf.map((item) => (
+          {items.map((item) => (
             <Link key={item.id} to={`/product/${item.slug}`} className="group">
-              <img src={item.images[0]} alt={item.name} className="aspect-square w-full rounded-lg object-cover transition group-hover:opacity-90" />
+              <img src={item.images[0] || "https://placehold.co/400x400?text=No+Image"} alt={item.name} className="aspect-square w-full rounded-lg object-cover transition group-hover:opacity-90" />
               <p className="mt-3 text-sm font-medium text-white">{item.name}</p>
               <p className="mt-1 text-sm text-gold">{formatPKR(item.price)}</p>
             </Link>
@@ -440,14 +457,27 @@ function NewsletterBanner() {
 }
 
 export default function Home() {
+  const [categories, setCategories] = useState([]);
+  const [deals, setDeals] = useState([]);
+  const [catalog, setCatalog] = useState([]);
+
+  useEffect(() => {
+    api.get("/products/categories/").then((data) => setCategories(data.results ?? data));
+    api.get("/products/?deals=1").then((data) => setDeals((data.results ?? data).slice(0, 6)));
+    // No real "units sold" or rating metric exists yet (that's Phase
+    // 7/8 analytics/Feedback territory) — Top Selling/Best Of are
+    // approximated with the newest catalog additions until then.
+    api.get("/products/?sort=newest").then((data) => setCatalog(data.results ?? data));
+  }, []);
+
   return (
     <div>
       <Hero />
       <PromoTiles />
-      <FlashDeals />
-      <CategoryGrid />
-      <TopSelling />
-      <BestOfStrip />
+      <FlashDeals items={deals} />
+      <CategoryGrid categories={categories} />
+      <TopSelling items={catalog.slice(0, 5)} />
+      <BestOfStrip items={catalog.slice(5, 9)} />
       <TrustStrip />
       <NewsletterBanner />
     </div>

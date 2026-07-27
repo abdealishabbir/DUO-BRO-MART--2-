@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Search, CheckCircle2, Circle, Truck, PackageCheck, Clock, MapPin, XCircle } from "lucide-react";
-import { getMockOrder } from "../../cart/CheckoutContext.jsx";
+import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
 import { inputClass } from "../../components/FormField.jsx";
 
 // PRD §5.4: Pending -> Processing -> Shipped -> Delivered (or Cancelled).
-// The vendor updates this status from their panel (Phase 5) — this page
-// reads whatever the current `trackingStatus` on the order is.
+// The admin updates this status from their panel (§6.4) — this page
+// reads whatever the current `status` on the order is.
 const STEPS = [
   { id: "pending", label: "Pending", icon: Clock },
   { id: "processing", label: "Processing", icon: PackageCheck },
@@ -23,35 +23,29 @@ function formatDate(iso, daysFrom) {
 
 export default function TrackOrder() {
   const [searchParams] = useSearchParams();
-  const [orderId, setOrderId] = useState(searchParams.get("order") ?? "");
+  const [orderCode, setOrderCode] = useState(searchParams.get("order") ?? "");
   const [contact, setContact] = useState("");
   const [order, setOrder] = useState(null);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSearch = (e) => {
+  const handleSearch = async (e) => {
     e.preventDefault();
     setError("");
     setOrder(null);
-
-    const found = getMockOrder(orderId.trim());
-    if (!found) {
-      setError("We couldn't find an order with that ID. Please check and try again.");
-      return;
+    setLoading(true);
+    try {
+      const found = await api.get(`/orders/track/?order_code=${encodeURIComponent(orderCode.trim())}&contact=${encodeURIComponent(contact.trim())}`);
+      setOrder(found);
+    } catch (err) {
+      setError(err.data?.detail || "We couldn't find that order. Please check the details and try again.");
+    } finally {
+      setLoading(false);
     }
-
-    const contactNormalized = contact.trim().toLowerCase();
-    const matchesEmail = found.address?.email?.toLowerCase() === contactNormalized;
-    const matchesPhone = found.address?.phone_number?.replace(/\s/g, "") === contact.trim().replace(/\s/g, "");
-    if (!matchesEmail && !matchesPhone) {
-      setError("The email or phone number doesn't match this order. Please double-check.");
-      return;
-    }
-
-    setOrder(found);
   };
 
-  const isCancelled = order?.trackingStatus === "cancelled";
-  const currentStepIndex = STEPS.findIndex((s) => s.id === order?.trackingStatus);
+  const isCancelled = order?.status === "cancelled";
+  const currentStepIndex = STEPS.findIndex((s) => s.id === order?.status);
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10">
@@ -61,23 +55,23 @@ export default function TrackOrder() {
       <form onSubmit={handleSearch} className="mt-6 space-y-4 rounded-lg border border-gray-200 bg-white p-5">
         <label className="block text-sm">
           <span className="mb-1 block font-medium text-gray-700">Order ID</span>
-          <input className={inputClass} placeholder="DBM-2026-0001" value={orderId} onChange={(e) => setOrderId(e.target.value)} />
+          <input className={inputClass} placeholder="DBM-2026-0001" value={orderCode} onChange={(e) => setOrderCode(e.target.value)} />
         </label>
         <label className="block text-sm">
           <span className="mb-1 block font-medium text-gray-700">Email or Phone Number</span>
           <input className={inputClass} placeholder="you@example.com or 03001234567" value={contact} onChange={(e) => setContact(e.target.value)} />
         </label>
         {error && <p className="text-sm text-red-600">{error}</p>}
-        <button type="submit" className="flex w-full items-center justify-center gap-2 rounded-md bg-brand py-3 text-sm font-semibold text-white hover:bg-brand-dark">
-          <Search className="h-4 w-4" /> Track Order
+        <button type="submit" disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-md bg-brand py-3 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-60">
+          <Search className="h-4 w-4" /> {loading ? "Searching..." : "Track Order"}
         </button>
       </form>
 
       {order && (
         <div className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
           <div className="flex items-center justify-between">
-            <h2 className="font-bold text-gray-900">Order #{order.id}</h2>
-            <span className="text-sm text-gray-500">Placed {formatDate(order.placedAt, 0)}</span>
+            <h2 className="font-bold text-gray-900">Order #{order.order_code}</h2>
+            <span className="text-sm text-gray-500">Placed {formatDate(order.created_at, 0)}</span>
           </div>
 
           {isCancelled ? (
@@ -104,18 +98,18 @@ export default function TrackOrder() {
           <div className="mt-6 flex items-center gap-2 rounded-md border border-gray-200 bg-cream px-4 py-3 text-sm">
             <Truck className="h-4 w-4 text-brand" />
             <span className="text-gray-700">Estimated delivery:</span>
-            <span className="font-semibold text-brand">{formatDate(order.placedAt, order.estimatedDeliveryDays)}</span>
+            <span className="font-semibold text-brand">{formatDate(order.created_at, order.estimated_delivery_days)}</span>
           </div>
 
-          {order.trackingStatus === "shipped" && (
-            <p className="mt-3 text-sm text-gray-600">Courier: {order.courier ?? "Assigned courier partner"}</p>
+          {order.status === "shipped" && order.courier_name && (
+            <p className="mt-3 text-sm text-gray-600">Courier: {order.courier_name}</p>
           )}
 
-          {order.address?.area_type === "rural" && (
+          {order.shipping_is_rural && (
             <div className="mt-3 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
               <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
               <span>
-                Collect from nearest courier branch near <strong>{order.address.landmark}</strong> once marked Shipped.
+                Collect from nearest courier branch near <strong>{order.shipping_landmark}</strong> once marked Shipped.
               </span>
             </div>
           )}

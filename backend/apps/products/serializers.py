@@ -17,6 +17,53 @@ class ProductImageSerializer(serializers.ModelSerializer):
         read_only_fields = ["id"]
 
 
+class PublicProductListSerializer(serializers.ModelSerializer):
+    """
+    Storefront catalog (Home/Shop) — approved+active products only (see
+    PublicProductViewSet). No rating/review fields: Feedback/reviews
+    aren't modeled yet (that's the Phase 7/8 Feedback subsystem), so the
+    storefront simply doesn't show a rating until that exists, rather
+    than faking one.
+    """
+
+    category_name = serializers.CharField(source="category.name", read_only=True)
+    category_slug = serializers.CharField(source="category.slug", read_only=True)
+    vendor_name = serializers.SerializerMethodField()
+    price = serializers.DecimalField(source="discounted_price", max_digits=10, decimal_places=2, read_only=True)
+    original_price = serializers.SerializerMethodField()
+    images = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Product
+        fields = [
+            "id", "slug", "name", "brand", "category_name", "category_slug",
+            "vendor_name", "price", "original_price", "is_deal_active",
+            "stock_quantity", "images",
+        ]
+        read_only_fields = fields
+
+    def get_vendor_name(self, obj):
+        return f"{obj.vendor.first_name} {obj.vendor.last_name}".strip() or obj.vendor.username
+
+    def get_original_price(self, obj):
+        return obj.selling_price if obj.is_deal_active else None
+
+    def get_images(self, obj):
+        request = self.context.get("request")
+        urls = [img.image.url for img in obj.images.all()]
+        if request:
+            return [request.build_absolute_uri(u) for u in urls]
+        return urls
+
+
+class PublicProductDetailSerializer(PublicProductListSerializer):
+    """Adds description/attributes/vendor_id for the Product Detail page."""
+
+    class Meta(PublicProductListSerializer.Meta):
+        fields = PublicProductListSerializer.Meta.fields + ["description", "attributes", "vendor"]
+        read_only_fields = fields
+
+
 class ProductCreateSerializer(serializers.ModelSerializer):
     """Vendor create/update — images are added separately via the
     upload_image action so a single multipart field per request stays

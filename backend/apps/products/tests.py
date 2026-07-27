@@ -415,3 +415,89 @@ class ProductSkuAndActiveTests(ProductsTestBase):
         self.login_as(self.vendor)
         resp = self.client.post(reverse("vendor-product-toggle-active", args=[product.id]))
         self.assertEqual(resp.status_code, 400)
+
+
+class PublicCatalogTests(ProductsTestBase):
+    """§6.2/§10.4: the storefront can only ever see approved+active products."""
+
+    def test_lists_only_approved_active_products(self):
+        self.make_product(status=Product.Status.APPROVED, is_active=True, name="Visible")
+        self.make_product(status=Product.Status.APPROVED, is_active=False, name="Paused")
+        self.make_product(status=Product.Status.PENDING, name="Pending")
+        self.make_product(status=Product.Status.DRAFT, name="Draft")
+        resp = self.client.get(reverse("product-list"))
+        self.assertEqual(resp.status_code, 200)
+        names = [p["name"] for p in resp.data["results"]]
+        self.assertEqual(names, ["Visible"])
+
+    def test_no_auth_required(self):
+        self.make_product(status=Product.Status.APPROVED)
+        resp = self.client.get(reverse("product-list"))
+        self.assertEqual(resp.status_code, 200)
+
+    def test_can_retrieve_by_slug(self):
+        product = self.make_product(status=Product.Status.APPROVED, name="Slug Lookup Product")
+        resp = self.client.get(reverse("product-detail", args=[product.slug]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["name"], "Slug Lookup Product")
+        self.assertIn("description", resp.data)
+
+    def test_pending_product_not_retrievable(self):
+        product = self.make_product(status=Product.Status.PENDING)
+        resp = self.client.get(reverse("product-detail", args=[product.slug]))
+        self.assertEqual(resp.status_code, 404)
+
+    def test_filter_by_category_slug(self):
+        other_category = Category.objects.create(name="Other")
+        self.make_product(status=Product.Status.APPROVED, name="InCat", category=self.category)
+        self.make_product(status=Product.Status.APPROVED, name="OtherCat", category=other_category)
+        resp = self.client.get(reverse("product-list"), {"category": self.category.slug})
+        names = [p["name"] for p in resp.data["results"]]
+        self.assertEqual(names, ["InCat"])
+
+    def test_filter_by_price_range(self):
+        self.make_product(status=Product.Status.APPROVED, name="Cheap", base_price=Decimal("500.00"))
+        self.make_product(status=Product.Status.APPROVED, name="Pricey", base_price=Decimal("5000.00"))
+        resp = self.client.get(reverse("product-list"), {"max_price": "1000"})
+        names = [p["name"] for p in resp.data["results"]]
+        self.assertEqual(names, ["Cheap"])
+
+    def test_sort_by_price_ascending(self):
+        self.make_product(status=Product.Status.APPROVED, name="Pricey", base_price=Decimal("5000.00"))
+        self.make_product(status=Product.Status.APPROVED, name="Cheap", base_price=Decimal("500.00"))
+        resp = self.client.get(reverse("product-list"), {"sort": "price-asc"})
+        names = [p["name"] for p in resp.data["results"]]
+        self.assertEqual(names, ["Cheap", "Pricey"])
+
+    def test_deals_only_filter(self):
+        self.make_product(status=Product.Status.APPROVED, name="NoDeal")
+        self.make_product(status=Product.Status.APPROVED, name="OnDeal", active_discount_percent=Decimal("10.00"))
+        resp = self.client.get(reverse("product-list"), {"deals": "1"})
+        names = [p["name"] for p in resp.data["results"]]
+        self.assertEqual(names, ["OnDeal"])
+
+    def test_search_by_name(self):
+        self.make_product(status=Product.Status.APPROVED, name="Wireless Mouse")
+        self.make_product(status=Product.Status.APPROVED, name="Bluetooth Speaker")
+        resp = self.client.get(reverse("product-list"), {"search": "mouse"})
+        names = [p["name"] for p in resp.data["results"]]
+        self.assertEqual(names, ["Wireless Mouse"])
+
+    def test_brands_endpoint_lists_distinct_visible_brands(self):
+        self.make_product(status=Product.Status.APPROVED, brand="Aura")
+        self.make_product(status=Product.Status.APPROVED, brand="Aura", name="Second Aura Product")
+        self.make_product(status=Product.Status.PENDING, brand="HiddenBrand")
+        resp = self.client.get(reverse("product-brands"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(list(resp.data), ["Aura"])
+
+    def test_filter_by_multiple_categories(self):
+        cat_a = Category.objects.create(name="Cat A")
+        cat_b = Category.objects.create(name="Cat B")
+        cat_c = Category.objects.create(name="Cat C")
+        self.make_product(status=Product.Status.APPROVED, name="InA", category=cat_a)
+        self.make_product(status=Product.Status.APPROVED, name="InB", category=cat_b)
+        self.make_product(status=Product.Status.APPROVED, name="InC", category=cat_c)
+        resp = self.client.get(reverse("product-list"), {"category": f"{cat_a.slug},{cat_b.slug}"})
+        names = sorted(p["name"] for p in resp.data["results"])
+        self.assertEqual(names, ["InA", "InB"])

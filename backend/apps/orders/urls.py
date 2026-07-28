@@ -8,5 +8,6 @@ urlpatterns = [
     path("track/", views.TrackOrderView.as_view(), name="order-track"),
     path("vendor/", views.VendorOrdersView.as_view(), name="vendor-orders"),
     path("admin/", views.AdminOrdersView.as_view(), name="admin-orders"),
+    path("admin/dashboard/", views.AdminDashboardView.as_view(), name="admin-dashboard"),
     path("admin/<int:pk>/", views.AdminOrderUpdateView.as_view(), name="admin-order-update"),
 ]

@@ -10,8 +10,13 @@ Endpoint map:
 
   Admin:    GET   /api/orders/admin/
             PATCH /api/orders/admin/<id>/            (status/courier/admin_notes)
+            GET   /api/orders/admin/dashboard/        (§6.1 KPI dashboard)
 """
 
+from datetime import timedelta
+from decimal import Decimal
+
+from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
@@ -19,7 +24,7 @@ from rest_framework.views import APIView
 
 from apps.accounts.permissions import IsAdminRole, IsVendorRole
 
-from .models import Order
+from .models import Order, OrderItem
 from .serializers import OrderCreateSerializer, OrderSerializer
 
 
@@ -125,3 +130,97 @@ class AdminOrderUpdateView(APIView):
         if updates:
             order.save(update_fields=list(updates.keys()) + ["updated_at"])
         return Response(OrderSerializer(order, context={"request": request}).data)
+
+
+def _month_bounds(reference_date):
+    start = reference_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    return start
+
+
+def _pct_change(current, previous):
+    if previous == 0:
+        return None  # no baseline to compare against — frontend shows "—" rather than a misleading 0%/∞%
+    return round(float((current - previous) / previous) * 100, 1)
+
+
+class AdminDashboardView(APIView):
+    """
+    §6.1: KPI-first dashboard. Every number here is computed from real
+    data (orders/products/vendor-applications) — cancelled orders are
+    excluded from revenue/commission the same way §6.4's order table
+    excludes them, so the numbers agree wherever they overlap.
+    """
+
+    permission_classes = [permissions.IsAuthenticated, IsAdminRole]
+
+    def get(self, request):
+        from apps.accounts.models import VendorApplication
+        from apps.products.models import Product
+
+        now = timezone.now()
+        this_month_start = _month_bounds(now)
+        last_month_start = _month_bounds(this_month_start - timedelta(days=1))
+
+        live_orders = Order.objects.exclude(status=Order.Status.CANCELLED).prefetch_related("items")
+
+        def revenue_and_commission(orders_qs):
+            revenue = Decimal("0.00")
+            commission = Decimal("0.00")
+            for order in orders_qs:
+                revenue += order.subtotal
+                commission += sum((item.commission_amount for item in order.items.all()), Decimal("0.00"))
+            return revenue, commission
+
+        this_month_revenue, this_month_commission = revenue_and_commission(live_orders.filter(created_at__gte=this_month_start))
+        last_month_revenue, last_month_commission = revenue_and_commission(
+            live_orders.filter(created_at__gte=last_month_start, created_at__lt=this_month_start)
+        )
+        all_time_revenue, all_time_commission = revenue_and_commission(live_orders)
+
+        recent_orders = []
+        for order in Order.objects.all().prefetch_related("items")[:10]:
+            first_item = order.items.first()
+            product_label = first_item.product_name if first_item else "—"
+            if order.items.count() > 1:
+                product_label += f" +{order.items.count() - 1} more"
+            recent_orders.append({
+                "id": order.id,
+                "order_code": order.order_code,
+                "customer": order.shipping_full_name,
+                "product": product_label,
+                "sale_price": order.subtotal,
+                "commission": sum((i.commission_amount for i in order.items.all()), Decimal("0.00")) if order.status != Order.Status.CANCELLED else None,
+                "net_to_vendor": sum((i.net_to_vendor for i in order.items.all()), Decimal("0.00")) if order.status != Order.Status.CANCELLED else None,
+                "status": order.status,
+            })
+
+        week_ago = now - timedelta(days=7)
+        product_stats = {}
+        for item in OrderItem.objects.filter(order__created_at__gte=week_ago).exclude(order__status=Order.Status.CANCELLED).select_related("product"):
+            key = item.product_id or item.product_slug
+            entry = product_stats.setdefault(key, {"name": item.product_name, "slug": item.product_slug, "units_sold": 0, "revenue": Decimal("0.00"), "image": None})
+            entry["units_sold"] += item.quantity
+            entry["revenue"] += item.line_total
+            if entry["image"] is None and item.product:
+                first_image = item.product.images.first()
+                if first_image:
+                    entry["image"] = request.build_absolute_uri(first_image.image.url)
+        top_products = sorted(product_stats.values(), key=lambda p: p["units_sold"], reverse=True)[:5]
+
+        return Response({
+            "platform_revenue": {
+                "total": all_time_revenue,
+                "this_month": this_month_revenue,
+                "change_pct": _pct_change(this_month_revenue, last_month_revenue),
+            },
+            "platform_commission": {
+                "total": all_time_commission,
+                "this_month": this_month_commission,
+                "change_pct": _pct_change(this_month_commission, last_month_commission),
+            },
+            "active_products": Product.objects.filter(status=Product.Status.APPROVED, is_active=True).count(),
+            "category_count": Product.objects.filter(status=Product.Status.APPROVED, is_active=True).values("category").distinct().count(),
+            "pending_vendors": VendorApplication.objects.filter(status=VendorApplication.Status.PENDING).count(),
+            "recent_orders": recent_orders,
+            "top_products": top_products,
+        })

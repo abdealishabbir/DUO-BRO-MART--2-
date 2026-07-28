@@ -312,3 +312,69 @@ class OrderItemDeletedProductTests(OrdersTestBase):
         item = order.items.first()
         self.assertIsNone(item.product)
         self.assertEqual(item.product_name, "Soon Deleted")
+
+
+class AdminDashboardTests(OrdersTestBase):
+    def _place_order(self, product, quantity=1):
+        return self.client.post(
+            reverse("order-create"),
+            {**VALID_SHIPPING, "items": [{"product": product.id, "quantity": quantity}]},
+            format="json",
+        )
+
+    def test_non_admin_cannot_access_dashboard(self):
+        self.login_as(self.vendor)
+        resp = self.client.get(reverse("admin-dashboard"))
+        self.assertEqual(resp.status_code, 403)
+
+    def test_dashboard_reports_kpis(self):
+        product = self.make_product(base_price=Decimal("1000.00"))
+        self._place_order(product, quantity=2)
+
+        self.login_as(self.admin)
+        resp = self.client.get(reverse("admin-dashboard"))
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertEqual(Decimal(resp.data["platform_revenue"]["total"]), Decimal("2200.00"))
+        self.assertEqual(Decimal(resp.data["platform_commission"]["total"]), Decimal("200.00"))
+        self.assertEqual(resp.data["active_products"], 1)
+
+    def test_cancelled_orders_excluded_from_revenue(self):
+        product = self.make_product(base_price=Decimal("1000.00"))
+        create_resp = self._place_order(product)
+        order_id = create_resp.data["id"]
+
+        self.login_as(self.admin)
+        self.client.patch(reverse("admin-order-update", args=[order_id]), {"status": "cancelled"}, format="json")
+
+        resp = self.client.get(reverse("admin-dashboard"))
+        self.assertEqual(Decimal(resp.data["platform_revenue"]["total"]), Decimal("0.00"))
+
+    def test_recent_orders_included(self):
+        product = self.make_product()
+        self._place_order(product)
+
+        self.login_as(self.admin)
+        resp = self.client.get(reverse("admin-dashboard"))
+        self.assertEqual(len(resp.data["recent_orders"]), 1)
+        self.assertIn("order_code", resp.data["recent_orders"][0])
+
+    def test_top_products_reflects_units_sold(self):
+        product = self.make_product(name="Popular Item")
+        self._place_order(product, quantity=5)
+
+        self.login_as(self.admin)
+        resp = self.client.get(reverse("admin-dashboard"))
+        self.assertEqual(resp.data["top_products"][0]["name"], "Popular Item")
+        self.assertEqual(resp.data["top_products"][0]["units_sold"], 5)
+
+    def test_pending_vendors_count(self):
+        from apps.accounts.models import VendorApplication
+
+        VendorApplication.objects.create(
+            business_name="X", owner_name="Y", email="x@example.com", phone_number="03001234567",
+            business_type="Retailer", description="d", cnic_number="1", cnic_front="x.jpg", cnic_back="y.jpg",
+            bank_name="b", account_title="t", account_number="n", account_cnic="1",
+        )
+        self.login_as(self.admin)
+        resp = self.client.get(reverse("admin-dashboard"))
+        self.assertEqual(resp.data["pending_vendors"], 1)

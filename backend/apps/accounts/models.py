@@ -83,6 +83,68 @@ class User(AbstractUser):
         return self.role == self.Role.ADMIN
 
 
+class VendorApplication(models.Model):
+    """
+    §5.7/§6.5: public application (frontend/src/pages/customer/BecomeVendor.jsx)
+    reviewed by admin. Approval provisions a real vendor User account
+    (see apps/accounts/utils.provision_vendor_account, shared with the
+    create_vendor_account management command); rejection just records why.
+
+    cnic_matches is a computed flag, not a hard validation error — a
+    mismatch is a strong signal to reject (per the "must match" rule
+    quoted to applicants), but it's the admin's call on review, not an
+    automatic block at submission time.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
+
+    business_name = models.CharField(max_length=150)
+    owner_name = models.CharField(max_length=150)
+    email = models.EmailField()
+    phone_number = models.CharField(max_length=17, validators=[pk_phone_validator])
+    business_type = models.CharField(max_length=50)
+    description = models.TextField()
+    social_links = models.CharField(max_length=255, blank=True)
+
+    cnic_number = models.CharField(max_length=20)
+    cnic_front = models.ImageField(upload_to="vendor_applications/cnic/")
+    cnic_back = models.ImageField(upload_to="vendor_applications/cnic/")
+
+    bank_name = models.CharField(max_length=100)
+    account_title = models.CharField(max_length=150)
+    account_number = models.CharField(max_length=50)
+    account_cnic = models.CharField(max_length=20)
+
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    admin_notes = models.TextField(blank=True)
+    decided_at = models.DateTimeField(null=True, blank=True)
+    decided_by = models.ForeignKey(
+        "accounts.User", on_delete=models.SET_NULL, null=True, blank=True, related_name="decided_vendor_applications",
+    )
+    created_vendor = models.ForeignKey(
+        "accounts.User", on_delete=models.SET_NULL, null=True, blank=True, related_name="vendor_application",
+        help_text="Set on approval — the account provisioned for this applicant.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.business_name} ({self.status})"
+
+    @staticmethod
+    def _normalize_cnic(value: str) -> str:
+        return "".join(ch for ch in value if ch.isdigit())
+
+    @property
+    def cnic_matches(self) -> bool:
+        return self._normalize_cnic(self.cnic_number) == self._normalize_cnic(self.account_cnic)
+
+
 class Address(models.Model):
     """
     Customer saved address (PRD §2.5 Account Page, reused at checkout in

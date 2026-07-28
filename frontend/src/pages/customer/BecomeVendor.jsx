@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ChevronDown, Upload, CheckCircle2, Megaphone, Wallet, ShieldCheck, TrendingUp } from "lucide-react";
 import FormField, { inputClass } from "../../components/FormField.jsx";
+import { api } from "../../lib/api.js";
 
 const BUSINESS_TYPES = ["Retailer", "Wholesaler", "Manufacturer", "Home Business", "Importer", "Other"];
 
@@ -88,7 +89,9 @@ export default function BecomeVendor() {
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
-  const handleSubmit = (e) => {
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
@@ -119,11 +122,19 @@ export default function BecomeVendor() {
       return;
     }
 
-    // No VendorApplication backend/admin review queue exists yet — that
-    // lands with the Vendor/Admin panel backend in Phase 5/6. This is a
-    // client-side-only submission for now so the flow is fully
-    // clickable and testable end to end, same pattern as mock checkout.
-    setSubmitted(true);
+    setSubmitting(true);
+    try {
+      const formData = new FormData();
+      Object.entries(form).forEach(([key, value]) => formData.append(key, value));
+      formData.append("cnic_front", cnicFront);
+      formData.append("cnic_back", cnicBack);
+      await api.postForm("/vendor-applications/", formData);
+      setSubmitted(true);
+    } catch (err) {
+      setError(err.data?.detail || Object.values(err.data || {}).flat().join(" ") || "Something went wrong submitting your application. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const cnicMismatch = form.cnic_number && form.account_cnic &&
@@ -260,8 +271,8 @@ export default function BecomeVendor() {
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 
-          <button type="submit" className="w-full rounded-md bg-brand py-3 text-sm font-semibold text-white hover:bg-brand-dark">
-            Submit Application
+          <button type="submit" disabled={submitting} className="w-full rounded-md bg-brand py-3 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-60">
+            {submitting ? "Submitting..." : "Submit Application"}
           </button>
         </form>
       </section>

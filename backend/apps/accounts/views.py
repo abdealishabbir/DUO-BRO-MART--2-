@@ -7,8 +7,10 @@ views lean on.
 """
 
 from django.contrib.auth import authenticate, get_user_model
+from django.db.models import Q
 from django.utils import timezone
 from rest_framework import generics, permissions, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
@@ -17,8 +19,9 @@ from rest_framework.throttling import ScopedRateThrottle
 
 from django.conf import settings
 
-from .models import Address, EmailVerificationToken, PasswordResetToken
+from .models import Address, EmailVerificationToken, PasswordResetToken, VendorApplication
 from .permissions import IsAdminRole, IsVendorRole
+from .utils import provision_vendor_account
 from .serializers import (
     AddressSerializer,
     ChangePasswordSerializer,
@@ -29,6 +32,8 @@ from .serializers import (
     ResetPasswordSerializer,
     SignupSerializer,
     UserSerializer,
+    VendorApplicationCreateSerializer,
+    VendorApplicationSerializer,
 )
 from .utils import (
     clear_failed_logins,
@@ -380,3 +385,118 @@ class AddressViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return Address.objects.filter(user=self.request.user)
+
+
+class VendorApplicationCreateView(generics.CreateAPIView):
+    """§5.7: public application form — no auth required."""
+
+    permission_classes = [permissions.AllowAny]
+    serializer_class = VendorApplicationCreateSerializer
+
+
+class AdminVendorApplicationViewSet(viewsets.ReadOnlyModelViewSet):
+    """§6.5: admin reviews pending applications, approves (provisions the vendor account) or rejects."""
+
+    permission_classes = [permissions.IsAuthenticated, IsAdminRole]
+    serializer_class = VendorApplicationSerializer
+
+    def get_queryset(self):
+        qs = VendorApplication.objects.all()
+        status_filter = self.request.query_params.get("status")
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        return qs
+
+    @action(detail=True, methods=["post"])
+    def approve(self, request, pk=None):
+        application = self.get_object()
+        if application.status != VendorApplication.Status.PENDING:
+            return Response({"detail": "This application has already been decided."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user, _temp_password, email_status = provision_vendor_account(
+                application.email, application.owner_name.split(" ")[0], " ".join(application.owner_name.split(" ")[1:])
+            )
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        application.status = VendorApplication.Status.APPROVED
+        application.decided_at = timezone.now()
+        application.decided_by = request.user
+        application.created_vendor = user
+        application.save(update_fields=["status", "decided_at", "decided_by", "created_vendor"])
+
+        return Response({**VendorApplicationSerializer(application).data, "email_status": email_status})
+
+    @action(detail=True, methods=["post"])
+    def reject(self, request, pk=None):
+        application = self.get_object()
+        if application.status != VendorApplication.Status.PENDING:
+            return Response({"detail": "This application has already been decided."}, status=status.HTTP_400_BAD_REQUEST)
+
+        application.status = VendorApplication.Status.REJECTED
+        application.admin_notes = request.data.get("admin_notes", "")
+        application.decided_at = timezone.now()
+        application.decided_by = request.user
+        application.save(update_fields=["status", "admin_notes", "decided_at", "decided_by"])
+        return Response(VendorApplicationSerializer(application).data)
+
+
+class AdminVendorListView(generics.ListAPIView):
+    """
+    §6.5: active/suspended vendor roster with lifetime sales stats —
+    Products/Gross Sales/Commission Earned/Net Paid Out are computed
+    from real order data (apps.orders), not placeholders. There's no
+    rating field yet (Phase 7/8 Feedback subsystem), so it's left out.
+    """
+
+    permission_classes = [permissions.IsAuthenticated, IsAdminRole]
+
+    def get_queryset(self):
+        qs = get_user_model().objects.filter(role=get_user_model().Role.VENDOR)
+        search = self.request.query_params.get("search")
+        if search:
+            qs = qs.filter(Q(username__icontains=search) | Q(email__icontains=search) | Q(first_name__icontains=search) | Q(last_name__icontains=search))
+        return qs
+
+    def list(self, request, *args, **kwargs):
+        from apps.orders.models import OrderItem
+        from apps.products.models import Product
+
+        vendors = self.get_queryset()
+        results = []
+        for vendor in vendors:
+            items = OrderItem.objects.filter(vendor=vendor).exclude(order__status="cancelled")
+            gross_sales = sum((i.line_total for i in items), 0)
+            net_paid_out = sum((i.net_to_vendor for i in items), 0)
+            commission_earned = gross_sales - net_paid_out
+            results.append({
+                "id": vendor.id,
+                "business_name": f"{vendor.first_name} {vendor.last_name}".strip() or vendor.username,
+                "email": vendor.email,
+                "product_count": Product.objects.filter(vendor=vendor).count(),
+                "gross_sales": gross_sales,
+                "commission_earned": commission_earned,
+                "net_paid_out": net_paid_out,
+                "is_active": vendor.is_active,
+                "must_change_password": vendor.must_change_password,
+            })
+        return Response(results)
+
+
+class AdminVendorSuspendView(APIView):
+    """§6.5: suspend a poorly-performing vendor (blocks login) or reactivate one."""
+
+    permission_classes = [permissions.IsAuthenticated, IsAdminRole]
+
+    def post(self, request, pk):
+        User = get_user_model()
+        try:
+            vendor = User.objects.get(pk=pk, role=User.Role.VENDOR)
+        except User.DoesNotExist:
+            return Response({"detail": "Vendor not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        action_type = request.data.get("action", "suspend")
+        vendor.is_active = action_type != "suspend"
+        vendor.save(update_fields=["is_active"])
+        return Response({"id": vendor.id, "is_active": vendor.is_active})

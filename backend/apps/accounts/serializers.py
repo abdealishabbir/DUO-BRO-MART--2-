@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
-from .models import Address
+from .models import Address, VendorApplication
 
 User = get_user_model()
 
@@ -158,3 +158,32 @@ class AddressSerializer(serializers.ModelSerializer):
         if validated_data.get("is_default"):
             Address.objects.filter(user=instance.user, is_default=True).exclude(pk=instance.pk).update(is_default=False)
         return super().update(instance, validated_data)
+
+
+class VendorApplicationCreateSerializer(serializers.ModelSerializer):
+    """§5.7: the public BecomeVendor.jsx form submits here — no auth required."""
+
+    class Meta:
+        model = VendorApplication
+        fields = [
+            "id", "business_name", "owner_name", "email", "phone_number", "business_type",
+            "description", "social_links", "cnic_number", "cnic_front", "cnic_back",
+            "bank_name", "account_title", "account_number", "account_cnic",
+        ]
+        read_only_fields = ["id"]
+
+
+class VendorApplicationSerializer(serializers.ModelSerializer):
+    """§6.5: admin review list/detail — read-only, decisions happen via the approve/reject actions."""
+
+    cnic_matches = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = VendorApplication
+        fields = [
+            "id", "business_name", "owner_name", "email", "phone_number", "business_type",
+            "description", "social_links", "cnic_number", "cnic_front", "cnic_back",
+            "bank_name", "account_title", "account_number", "account_cnic", "cnic_matches",
+            "status", "admin_notes", "decided_at", "created_vendor", "created_at",
+        ]
+        read_only_fields = fields

@@ -6,6 +6,9 @@ from . import views
 router = DefaultRouter()
 router.register("addresses", views.AddressViewSet, basename="address")
 
+admin_router = DefaultRouter()
+admin_router.register("vendor-applications", views.AdminVendorApplicationViewSet, basename="admin-vendor-application")
+
 auth_patterns = [
     path("signup/", views.SignupView.as_view(), name="auth-signup"),
     path("verify-email/<str:token>/", views.VerifyEmailView.as_view(), name="auth-verify-email"),
@@ -25,7 +28,15 @@ account_patterns = [
     path("", include(router.urls)),
 ]
 
+admin_patterns = [
+    path("vendors/", views.AdminVendorListView.as_view(), name="admin-vendor-list"),
+    path("vendors/<int:pk>/suspend/", views.AdminVendorSuspendView.as_view(), name="admin-vendor-suspend"),
+    path("", include(admin_router.urls)),
+]
+
 urlpatterns = [
     path("auth/", include(auth_patterns)),
     path("account/", include(account_patterns)),
+    path("vendor-applications/", views.VendorApplicationCreateView.as_view(), name="vendor-application-create"),
+    path("admin/", include(admin_patterns)),
 ]

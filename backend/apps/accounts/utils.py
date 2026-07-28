@@ -63,6 +63,48 @@ def send_vendor_credentials_email(user, temporary_password: str) -> None:
     )
 
 
+def provision_vendor_account(email: str, first_name: str = "", last_name: str = ""):
+    """
+    §4.3/§6.5: creates the vendor User account + temp password + sends
+    credentials email. Shared by the admin approval action
+    (VendorApplicationViewSet.approve) and the create_vendor_account
+    management command (dev convenience for creating a vendor without
+    going through a public application first).
+
+    Returns (user, email_status_message). Raises ValueError if the email
+    is already in use — the caller decides how to surface that.
+    """
+    import secrets
+
+    from django.contrib.auth import get_user_model
+
+    User = get_user_model()
+    email = email.lower().strip()
+    if User.objects.filter(email__iexact=email).exists():
+        raise ValueError(f"A user with email {email} already exists.")
+
+    temp_password = secrets.token_urlsafe(9)
+    user = User.objects.create(
+        username=email,
+        email=email,
+        first_name=first_name,
+        last_name=last_name,
+        role=User.Role.VENDOR,
+        email_verified=True,
+        must_change_password=True,
+    )
+    user.set_password(temp_password)
+    user.save()
+
+    try:
+        send_vendor_credentials_email(user, temp_password)
+        email_status = "Credentials email sent (check console output in dev)."
+    except Exception as exc:  # pragma: no cover — surfaced to the caller either way
+        email_status = f"Could not send email ({exc}); share the password below manually."
+
+    return user, temp_password, email_status
+
+
 # ---------------------------------------------------------------------------
 # Login lockout (§4.4.8) — cache-based, no extra DB table needed.
 # ---------------------------------------------------------------------------

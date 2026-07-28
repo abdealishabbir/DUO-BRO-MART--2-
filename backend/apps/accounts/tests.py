@@ -1,11 +1,15 @@
+import io
+
 from django.contrib.auth import get_user_model
 from django.core import mail
 from django.core.cache import cache
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
+from PIL import Image
 from rest_framework.test import APITestCase
 
-from .models import Address, EmailVerificationToken, PasswordResetToken
+from .models import Address, EmailVerificationToken, PasswordResetToken, VendorApplication
 from .utils import is_locked_out, record_failed_login
 
 User = get_user_model()
@@ -358,3 +362,152 @@ class ThrottleTests(_ClearsCacheMixin, APITestCase):
             self.assertNotEqual(r.status_code, 429)
         blocked = self.client.post(reverse("auth-forgot-password"), {"email": "nobody@example.com"})
         self.assertEqual(blocked.status_code, 429)
+
+
+def make_image(name="cnic.png"):
+    buf = io.BytesIO()
+    Image.new("RGB", (600, 400), color="blue").save(buf, format="PNG")
+    return SimpleUploadedFile(name, buf.getvalue(), content_type="image/png")
+
+
+def make_admin(email="admin@example.com"):
+    admin = User(username=email, email=email, role=User.Role.ADMIN)
+    admin.set_password(VALID_PASSWORD)
+    admin.save()
+    return admin
+
+
+VALID_APPLICATION = {
+    "business_name": "Ali's Store",
+    "owner_name": "Ali Khan",
+    "email": "ali@example.com",
+    "phone_number": "03001234567",
+    "business_type": "Retailer",
+    "description": "We sell handmade goods.",
+    "cnic_number": "42101-1234567-1",
+    "bank_name": "HBL",
+    "account_title": "Ali Khan",
+    "account_number": "1234567890",
+    "account_cnic": "42101-1234567-1",
+}
+
+
+class VendorApplicationSubmitTests(_ClearsCacheMixin, APITestCase):
+    def test_can_submit_application(self):
+        resp = self.client.post(
+            reverse("vendor-application-create"),
+            {**VALID_APPLICATION, "cnic_front": make_image("front.png"), "cnic_back": make_image("back.png")},
+            format="multipart",
+        )
+        self.assertEqual(resp.status_code, 201, resp.data)
+        self.assertEqual(VendorApplication.objects.count(), 1)
+        self.assertEqual(VendorApplication.objects.first().status, VendorApplication.Status.PENDING)
+
+    def test_missing_cnic_images_rejected(self):
+        resp = self.client.post(reverse("vendor-application-create"), VALID_APPLICATION, format="multipart")
+        self.assertEqual(resp.status_code, 400)
+
+
+class AdminVendorApplicationReviewTests(_ClearsCacheMixin, APITestCase):
+    def setUp(self):
+        self.admin = make_admin()
+        self.application = VendorApplication.objects.create(
+            **VALID_APPLICATION,
+            cnic_front=make_image("front.png"),
+            cnic_back=make_image("back.png"),
+        )
+
+    def login_as_admin(self):
+        self.client.force_authenticate(user=self.admin)
+
+    def test_admin_can_list_pending_applications(self):
+        self.login_as_admin()
+        resp = self.client.get(reverse("admin-vendor-application-list"), {"status": "pending"})
+        results = resp.data["results"] if "results" in resp.data else resp.data
+        self.assertEqual(len(results), 1)
+        self.assertTrue(results[0]["cnic_matches"])
+
+    def test_cnic_mismatch_flagged(self):
+        mismatched = VendorApplication.objects.create(
+            **{**VALID_APPLICATION, "email": "other@example.com", "account_cnic": "11111-1111111-1"},
+            cnic_front=make_image("front.png"), cnic_back=make_image("back.png"),
+        )
+        self.assertFalse(mismatched.cnic_matches)
+
+    def test_approve_creates_vendor_account_and_sends_email(self):
+        self.login_as_admin()
+        resp = self.client.post(reverse("admin-vendor-application-approve", args=[self.application.id]))
+        self.assertEqual(resp.status_code, 200, resp.data)
+
+        self.application.refresh_from_db()
+        self.assertEqual(self.application.status, VendorApplication.Status.APPROVED)
+        self.assertIsNotNone(self.application.created_vendor)
+
+        vendor = self.application.created_vendor
+        self.assertEqual(vendor.role, User.Role.VENDOR)
+        self.assertTrue(vendor.must_change_password)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_reject_records_reason_without_creating_account(self):
+        self.login_as_admin()
+        resp = self.client.post(reverse("admin-vendor-application-reject", args=[self.application.id]), {"admin_notes": "CNIC mismatch"})
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.application.refresh_from_db()
+        self.assertEqual(self.application.status, VendorApplication.Status.REJECTED)
+        self.assertEqual(self.application.admin_notes, "CNIC mismatch")
+        self.assertIsNone(self.application.created_vendor)
+
+    def test_cannot_decide_twice(self):
+        self.login_as_admin()
+        self.client.post(reverse("admin-vendor-application-approve", args=[self.application.id]))
+        second = self.client.post(reverse("admin-vendor-application-reject", args=[self.application.id]))
+        self.assertEqual(second.status_code, 400)
+
+    def test_non_admin_cannot_review(self):
+        vendor = make_customer(email="vendor@example.com", role=User.Role.VENDOR)
+        self.client.force_authenticate(user=vendor)
+        resp = self.client.get(reverse("admin-vendor-application-list"))
+        self.assertEqual(resp.status_code, 403)
+
+
+class AdminVendorListTests(_ClearsCacheMixin, APITestCase):
+    def setUp(self):
+        self.admin = make_admin()
+        self.vendor = make_customer(email="vendor@example.com", role=User.Role.VENDOR, first_name="Ali", last_name="Khan")
+
+    def login_as_admin(self):
+        self.client.force_authenticate(user=self.admin)
+
+    def test_admin_can_list_vendors(self):
+        self.login_as_admin()
+        resp = self.client.get(reverse("admin-vendor-list"))
+        self.assertEqual(resp.status_code, 200)
+        businesses = [v["business_name"] for v in resp.data]
+        self.assertIn("Ali Khan", businesses)
+
+    def test_admin_can_suspend_and_reactivate_vendor(self):
+        self.login_as_admin()
+        resp = self.client.post(reverse("admin-vendor-suspend", args=[self.vendor.id]), {"action": "suspend"})
+        self.assertEqual(resp.status_code, 200)
+        self.vendor.refresh_from_db()
+        self.assertFalse(self.vendor.is_active)
+
+        resp = self.client.post(reverse("admin-vendor-suspend", args=[self.vendor.id]), {"action": "reactivate"})
+        self.assertEqual(resp.status_code, 200)
+        self.vendor.refresh_from_db()
+        self.assertTrue(self.vendor.is_active)
+
+    def test_suspended_vendor_cannot_log_in(self):
+        self.vendor.set_password(VALID_PASSWORD)
+        self.vendor.save()
+        self.login_as_admin()
+        self.client.post(reverse("admin-vendor-suspend", args=[self.vendor.id]), {"action": "suspend"})
+        self.client.force_authenticate(user=None)
+
+        resp = self.client.post(reverse("auth-vendor-login"), {"email": "vendor@example.com", "password": VALID_PASSWORD})
+        self.assertNotEqual(resp.status_code, 200)
+
+    def test_non_admin_cannot_list_vendors(self):
+        self.client.force_authenticate(user=self.vendor)
+        resp = self.client.get(reverse("admin-vendor-list"))
+        self.assertEqual(resp.status_code, 403)

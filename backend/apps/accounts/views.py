@@ -460,6 +460,9 @@ class AdminVendorListView(generics.ListAPIView):
         return qs
 
     def list(self, request, *args, **kwargs):
+        from django.db.models import Avg
+
+        from apps.feedback.models import Feedback
         from apps.orders.models import OrderItem
         from apps.products.models import Product
 
@@ -470,6 +473,7 @@ class AdminVendorListView(generics.ListAPIView):
             gross_sales = sum((i.line_total for i in items), 0)
             net_paid_out = sum((i.net_to_vendor for i in items), 0)
             commission_earned = gross_sales - net_paid_out
+            rating = Feedback.objects.filter(order_item__vendor=vendor).aggregate(avg=Avg("overall_rating"))["avg"]
             results.append({
                 "id": vendor.id,
                 "business_name": f"{vendor.first_name} {vendor.last_name}".strip() or vendor.username,
@@ -478,6 +482,7 @@ class AdminVendorListView(generics.ListAPIView):
                 "gross_sales": gross_sales,
                 "commission_earned": commission_earned,
                 "net_paid_out": net_paid_out,
+                "rating": round(rating, 1) if rating is not None else None,
                 "is_active": vendor.is_active,
                 "must_change_password": vendor.must_change_password,
             })

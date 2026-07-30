@@ -20,5 +20,7 @@ admin_router.register("stock-requests", views.AdminStockChangeRequestViewSet, ba
 urlpatterns = [
     path("", include(router.urls)),
     path("vendor/", include(vendor_router.urls)),
+    path("admin/commission-rates/", views.AdminCommissionRateView.as_view(), name="admin-commission-rates"),
+    path("admin/pricing/", views.AdminPricingView.as_view(), name="admin-pricing"),
     path("admin/", include(admin_router.urls)),
 ]

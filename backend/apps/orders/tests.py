@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.core import mail
 from django.urls import reverse
 from rest_framework.test import APITestCase
 
@@ -378,3 +379,132 @@ class AdminDashboardTests(OrdersTestBase):
         self.login_as(self.admin)
         resp = self.client.get(reverse("admin-dashboard"))
         self.assertEqual(resp.data["pending_vendors"], 1)
+
+
+class PlatformSettingsIntegrationTests(OrdersTestBase):
+    """§6.7: free-shipping threshold and payment gateway toggles actually affect checkout."""
+
+    def test_free_shipping_threshold_zeroes_out_shipping_fee(self):
+        from apps.core.models import PlatformSettings
+
+        settings_obj = PlatformSettings.get_solo()
+        settings_obj.free_shipping_threshold = Decimal("1000.00")
+        settings_obj.save()
+
+        product = self.make_product(base_price=Decimal("1000.00"))  # selling_price 1100, clears threshold
+        resp = self.client.post(
+            reverse("order-create"),
+            {**VALID_SHIPPING, "items": [{"product": product.id, "quantity": 1}]},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201, resp.data)
+        self.assertEqual(Decimal(resp.data["shipping_fee"]), Decimal("0.00"))
+
+    def test_below_threshold_still_charges_shipping(self):
+        from apps.core.models import PlatformSettings
+
+        settings_obj = PlatformSettings.get_solo()
+        settings_obj.free_shipping_threshold = Decimal("100000.00")
+        settings_obj.save()
+
+        product = self.make_product(base_price=Decimal("1000.00"))
+        resp = self.client.post(
+            reverse("order-create"),
+            {**VALID_SHIPPING, "items": [{"product": product.id, "quantity": 1}]},
+            format="json",
+        )
+        self.assertEqual(Decimal(resp.data["shipping_fee"]), Decimal("250.00"))
+
+    def test_disabled_cod_rejects_checkout(self):
+        from apps.core.models import PlatformSettings
+
+        settings_obj = PlatformSettings.get_solo()
+        settings_obj.cod_enabled = False
+        settings_obj.save()
+
+        product = self.make_product()
+        resp = self.client.post(
+            reverse("order-create"),
+            {**VALID_SHIPPING, "items": [{"product": product.id, "quantity": 1}]},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_disabled_wallet_provider_rejects_checkout(self):
+        from apps.core.models import PlatformSettings
+
+        settings_obj = PlatformSettings.get_solo()
+        settings_obj.jazzcash_enabled = False
+        settings_obj.easypaisa_enabled = True
+        settings_obj.save()
+
+        product = self.make_product()
+        resp = self.client.post(
+            reverse("order-create"),
+            {**VALID_SHIPPING, "payment_method": "wallet", "wallet_provider": "JazzCash", "items": [{"product": product.id, "quantity": 1}]},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_enabled_wallet_provider_accepted(self):
+        from apps.core.models import PlatformSettings
+
+        settings_obj = PlatformSettings.get_solo()
+        settings_obj.easypaisa_enabled = True
+        settings_obj.save()
+
+        product = self.make_product()
+        resp = self.client.post(
+            reverse("order-create"),
+            {**VALID_SHIPPING, "payment_method": "wallet", "wallet_provider": "EasyPaisa", "items": [{"product": product.id, "quantity": 1}]},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201, resp.data)
+
+
+class LowStockAlertTests(OrdersTestBase):
+    """§7.2: crossing into low stock sends exactly one admin alert email."""
+
+    def test_alert_sent_when_order_crosses_into_low_stock(self):
+        product = self.make_product(stock_quantity=6)  # order of 1 -> 5, at the threshold
+        resp = self.client.post(
+            reverse("order-create"),
+            {**VALID_SHIPPING, "items": [{"product": product.id, "quantity": 1}]},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201, resp.data)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("Low stock", mail.outbox[0].subject)
+
+    def test_no_alert_when_stock_stays_comfortable(self):
+        product = self.make_product(stock_quantity=20)
+        self.client.post(
+            reverse("order-create"),
+            {**VALID_SHIPPING, "items": [{"product": product.id, "quantity": 1}]},
+            format="json",
+        )
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_no_repeat_alert_once_already_low(self):
+        product = self.make_product(stock_quantity=4)  # already below threshold
+        self.client.post(
+            reverse("order-create"),
+            {**VALID_SHIPPING, "items": [{"product": product.id, "quantity": 1}]},
+            format="json",
+        )
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_no_alert_when_notify_low_stock_disabled(self):
+        from apps.core.models import PlatformSettings
+
+        settings_obj = PlatformSettings.get_solo()
+        settings_obj.notify_low_stock = False
+        settings_obj.save()
+
+        product = self.make_product(stock_quantity=6)
+        self.client.post(
+            reverse("order-create"),
+            {**VALID_SHIPPING, "items": [{"product": product.id, "quantity": 1}]},
+            format="json",
+        )
+        self.assertEqual(len(mail.outbox), 0)

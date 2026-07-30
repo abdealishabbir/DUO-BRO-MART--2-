@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams, Navigate } from "react-router-dom";
-import { Minus, Plus, ShoppingCart, Zap, Store, ChevronLeft, ChevronRight } from "lucide-react";
+import { Minus, Plus, ShoppingCart, Zap, Store, ChevronLeft, ChevronRight, Star } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { useCart } from "../../cart/CartContext.jsx";
 import { formatPKR } from "../../lib/currency.js";
@@ -148,6 +148,14 @@ export default function ProductDetail() {
         <div>
           <p className="text-sm font-medium text-brand">{product.category_name}</p>
           <h1 className="mt-1 text-2xl font-bold text-gray-900">{product.name}</h1>
+          {product.rating_count > 0 ? (
+            <p className="mt-1 flex items-center gap-1 text-sm text-gray-600">
+              <Star className="h-4 w-4 fill-gold text-gold" /> {product.average_rating}
+              <span className="text-gray-400">({product.rating_count} review{product.rating_count !== 1 && "s"})</span>
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-gray-400">No reviews yet</p>
+          )}
 
           <div className="mt-4 flex items-baseline gap-2">
             <span className="text-3xl font-bold text-gray-900">{formatPKR(product.price)}</span>
@@ -163,12 +171,12 @@ export default function ProductDetail() {
           </div>
 
           <p className="mt-4 text-sm text-gray-500">
-            {product.stock_quantity > 10 ? (
-              <span className="text-green-700">In stock ({product.stock_quantity} available)</span>
-            ) : product.stock_quantity > 0 ? (
+            {product.stock_quantity === 0 ? (
+              <span className="text-red-600">Out of stock</span>
+            ) : product.is_low_stock ? (
               <span className="text-amber-700">Only {product.stock_quantity} left</span>
             ) : (
-              <span className="text-red-600">Out of stock</span>
+              <span className="text-green-700">In stock ({product.stock_quantity} available)</span>
             )}
           </p>
 

@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework.test import APITestCase
 
-from .models import Category, Product, ProductChangeRequest, StockChangeRequest
+from .models import Category, CommissionRate, Product, ProductChangeRequest, StockChangeRequest
 
 User = get_user_model()
 
@@ -501,3 +501,105 @@ class PublicCatalogTests(ProductsTestBase):
         resp = self.client.get(reverse("product-list"), {"category": f"{cat_a.slug},{cat_b.slug}"})
         names = sorted(p["name"] for p in resp.data["results"])
         self.assertEqual(names, ["InA", "InB"])
+
+
+class CommissionRateTests(ProductsTestBase):
+    """§6.6: per-category commission rates, admin-editable, falling back to the provisional flat rate."""
+
+    def test_uncustomized_category_falls_back_to_provisional_rate(self):
+        product = self.make_product(status=Product.Status.APPROVED, base_price=Decimal("1000.00"))
+        self.assertEqual(product.commission_rate_percent, Decimal("10.00"))
+        self.assertEqual(product.selling_price, Decimal("1100.00"))
+
+    def test_admin_can_list_rates_for_all_categories(self):
+        extra = Category.objects.create(name="Extra Category")
+        self.login_as(self.admin)
+        resp = self.client.get(reverse("admin-commission-rates"))
+        self.assertEqual(resp.status_code, 200)
+        category_ids = {row["category_id"] for row in resp.data}
+        self.assertIn(self.category.id, category_ids)
+        self.assertIn(extra.id, category_ids)
+        self.assertTrue(all(not row["is_custom"] for row in resp.data))
+
+    def test_admin_can_set_custom_rate(self):
+        self.login_as(self.admin)
+        resp = self.client.patch(
+            reverse("admin-commission-rates"),
+            {"rates": [{"category_id": self.category.id, "rate_percent": "15.00"}]},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200, resp.data)
+        row = next(r for r in resp.data if r["category_id"] == self.category.id)
+        self.assertEqual(Decimal(row["rate_percent"]), Decimal("15.00"))
+        self.assertTrue(row["is_custom"])
+
+    def test_custom_rate_changes_product_selling_price(self):
+        product = self.make_product(status=Product.Status.APPROVED, base_price=Decimal("1000.00"))
+        CommissionRate.objects.create(category=self.category, rate_percent=Decimal("20.00"))
+        product.refresh_from_db()
+        self.assertEqual(product.commission_rate_percent, Decimal("20.00"))
+        self.assertEqual(product.selling_price, Decimal("1200.00"))
+
+    def test_vendor_cannot_set_rates(self):
+        self.login_as(self.vendor)
+        resp = self.client.patch(
+            reverse("admin-commission-rates"),
+            {"rates": [{"category_id": self.category.id, "rate_percent": "50.00"}]},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 403)
+
+    def test_invalid_category_id_rejected(self):
+        self.login_as(self.admin)
+        resp = self.client.patch(
+            reverse("admin-commission-rates"),
+            {"rates": [{"category_id": 999999, "rate_percent": "10.00"}]},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 404)
+
+
+class AdminPricingViewTests(ProductsTestBase):
+    def test_admin_can_view_pricing_breakdown(self):
+        self.make_product(status=Product.Status.APPROVED, name="Priced Item", base_price=Decimal("1000.00"))
+        self.login_as(self.admin)
+        resp = self.client.get(reverse("admin-pricing"))
+        self.assertEqual(resp.status_code, 200)
+        results = resp.data["results"] if "results" in resp.data else resp.data
+        row = next(r for r in results if r["name"] == "Priced Item")
+        self.assertEqual(Decimal(row["sale_price"]), Decimal("1100.00"))
+        self.assertEqual(Decimal(row["commission_amount"]), Decimal("100.00"))
+
+    def test_pricing_search_by_name(self):
+        self.make_product(status=Product.Status.APPROVED, name="Findable Widget")
+        self.make_product(status=Product.Status.APPROVED, name="Other Thing")
+        self.login_as(self.admin)
+        resp = self.client.get(reverse("admin-pricing"), {"search": "findable"})
+        results = resp.data["results"] if "results" in resp.data else resp.data
+        self.assertEqual(len(results), 1)
+
+    def test_vendor_cannot_view_pricing(self):
+        self.login_as(self.vendor)
+        resp = self.client.get(reverse("admin-pricing"))
+        self.assertEqual(resp.status_code, 403)
+
+
+class LowStockTests(ProductsTestBase):
+    """§7.2: low-stock threshold and scarcity-messaging flag."""
+
+    def test_is_low_stock_true_at_threshold(self):
+        product = self.make_product(stock_quantity=5)
+        self.assertTrue(product.is_low_stock)
+
+    def test_is_low_stock_false_above_threshold(self):
+        product = self.make_product(stock_quantity=6)
+        self.assertFalse(product.is_low_stock)
+
+    def test_is_low_stock_false_when_out_of_stock(self):
+        product = self.make_product(stock_quantity=0)
+        self.assertFalse(product.is_low_stock)
+
+    def test_is_low_stock_exposed_on_public_catalog(self):
+        self.make_product(status=Product.Status.APPROVED, stock_quantity=3)
+        resp = self.client.get(reverse("product-list"))
+        self.assertTrue(resp.data["results"][0]["is_low_stock"])

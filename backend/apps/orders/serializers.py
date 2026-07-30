@@ -4,6 +4,7 @@ from django.db import transaction
 from rest_framework import serializers
 
 from apps.products.models import Product
+from apps.products.utils import maybe_send_low_stock_alert
 
 from .models import DELIVERY_ESTIMATE_DAYS, DELIVERY_FEES, Order, OrderItem
 
@@ -114,6 +115,30 @@ class OrderCreateSerializer(serializers.Serializer):
             raise serializers.ValidationError({"shipping_landmark": "Required for rural delivery."})
         if data["payment_method"] == Order.PaymentMethod.WALLET and not data.get("wallet_provider"):
             raise serializers.ValidationError({"wallet_provider": "Required for wallet payment."})
+
+        # §6.7: admin can disable a payment gateway from Settings — enforce
+        # it here too, not just by hiding the option in the UI, in case a
+        # stale client still submits it.
+        from apps.core.models import PlatformSettings
+
+        platform_settings = PlatformSettings.get_solo()
+        method = data["payment_method"]
+        gateway_enabled = {
+            Order.PaymentMethod.COD: platform_settings.cod_enabled,
+            Order.PaymentMethod.CARD: platform_settings.card_enabled,
+            Order.PaymentMethod.WALLET: (
+                platform_settings.jazzcash_enabled or platform_settings.easypaisa_enabled
+            ) if method == Order.PaymentMethod.WALLET else True,
+        }
+        if not gateway_enabled.get(method, True):
+            raise serializers.ValidationError({"payment_method": "This payment method isn't currently available."})
+        if method == Order.PaymentMethod.WALLET:
+            provider = (data.get("wallet_provider") or "").lower()
+            if "jazzcash" in provider and not platform_settings.jazzcash_enabled:
+                raise serializers.ValidationError({"wallet_provider": "JazzCash isn't currently available."})
+            if "easypaisa" in provider and not platform_settings.easypaisa_enabled:
+                raise serializers.ValidationError({"wallet_provider": "EasyPaisa isn't currently available."})
+
         for line in data["items"]:
             product = line["product"]
             if product.status != Product.Status.APPROVED or not product.is_active:
@@ -138,6 +163,12 @@ class OrderCreateSerializer(serializers.Serializer):
             line_specs.append((product, line["quantity"], unit_price, product.base_price))
 
         shipping_fee = DELIVERY_FEES[validated_data["delivery_method"]]
+        # §6.7: admin-configured free-shipping threshold overrides the
+        # delivery method's normal fee once the cart clears it.
+        from apps.core.models import PlatformSettings
+
+        if subtotal >= PlatformSettings.get_solo().free_shipping_threshold:
+            shipping_fee = Decimal("0.00")
         total = subtotal + shipping_fee
 
         billing_same = validated_data["billing_same_as_shipping"]
@@ -181,7 +212,9 @@ class OrderCreateSerializer(serializers.Serializer):
                 unit_price=unit_price,
                 unit_base_price=base_price,
             )
+            stock_before = product.stock_quantity
             product.stock_quantity -= quantity
             product.save(update_fields=["stock_quantity"])
+            maybe_send_low_stock_alert(product, stock_before)
 
         return order

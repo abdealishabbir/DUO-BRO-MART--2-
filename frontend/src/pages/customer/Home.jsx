@@ -190,10 +190,14 @@ function FlashDeals({ items }) {
                 <span className="font-bold text-red-600">{formatPKR(item.price)}</span>{" "}
                 {item.original_price && <span className="text-xs text-gray-400 line-through">{formatPKR(item.original_price)}</span>}
               </p>
-              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
-                <div className="h-full w-4/5 rounded-full bg-red-500" />
-              </div>
-              <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-gray-400">Almost sold out</p>
+              {item.is_low_stock && (
+                <>
+                  <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+                    <div className="h-full w-4/5 rounded-full bg-red-500" />
+                  </div>
+                  <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-gray-400">Only {item.stock_quantity} left</p>
+                </>
+              )}
               <button
                 onClick={(e) => handleAdd(e, item)}
                 className="mt-2 w-full rounded-md border border-gray-300 py-1.5 text-xs font-semibold text-gray-700 hover:border-brand hover:text-brand"

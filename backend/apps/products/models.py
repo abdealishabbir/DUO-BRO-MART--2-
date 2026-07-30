@@ -12,16 +12,19 @@ Business rules implemented here:
     applied directly to the Product — it's filed as a ProductChangeRequest
     and only takes effect once an admin approves it (§6.3). This mirrors
     the Product approval pattern rather than introducing a new one.
-  - Stock **decrements** automatically at order time with no approval
-    (real-time, once a real Order model exists — not wired yet since
-    Order is still Phase 4's mock/localStorage system). Stock
-    **increases** always go through a StockChangeRequest an admin must
-    approve first, so a vendor can't fake availability (§6.5).
+  - Stock **decrements** automatically and atomically at order time
+    (apps.orders.serializers.OrderCreateSerializer — real Order backend,
+    Phase 6). Stock **increases** always go through a StockChangeRequest
+    an admin must approve first, so a vendor can't fake availability (§6.5).
   - Selling price shown to customers is the vendor's base_price plus
-    platform commission. The commission *rate itself* is an admin-editable
-    platform setting that belongs to §7.7 (Admin Settings, Phase 6) — not
-    modeled here yet, so `selling_price` uses a provisional flat rate
-    until that Admin Settings page exists.
+    platform commission. The commission rate is admin-editable per
+    category via CommissionRate (§6.6); a category with no override yet
+    falls back to PROVISIONAL_COMMISSION_RATE below.
+  - §7.2: a product at or below LOW_STOCK_THRESHOLD units is "low stock"
+    — the storefront shows scarcity messaging ("Only N left") instead of
+    a generic in-stock badge, and crossing the threshold triggers a
+    low-stock admin email (apps.orders.serializers, gated on
+    PlatformSettings.notify_low_stock — see §6.7).
 """
 
 from decimal import Decimal
@@ -31,10 +34,13 @@ from django.db import models
 from django.utils import timezone
 from django.utils.text import slugify
 
-# Provisional flat platform commission until the real, admin-editable rate
-# lands with Admin Settings (§7.7, Phase 6). Kept as one constant so it's
-# a one-line change (or model field) later rather than scattered logic.
+# Provisional flat platform commission until a category gets its own
+# CommissionRate row (§6.6) — see Product.commission_rate_percent.
 PROVISIONAL_COMMISSION_RATE = Decimal("0.10")
+
+# §7.2: at or below this many units, a product is "low stock" — drives
+# storefront scarcity messaging and the low-stock admin alert.
+LOW_STOCK_THRESHOLD = 5
 
 
 class Category(models.Model):
@@ -59,6 +65,23 @@ class Category(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class CommissionRate(models.Model):
+    """
+    §6.6: admin-editable per-category commission, replacing the flat
+    PROVISIONAL_COMMISSION_RATE. A category with no CommissionRate row
+    yet falls back to that provisional rate (see
+    Product.commission_rate_percent) — so nothing breaks for a category
+    the admin hasn't explicitly configured.
+    """
+
+    category = models.OneToOneField(Category, on_delete=models.CASCADE, related_name="commission_rate")
+    rate_percent = models.DecimalField(max_digits=5, decimal_places=2, help_text="e.g. 10.00 for 10%.")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.category.name}: {self.rate_percent}%"
 
 
 class Product(models.Model):
@@ -123,9 +146,18 @@ class Product(models.Model):
         return f"{self.name} ({self.vendor})"
 
     @property
+    def commission_rate_percent(self):
+        """§6.6: this category's admin-set rate, or the provisional flat rate if none has been set yet."""
+        try:
+            return self.category.commission_rate.rate_percent
+        except CommissionRate.DoesNotExist:
+            return PROVISIONAL_COMMISSION_RATE * Decimal("100")
+
+    @property
     def selling_price(self):
-        """Vendor base price + provisional platform commission (§7.7 will make this admin-editable)."""
-        return (self.base_price * (Decimal("1.00") + PROVISIONAL_COMMISSION_RATE)).quantize(Decimal("0.01"))
+        """Vendor base price + this category's platform commission rate (§6.6)."""
+        rate = self.commission_rate_percent / Decimal("100")
+        return (self.base_price * (Decimal("1.00") + rate)).quantize(Decimal("0.01"))
 
     @property
     def is_deal_active(self):
@@ -135,6 +167,27 @@ class Product(models.Model):
             now = timezone.now()
             return self.deal_starts_at <= now <= self.deal_ends_at
         return True  # a permanent (non-time-boxed) discount
+
+    @property
+    def is_low_stock(self):
+        """§7.2: in stock but scarce enough to warrant scarcity messaging — not the same as out of stock."""
+        return 0 < self.stock_quantity <= LOW_STOCK_THRESHOLD
+
+    @property
+    def average_rating(self):
+        """§7.3: real customer rating, average of quality_rating across delivered-order Feedback. None until the first review."""
+        from django.db.models import Avg
+
+        from apps.feedback.models import Feedback
+
+        result = Feedback.objects.filter(order_item__product=self).aggregate(avg=Avg("quality_rating"))["avg"]
+        return round(result, 1) if result is not None else None
+
+    @property
+    def rating_count(self):
+        from apps.feedback.models import Feedback
+
+        return Feedback.objects.filter(order_item__product=self).count()
 
     @property
     def discounted_price(self):

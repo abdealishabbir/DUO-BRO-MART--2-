@@ -165,5 +165,5 @@ class OrderItem(models.Model):
 
     @property
     def commission_amount(self):
-        """Platform's cut — sale price minus what goes to the vendor. Uses the flat provisional rate (§7.7 will make per-category rates admin-editable — see apps/products/models.py)."""
+        """Platform's cut — sale price minus what goes to the vendor. Reflects whatever per-category commission rate (§6.6, apps/products/models.CommissionRate) was in effect at order time, since unit_price is snapshotted from Product.discounted_price."""
         return (self.line_total - self.net_to_vendor).quantize(Decimal("0.01"))

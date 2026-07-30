@@ -24,22 +24,28 @@ implements. Endpoint map:
            GET  /api/products/admin/stock-requests/?status=pending
            POST /api/products/admin/stock-requests/<id>/approve/
            POST /api/products/admin/stock-requests/<id>/reject/
+           GET   /api/products/admin/commission-rates/          (§6.6)
+           PATCH /api/products/admin/commission-rates/
+           GET   /api/products/admin/pricing/?search=&category=  (§6.6 Pricing Manager)
 """
 
 from django.db.models import Q
 from django.utils import timezone
-from rest_framework import permissions, status, viewsets
+from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
 from apps.accounts.permissions import IsAdminRole, IsVendorRole, ReadOnlyOrIsAdmin
 
-from .models import Category, Product, ProductChangeRequest, ProductImage, StockChangeRequest
+from .models import Category, CommissionRate, PROVISIONAL_COMMISSION_RATE, Product, ProductChangeRequest, ProductImage, StockChangeRequest
 from .serializers import (
+    AdminPricingSerializer,
     AdminProductUpdateSerializer,
     CategorySerializer,
+    CommissionRateSerializer,
     ProductChangeRequestCreateSerializer,
     ProductChangeRequestSerializer,
     ProductCreateSerializer,
@@ -387,3 +393,53 @@ class AdminStockChangeRequestViewSet(ReadOnlyModelViewSet):
         stock_request.admin_notes = request.data.get("admin_notes", stock_request.admin_notes)
         stock_request.save(update_fields=["status", "decided_at", "admin_notes"])
         return Response(StockChangeRequestSerializer(stock_request, context={"request": request}).data)
+
+
+class AdminCommissionRateView(APIView):
+    """§6.6: per-category commission rates — one row per category, falling back to the provisional flat rate until overridden."""
+
+    permission_classes = [permissions.IsAuthenticated, IsAdminRole]
+
+    def get(self, request):
+        rates_by_category = {r.category_id: r.rate_percent for r in CommissionRate.objects.all()}
+        rows = [
+            {
+                "category_id": category.id,
+                "category_name": category.name,
+                "rate_percent": rates_by_category.get(category.id, PROVISIONAL_COMMISSION_RATE * 100),
+                "is_custom": category.id in rates_by_category,
+            }
+            for category in Category.objects.all()
+        ]
+        return Response(CommissionRateSerializer(rows, many=True).data)
+
+    def patch(self, request):
+        """Body: {"rates": [{"category_id": 1, "rate_percent": "12.00"}, ...]} — saves every row in one call, matching the reference UI's single "Save Changes" button."""
+        updates = request.data.get("rates", [])
+        for entry in updates:
+            try:
+                category_id = int(entry["category_id"])
+                rate_percent = entry["rate_percent"]
+            except (KeyError, ValueError, TypeError):
+                return Response({"detail": "Each rate needs category_id and rate_percent."}, status=status.HTTP_400_BAD_REQUEST)
+            if not Category.objects.filter(id=category_id).exists():
+                return Response({"detail": f"Category {category_id} not found."}, status=status.HTTP_404_NOT_FOUND)
+            CommissionRate.objects.update_or_create(category_id=category_id, defaults={"rate_percent": rate_percent})
+        return self.get(request)
+
+
+class AdminPricingView(generics.ListAPIView):
+    """§6.6 Pricing Manager: read-only sale-price/commission/vendor-receives breakdown across the catalog."""
+
+    permission_classes = [permissions.IsAuthenticated, IsAdminRole]
+    serializer_class = AdminPricingSerializer
+
+    def get_queryset(self):
+        qs = Product.objects.select_related("vendor", "category").all()
+        category = self.request.query_params.get("category")
+        if category:
+            qs = qs.filter(category_id=category)
+        search = self.request.query_params.get("search")
+        if search:
+            qs = qs.filter(Q(name__icontains=search) | Q(vendor__username__icontains=search))
+        return qs

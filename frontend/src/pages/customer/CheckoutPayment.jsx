@@ -8,19 +8,28 @@ import OrderSummarySidebar from "../../components/OrderSummarySidebar.jsx";
 import FormField, { inputClass } from "../../components/FormField.jsx";
 import { PROVINCES, citiesFor } from "../../lib/pkLocations.js";
 import { DELIVERY_METHODS } from "./CheckoutShipping.jsx";
+import { api } from "../../lib/api.js";
 
 // PRD §5.4: Cash on Delivery is the default/primary payment method for
 // the Pakistani market — selected first here, unlike the card-first
-// reference layout.
-const METHODS = [
-  { id: "cod", label: "Cash on Delivery", icon: Truck },
-  { id: "card", label: "Credit/Debit Card", icon: CreditCard },
-  { id: "wallet", label: "Mobile Wallet", icon: Wallet },
+// reference layout. Filtered against §6.7's admin-configured gateway
+// toggles once /settings/public/ resolves (see useEffect below) — a
+// method disabled in Admin Settings simply doesn't appear here, rather
+// than being shown and then rejected at checkout.
+const ALL_METHODS = [
+  { id: "cod", label: "Cash on Delivery", icon: Truck, settingKey: "cod_enabled" },
+  { id: "card", label: "Credit/Debit Card", icon: CreditCard, settingKey: "card_enabled" },
+  { id: "wallet", label: "Mobile Wallet", icon: Wallet, settingKey: null },
 ];
 
-// PRD §5.4: three named wallets, selected individually (gateway
-// redirect/OTP flow isn't live yet — this is the selection UI only).
-const WALLETS = ["NayaPay", "Easypaisa", "JazzCash"];
+// NayaPay has no dedicated admin toggle (see PlatformSettings) — only
+// JazzCash/EasyPaisa are individually gateable, so NayaPay always shows
+// whenever the Wallet method itself is available.
+const ALL_WALLETS = [
+  { name: "NayaPay", settingKey: null },
+  { name: "Easypaisa", settingKey: "easypaisa_enabled" },
+  { name: "JazzCash", settingKey: "jazzcash_enabled" },
+];
 
 const DELIVERY_PRICE = Object.fromEntries(DELIVERY_METHODS.map((m) => [m.id, m.price]));
 
@@ -32,10 +41,18 @@ export default function CheckoutPayment() {
   const navigate = useNavigate();
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState("");
-  const [selectedWallet, setSelectedWallet] = useState(WALLETS[0]);
+  const [platformSettings, setPlatformSettings] = useState(null);
+  const [selectedWallet, setSelectedWallet] = useState("NayaPay");
   const [saveCard, setSaveCard] = useState(false);
   const [billingSameAsShipping, setBillingSameAsShipping] = useState(true);
   const [billingForm, setBillingForm] = useState(EMPTY_BILLING);
+
+  useEffect(() => {
+    api.get("/settings/public/").then(setPlatformSettings);
+  }, []);
+
+  const METHODS = ALL_METHODS.filter((m) => !platformSettings || !m.settingKey || platformSettings[m.settingKey]);
+  const WALLETS = ALL_WALLETS.filter((w) => !platformSettings || !w.settingKey || platformSettings[w.settingKey]).map((w) => w.name);
 
   useEffect(() => {
     if (lines.length === 0) navigate("/cart", { replace: true });

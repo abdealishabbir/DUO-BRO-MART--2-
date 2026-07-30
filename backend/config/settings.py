@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "apps.banners",
     "apps.products",
     "apps.orders",
+    "apps.feedback",
 ]
 
 MIDDLEWARE = [

@@ -1,13 +1,27 @@
 from django.utils import timezone
 from rest_framework import serializers
 
-from .models import Category, Product, ProductChangeRequest, ProductImage, StockChangeRequest
+from .models import Category, CommissionRate, Product, ProductChangeRequest, ProductImage, StockChangeRequest
 
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = ["id", "name", "slug"]
+
+
+class CommissionRateSerializer(serializers.Serializer):
+    """
+    §6.6: one row per category — not a ModelSerializer since a category
+    without a CommissionRate override yet still needs to show up (with
+    the provisional fallback rate), which a plain ModelSerializer over
+    CommissionRate.objects can't do on its own.
+    """
+
+    category_id = serializers.IntegerField()
+    category_name = serializers.CharField()
+    rate_percent = serializers.DecimalField(max_digits=5, decimal_places=2)
+    is_custom = serializers.BooleanField(help_text="False = still using the provisional fallback rate.")
 
 
 class ProductImageSerializer(serializers.ModelSerializer):
@@ -20,10 +34,9 @@ class ProductImageSerializer(serializers.ModelSerializer):
 class PublicProductListSerializer(serializers.ModelSerializer):
     """
     Storefront catalog (Home/Shop) — approved+active products only (see
-    PublicProductViewSet). No rating/review fields: Feedback/reviews
-    aren't modeled yet (that's the Phase 7/8 Feedback subsystem), so the
-    storefront simply doesn't show a rating until that exists, rather
-    than faking one.
+    PublicProductViewSet). average_rating/rating_count are real now
+    (§7.3 Feedback) — None/0 until a product has its first delivered-order
+    review, which the storefront should treat as "not yet rated", not "0 stars".
     """
 
     category_name = serializers.CharField(source="category.name", read_only=True)
@@ -32,13 +45,15 @@ class PublicProductListSerializer(serializers.ModelSerializer):
     price = serializers.DecimalField(source="discounted_price", max_digits=10, decimal_places=2, read_only=True)
     original_price = serializers.SerializerMethodField()
     images = serializers.SerializerMethodField()
+    average_rating = serializers.FloatField(read_only=True)
+    rating_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Product
         fields = [
             "id", "slug", "name", "brand", "category_name", "category_slug",
-            "vendor_name", "price", "original_price", "is_deal_active",
-            "stock_quantity", "images",
+            "vendor_name", "price", "original_price", "is_deal_active", "is_low_stock",
+            "average_rating", "rating_count", "stock_quantity", "images",
         ]
         read_only_fields = fields
 
@@ -62,6 +77,30 @@ class PublicProductDetailSerializer(PublicProductListSerializer):
     class Meta(PublicProductListSerializer.Meta):
         fields = PublicProductListSerializer.Meta.fields + ["description", "attributes", "vendor"]
         read_only_fields = fields
+
+
+class AdminPricingSerializer(serializers.ModelSerializer):
+    """§6.6 Pricing Manager: read-only breakdown of sale price -> commission -> vendor receives, per product."""
+
+    vendor_name = serializers.SerializerMethodField()
+    category_name = serializers.CharField(source="category.name", read_only=True)
+    sale_price = serializers.DecimalField(source="selling_price", max_digits=10, decimal_places=2, read_only=True)
+    commission_rate_percent = serializers.DecimalField(max_digits=5, decimal_places=2, read_only=True)
+    commission_amount = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Product
+        fields = [
+            "id", "name", "vendor_name", "category_name", "sale_price", "commission_rate_percent",
+            "commission_amount", "base_price", "stock_quantity", "status",
+        ]
+        read_only_fields = fields
+
+    def get_vendor_name(self, obj):
+        return f"{obj.vendor.first_name} {obj.vendor.last_name}".strip() or obj.vendor.username
+
+    def get_commission_amount(self, obj):
+        return obj.selling_price - obj.base_price
 
 
 class ProductCreateSerializer(serializers.ModelSerializer):
@@ -101,6 +140,7 @@ class ProductSerializer(serializers.ModelSerializer):
     selling_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     discounted_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     is_deal_active = serializers.BooleanField(read_only=True)
+    is_low_stock = serializers.BooleanField(read_only=True)
     images = ProductImageSerializer(many=True, read_only=True)
 
     class Meta:
@@ -108,7 +148,7 @@ class ProductSerializer(serializers.ModelSerializer):
         fields = [
             "id", "vendor", "vendor_name", "category", "category_name", "name", "slug", "sku",
             "description", "brand", "base_price", "selling_price", "discounted_price",
-            "active_discount_percent", "deal_starts_at", "deal_ends_at", "is_deal_active",
+            "active_discount_percent", "deal_starts_at", "deal_ends_at", "is_deal_active", "is_low_stock",
             "bogo_eligible", "gift_card_eligible", "stock_quantity", "is_active",
             "attributes", "status", "admin_notes", "images",
             "created_at", "updated_at", "submitted_at", "decided_at",

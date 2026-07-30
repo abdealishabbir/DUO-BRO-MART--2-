@@ -175,19 +175,19 @@ class Product(models.Model):
 
     @property
     def average_rating(self):
-        """§7.3: real customer rating, average of quality_rating across delivered-order Feedback. None until the first review."""
+        """§7.3: real customer rating — average quality_rating from Feedback on orders that included this product. None until the first review."""
         from django.db.models import Avg
 
         from apps.feedback.models import Feedback
 
-        result = Feedback.objects.filter(order_item__product=self).aggregate(avg=Avg("quality_rating"))["avg"]
+        result = Feedback.objects.filter(order__items__product=self).aggregate(avg=Avg("quality_rating"))["avg"]
         return round(result, 1) if result is not None else None
 
     @property
     def rating_count(self):
         from apps.feedback.models import Feedback
 
-        return Feedback.objects.filter(order_item__product=self).count()
+        return Feedback.objects.filter(order__items__product=self).count()
 
     @property
     def discounted_price(self):

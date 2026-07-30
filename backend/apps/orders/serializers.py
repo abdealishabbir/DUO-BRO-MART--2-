@@ -62,7 +62,7 @@ class OrderSerializer(serializers.ModelSerializer):
             "shipping_city", "shipping_address_line", "shipping_is_rural", "shipping_landmark",
             "billing_same_as_shipping", "billing_full_name", "billing_phone_number",
             "billing_province", "billing_city", "billing_address_line",
-            "subtotal", "shipping_fee", "total", "estimated_delivery_days",
+            "subtotal", "shipping_fee", "total", "estimated_delivery_days", "delivered_at",
             "commission_total", "net_to_vendor_total",
             "items", "created_at", "updated_at",
         ]

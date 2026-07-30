@@ -201,77 +201,18 @@ function SecurityTab() {
   );
 }
 
-function StarPicker({ value, onChange }) {
-  return (
-    <div className="flex gap-0.5">
-      {[1, 2, 3, 4, 5].map((n) => (
-        <button key={n} type="button" onClick={() => onChange(n)} className="p-0.5">
-          <span className={n <= value ? "text-gold" : "text-gray-300"}>★</span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function FeedbackForm({ item, onDone }) {
-  const [ratings, setRatings] = useState({ service_rating: 5, packaging_rating: 5, quality_rating: 5, overall_rating: 5 });
-  const [comment, setComment] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-
-  const submit = async () => {
-    setSubmitting(true);
-    setError("");
-    try {
-      await api.post("/feedback/", { order_item: item.id, ...ratings, comment });
-      onDone();
-    } catch (err) {
-      setError(err.data?.detail || "Could not submit feedback.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="mt-2 rounded-md border border-gray-200 bg-cream/50 p-3">
-      <p className="text-xs font-medium text-gray-700">Rate: {item.product_name}</p>
-      <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-        {[["service_rating", "Service"], ["packaging_rating", "Packaging"], ["quality_rating", "Quality"], ["overall_rating", "Overall"]].map(([field, label]) => (
-          <div key={field} className="flex items-center justify-between">
-            <span className="text-gray-600">{label}</span>
-            <StarPicker value={ratings[field]} onChange={(v) => setRatings((r) => ({ ...r, [field]: v }))} />
-          </div>
-        ))}
-      </div>
-      <textarea
-        className="mt-2 w-full rounded-md border border-gray-300 p-2 text-xs"
-        placeholder="Optional comment..."
-        value={comment}
-        onChange={(e) => setComment(e.target.value)}
-      />
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
-      <button onClick={submit} disabled={submitting} className="mt-2 rounded-md bg-brand px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-dark">
-        {submitting ? "Submitting..." : "Submit Feedback"}
-      </button>
-    </div>
-  );
-}
-
 function OrdersTab() {
   const [orders, setOrders] = useState([]);
-  const [eligible, setEligible] = useState([]);
+  const [eligibleOrderCodes, setEligibleOrderCodes] = useState(new Set());
   const [loading, setLoading] = useState(true);
-  const [openItemId, setOpenItemId] = useState(null);
 
-  const load = () => {
-    Promise.all([api.get("/orders/mine/"), api.get("/feedback/eligible-items/")]).then(([ordersData, eligibleData]) => {
+  useEffect(() => {
+    Promise.all([api.get("/orders/mine/"), api.get("/feedback/eligible-orders/")]).then(([ordersData, eligibleData]) => {
       setOrders(ordersData.results ?? ordersData);
-      setEligible(eligibleData);
+      setEligibleOrderCodes(new Set(eligibleData.map((o) => o.order_code)));
       setLoading(false);
     });
-  };
-
-  useEffect(load, []);
+  }, []);
 
   if (loading) return <p className="text-sm text-gray-500">Loading your orders...</p>;
 
@@ -302,21 +243,17 @@ function OrdersTab() {
           </p>
           <div className="mt-2 flex items-center justify-between">
             <p className="text-sm font-semibold text-gray-900">{formatPKR(order.total)}</p>
-            <Link to={`/track-order?order=${order.order_code}`} className="text-sm font-medium text-brand hover:underline">
-              Track Order
-            </Link>
-          </div>
-          {eligible.filter((i) => i.order_code === order.order_code).map((item) => (
-            <div key={item.id}>
-              {openItemId === item.id ? (
-                <FeedbackForm item={item} onDone={() => { setOpenItemId(null); load(); }} />
-              ) : (
-                <button onClick={() => setOpenItemId(item.id)} className="mt-2 text-xs font-medium text-brand hover:underline">
-                  Rate "{item.product_name}"
-                </button>
+            <div className="flex items-center gap-3">
+              {eligibleOrderCodes.has(order.order_code) && (
+                <Link to={`/order-feedback/${order.order_code}`} className="text-sm font-medium text-brand hover:underline">
+                  Confirm & Rate Order
+                </Link>
               )}
+              <Link to={`/track-order?order=${order.order_code}`} className="text-sm font-medium text-brand hover:underline">
+                Track Order
+              </Link>
             </div>
-          ))}
+          </div>
         </div>
       ))}
     </div>

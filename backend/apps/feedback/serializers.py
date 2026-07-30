@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from apps.orders.models import Order, OrderItem
+from apps.orders.models import Order
 
 from .models import Feedback
 
@@ -12,22 +12,23 @@ def _rating_field():
 class FeedbackCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Feedback
-        fields = ["order_item", "service_rating", "packaging_rating", "quality_rating", "overall_rating", "comment"]
+        fields = ["order", "delivery_rating", "packaging_rating", "quality_rating", "service_rating", "overall_rating", "review_text", "would_recommend"]
 
-    service_rating = _rating_field()
+    delivery_rating = _rating_field()
     packaging_rating = _rating_field()
     quality_rating = _rating_field()
+    service_rating = _rating_field()
     overall_rating = _rating_field()
 
-    def validate_order_item(self, order_item):
+    def validate_order(self, order):
         request = self.context["request"]
-        if order_item.order.customer_id != request.user.id:
-            raise serializers.ValidationError("This isn't one of your orders.")
-        if order_item.order.status != Order.Status.DELIVERED:
+        if order.customer_id != request.user.id:
+            raise serializers.ValidationError("This isn't your order.")
+        if order.status != Order.Status.DELIVERED:
             raise serializers.ValidationError("Feedback can only be left once an order is delivered.")
-        if Feedback.objects.filter(order_item=order_item).exists():
-            raise serializers.ValidationError("You've already left feedback for this item.")
-        return order_item
+        if Feedback.objects.filter(order=order).exists():
+            raise serializers.ValidationError("You've already left feedback for this order.")
+        return order
 
     def create(self, validated_data):
         validated_data["customer"] = self.context["request"].user
@@ -35,12 +36,12 @@ class FeedbackCreateSerializer(serializers.ModelSerializer):
 
 
 class FeedbackSerializer(serializers.ModelSerializer):
-    product_name = serializers.CharField(source="order_item.product_name", read_only=True)
+    order_code = serializers.CharField(source="order.order_code", read_only=True)
 
     class Meta:
         model = Feedback
         fields = [
-            "id", "order_item", "product_name", "service_rating", "packaging_rating",
-            "quality_rating", "overall_rating", "comment", "created_at",
+            "id", "order", "order_code", "delivery_rating", "packaging_rating", "quality_rating",
+            "service_rating", "overall_rating", "review_text", "would_recommend", "created_at",
         ]
         read_only_fields = fields

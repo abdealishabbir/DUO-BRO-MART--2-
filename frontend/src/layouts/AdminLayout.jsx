@@ -10,6 +10,7 @@ const NAV_LINKS = [
   { to: "/admin/vendors", label: "Vendors" },
   { to: "/admin/pricing", label: "Pricing & Commission" },
   { to: "/admin/settings", label: "Settings" },
+  { to: "/admin/complaints", label: "Complaints" },
 ];
 
 export default function AdminLayout() {

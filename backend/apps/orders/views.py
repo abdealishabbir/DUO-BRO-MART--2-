@@ -127,6 +127,9 @@ class AdminOrderUpdateView(APIView):
 
         for field, value in updates.items():
             setattr(order, field, value)
+        if updates.get("status") == Order.Status.DELIVERED and not order.delivered_at:
+            order.delivered_at = timezone.now()
+            updates["delivered_at"] = order.delivered_at
         if updates:
             order.save(update_fields=list(updates.keys()) + ["updated_at"])
         return Response(OrderSerializer(order, context={"request": request}).data)

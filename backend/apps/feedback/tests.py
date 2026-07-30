@@ -31,7 +31,7 @@ class FeedbackTestBase(APITestCase):
             status=Product.Status.APPROVED, is_active=True,
         )
 
-    def make_order_item(self, status=Order.Status.DELIVERED, customer=None):
+    def make_order(self, status=Order.Status.DELIVERED, customer=None):
         order = Order.objects.create(
             customer=customer if customer is not None else self.customer,
             shipping_full_name="A", shipping_phone_number="03001234567", shipping_email="a@example.com",
@@ -39,80 +39,82 @@ class FeedbackTestBase(APITestCase):
             subtotal=Decimal("1100.00"), shipping_fee=Decimal("250.00"), total=Decimal("1350.00"),
             status=status,
         )
-        return OrderItem.objects.create(
+        OrderItem.objects.create(
             order=order, product=self.product, vendor=self.vendor, product_name=self.product.name,
             product_slug=self.product.slug, quantity=1, unit_price=Decimal("1100.00"), unit_base_price=Decimal("1000.00"),
         )
+        return order
 
     def login_as_customer(self):
         self.client.force_authenticate(user=self.customer)
 
-    def valid_payload(self, order_item):
+    def valid_payload(self, order):
         return {
-            "order_item": order_item.id, "service_rating": 5, "packaging_rating": 4,
-            "quality_rating": 5, "overall_rating": 5, "comment": "Great!",
+            "order": order.id, "delivery_rating": 5, "packaging_rating": 4,
+            "quality_rating": 5, "service_rating": 5, "overall_rating": 5,
+            "review_text": "Great!", "would_recommend": True,
         }
 
 
 class FeedbackCreateTests(FeedbackTestBase):
-    def test_can_submit_feedback_on_delivered_item(self):
-        item = self.make_order_item()
+    def test_can_submit_feedback_on_delivered_order(self):
+        order = self.make_order()
         self.login_as_customer()
-        resp = self.client.post(reverse("feedback-create"), self.valid_payload(item), format="json")
+        resp = self.client.post(reverse("feedback-create"), self.valid_payload(order), format="json")
         self.assertEqual(resp.status_code, 201, resp.data)
         self.assertEqual(Feedback.objects.count(), 1)
 
     def test_cannot_submit_before_delivered(self):
-        item = self.make_order_item(status=Order.Status.PROCESSING)
+        order = self.make_order(status=Order.Status.PROCESSING)
         self.login_as_customer()
-        resp = self.client.post(reverse("feedback-create"), self.valid_payload(item), format="json")
+        resp = self.client.post(reverse("feedback-create"), self.valid_payload(order), format="json")
         self.assertEqual(resp.status_code, 400)
 
     def test_cannot_submit_twice(self):
-        item = self.make_order_item()
+        order = self.make_order()
         self.login_as_customer()
-        self.client.post(reverse("feedback-create"), self.valid_payload(item), format="json")
-        resp = self.client.post(reverse("feedback-create"), self.valid_payload(item), format="json")
+        self.client.post(reverse("feedback-create"), self.valid_payload(order), format="json")
+        resp = self.client.post(reverse("feedback-create"), self.valid_payload(order), format="json")
         self.assertEqual(resp.status_code, 400)
 
     def test_cannot_submit_for_someone_elses_order(self):
-        item = self.make_order_item(customer=self.other_customer)
+        order = self.make_order(customer=self.other_customer)
         self.login_as_customer()
-        resp = self.client.post(reverse("feedback-create"), self.valid_payload(item), format="json")
+        resp = self.client.post(reverse("feedback-create"), self.valid_payload(order), format="json")
         self.assertEqual(resp.status_code, 400)
 
     def test_rating_out_of_range_rejected(self):
-        item = self.make_order_item()
+        order = self.make_order()
         self.login_as_customer()
-        payload = {**self.valid_payload(item), "overall_rating": 6}
+        payload = {**self.valid_payload(order), "overall_rating": 6}
         resp = self.client.post(reverse("feedback-create"), payload, format="json")
         self.assertEqual(resp.status_code, 400)
 
     def test_anonymous_cannot_submit(self):
-        item = self.make_order_item()
-        resp = self.client.post(reverse("feedback-create"), self.valid_payload(item), format="json")
+        order = self.make_order()
+        resp = self.client.post(reverse("feedback-create"), self.valid_payload(order), format="json")
         self.assertEqual(resp.status_code, 401)
 
 
 class FeedbackEligibilityAndAggregateTests(FeedbackTestBase):
-    def test_eligible_items_lists_delivered_unreviewed(self):
-        item = self.make_order_item()
+    def test_eligible_orders_lists_delivered_unreviewed(self):
+        order = self.make_order()
         self.login_as_customer()
-        resp = self.client.get(reverse("feedback-eligible-items"))
+        resp = self.client.get(reverse("feedback-eligible-orders"))
         self.assertEqual(len(resp.data), 1)
-        self.assertEqual(resp.data[0]["id"], item.id)
+        self.assertEqual(resp.data[0]["id"], order.id)
 
-    def test_reviewed_item_drops_out_of_eligible_list(self):
-        item = self.make_order_item()
+    def test_reviewed_order_drops_out_of_eligible_list(self):
+        order = self.make_order()
         self.login_as_customer()
-        self.client.post(reverse("feedback-create"), self.valid_payload(item), format="json")
-        resp = self.client.get(reverse("feedback-eligible-items"))
+        self.client.post(reverse("feedback-create"), self.valid_payload(order), format="json")
+        resp = self.client.get(reverse("feedback-eligible-orders"))
         self.assertEqual(len(resp.data), 0)
 
     def test_product_average_rating_updates(self):
-        item = self.make_order_item()
+        order = self.make_order()
         self.login_as_customer()
-        self.client.post(reverse("feedback-create"), self.valid_payload(item), format="json")
+        self.client.post(reverse("feedback-create"), self.valid_payload(order), format="json")
         self.product.refresh_from_db()
         self.assertEqual(self.product.average_rating, 5.0)
         self.assertEqual(self.product.rating_count, 1)
@@ -122,18 +124,18 @@ class FeedbackEligibilityAndAggregateTests(FeedbackTestBase):
         self.assertEqual(self.product.rating_count, 0)
 
     def test_public_catalog_exposes_rating(self):
-        item = self.make_order_item()
+        order = self.make_order()
         self.login_as_customer()
-        self.client.post(reverse("feedback-create"), self.valid_payload(item), format="json")
+        self.client.post(reverse("feedback-create"), self.valid_payload(order), format="json")
         self.client.force_authenticate(user=None)
         resp = self.client.get(reverse("product-list"))
         self.assertEqual(resp.data["results"][0]["average_rating"], 5.0)
         self.assertEqual(resp.data["results"][0]["rating_count"], 1)
 
     def test_admin_vendor_list_exposes_rating(self):
-        item = self.make_order_item()
+        order = self.make_order()
         self.login_as_customer()
-        self.client.post(reverse("feedback-create"), self.valid_payload(item), format="json")
+        self.client.post(reverse("feedback-create"), self.valid_payload(order), format="json")
         admin = make_user(User.Role.ADMIN, "admin@example.com")
         self.client.force_authenticate(user=admin)
         resp = self.client.get(reverse("admin-vendor-list"))

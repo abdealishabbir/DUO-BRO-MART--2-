@@ -8,6 +8,7 @@ import CheckoutShipping from "../pages/customer/CheckoutShipping.jsx";
 import CheckoutPayment from "../pages/customer/CheckoutPayment.jsx";
 import CheckoutConfirmation from "../pages/customer/CheckoutConfirmation.jsx";
 import TrackOrder from "../pages/customer/TrackOrder.jsx";
+import OrderFeedback from "../pages/customer/OrderFeedback.jsx";
 import Terms from "../pages/customer/Terms.jsx";
 import VendorTerms from "../pages/customer/VendorTerms.jsx";
 import Account from "../pages/customer/Account.jsx";
@@ -36,6 +37,7 @@ export default function CustomerRoutes() {
       <Route path="checkout/payment" element={<CheckoutPayment />} />
       <Route path="checkout/confirmation" element={<CheckoutConfirmation />} />
       <Route path="track-order" element={<TrackOrder />} />
+      <Route path="order-feedback/:orderCode" element={<OrderFeedback />} />
       <Route path="terms" element={<Terms />} />
       <Route path="vendor-terms" element={<VendorTerms />} />
       <Route path="account" element={<Account />} />

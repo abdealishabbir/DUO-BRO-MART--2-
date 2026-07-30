@@ -112,6 +112,7 @@ class Order(models.Model):
     shipping_fee = models.DecimalField(max_digits=10, decimal_places=2)
     total = models.DecimalField(max_digits=12, decimal_places=2)
     estimated_delivery_days = models.PositiveSmallIntegerField(default=7)
+    delivered_at = models.DateTimeField(null=True, blank=True, help_text="Stamped automatically when status becomes 'delivered' (§7.3 return-window countdown).")
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -9,6 +9,7 @@ import AdminOrders from "../pages/admin/Orders.jsx";
 import AdminVendors from "../pages/admin/Vendors.jsx";
 import AdminPricing from "../pages/admin/Pricing.jsx";
 import AdminSettings from "../pages/admin/Settings.jsx";
+import AdminComplaints from "../pages/admin/Complaints.jsx";
 
 /**
  * PRD §3.2/§4.1: admin portal lives on a separate, unadvertised URL
@@ -28,6 +29,7 @@ export default function AdminRoutes() {
           <Route path="vendors" element={<AdminVendors />} />
           <Route path="pricing" element={<AdminPricing />} />
           <Route path="settings" element={<AdminSettings />} />
+          <Route path="complaints" element={<AdminComplaints />} />
         </Route>
       </Route>
     </Route>

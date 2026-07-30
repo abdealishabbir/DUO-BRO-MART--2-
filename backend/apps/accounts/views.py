@@ -473,7 +473,7 @@ class AdminVendorListView(generics.ListAPIView):
             gross_sales = sum((i.line_total for i in items), 0)
             net_paid_out = sum((i.net_to_vendor for i in items), 0)
             commission_earned = gross_sales - net_paid_out
-            rating = Feedback.objects.filter(order_item__vendor=vendor).aggregate(avg=Avg("overall_rating"))["avg"]
+            rating = Feedback.objects.filter(order__items__vendor=vendor).aggregate(avg=Avg("overall_rating"))["avg"]
             results.append({
                 "id": vendor.id,
                 "business_name": f"{vendor.first_name} {vendor.last_name}".strip() or vendor.username,

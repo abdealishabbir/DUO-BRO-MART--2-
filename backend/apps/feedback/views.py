@@ -1,15 +1,16 @@
 """
 Endpoint map:
-  POST /api/feedback/                  (submit — logged-in customer only)
-  GET  /api/feedback/mine/             (feedback this customer has already left)
-  GET  /api/feedback/eligible-items/   (delivered order items with no feedback yet — powers "Rate your order")
+  POST /api/feedback/                   (submit — logged-in customer only)
+  GET  /api/feedback/mine/              (feedback this customer has already left)
+  GET  /api/feedback/eligible-orders/   (delivered orders with no feedback yet — "Confirm Your Order" flow)
 """
 
 from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.orders.models import Order, OrderItem
+from apps.orders.models import Order
+from apps.orders.serializers import OrderSerializer
 
 from .models import Feedback
 from .serializers import FeedbackCreateSerializer, FeedbackSerializer
@@ -28,16 +29,13 @@ class MyFeedbackView(generics.ListAPIView):
         return Feedback.objects.filter(customer=self.request.user)
 
 
-class EligibleFeedbackItemsView(APIView):
-    """Delivered order items belonging to this customer that don't have feedback yet."""
+class EligibleFeedbackOrdersView(APIView):
+    """Delivered orders belonging to this customer with no feedback yet."""
 
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        items = OrderItem.objects.filter(
-            order__customer=request.user, order__status=Order.Status.DELIVERED, feedback__isnull=True,
-        ).select_related("order")
-        return Response([
-            {"id": i.id, "order_code": i.order.order_code, "product_name": i.product_name, "product_slug": i.product_slug}
-            for i in items
-        ])
+        orders = Order.objects.filter(
+            customer=request.user, status=Order.Status.DELIVERED, feedback__isnull=True,
+        ).prefetch_related("items")
+        return Response(OrderSerializer(orders, many=True, context={"request": request}).data)

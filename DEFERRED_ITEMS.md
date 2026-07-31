@@ -70,3 +70,24 @@ alongside the security/market recommendations already discussed.
   already shows it; `average_rating`/`rating_count` exist on the API).
 - Re-add Shop's rating filter/sort (removed when mock catalog was ripped
   out since there was no real rating data yet — that data exists now).
+
+## Phase 8 additions (this session)
+- **Admin coupons UI** — backend CRUD (`/api/orders/admin/coupons/`) is real
+  and tested, but there's no `Coupons.jsx` admin page yet. Creating/editing
+  codes currently needs direct API calls (Postman, Django admin, etc.).
+- **Accessibility pass was a spot-fix, not an audit** — only the highest-
+  traffic pages got aria-labels (global header search, Shop view toggle,
+  ProductDetail carousel/stepper). Admin panel, vendor panel, and the
+  checkout flow's icon-only buttons haven't been reviewed. A real
+  accessibility audit (screen reader pass, keyboard nav, color contrast,
+  skip-to-content link) is still outstanding.
+- **CheckoutConfirmation/OrderSummarySidebar don't display coupon
+  discounts** — the backend applies and returns `discount_amount`/
+  `coupon_code` correctly (tested), but the confirmation page and cart
+  sidebar UI weren't updated to show a "Coupon applied: -Rs. X" line.
+- **Security headers/HSTS/SSL-redirect are configured but unverified in a
+  real deployment** — they're correct Django settings, but have only been
+  exercised via `DEBUG=False` unit checks, not a real HTTPS environment.
+- **Rate limits (order-track/order-create/public-catalog) use rough,
+  unvalidated numbers** — reasonable guesses, not tuned against real
+  traffic patterns.

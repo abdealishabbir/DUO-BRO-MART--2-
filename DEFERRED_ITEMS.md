@@ -1,0 +1,72 @@
+# DEFERRED ITEMS — revisit once all phases are done
+
+Things intentionally left unconfigured, mocked, or empty because they need
+real-world resources (SMTP credentials, payment gateway keys, a domain,
+hosting decisions, etc.) that aren't available during development. Nothing
+here is a bug — it's a known list to work through together at the end,
+alongside the security/market recommendations already discussed.
+
+## Email / Notifications
+- **No SMTP configured** — all "email" sending currently just logs to the
+  console in dev (Django's default backend). This blocks:
+  - Vendor approval credentials email (works in dev/console, not in real inboxes)
+  - Password reset emails
+  - "Order delivered — leave feedback" email (the actual link-in-email flow
+    for `/order-feedback/:orderCode` doesn't exist yet — customers only
+    reach that page via Account → Orders right now)
+  - Low-stock admin alerts (logic is wired, §7.2, but goes nowhere real)
+  - The 4 notification toggles in Admin Settings (§6.7) save but don't
+    trigger anything except low-stock
+- **No SMS notifications** — common expectation in the Pakistani market
+  (order confirmation/delivery updates via SMS), not built at all.
+
+## Payments
+- Card gateway (Stripe or similar) — UI exists, not connected to a real
+  processor.
+- JazzCash / EasyPaisa — same; selection UI exists, no real gateway
+  integration.
+- Only Cash on Delivery is a "real" payment method end-to-end.
+
+## Security (recap from the audit — see chat history for full detail)
+- Rate limiting is narrower than it looks — only auth endpoints are
+  throttled; product listing, order creation, and especially
+  `/orders/track/` (guessable code + contact lookup) are not.
+- `SECRET_KEY` has an insecure dev fallback with no startup check
+  preventing accidental production use.
+- No production security headers (HSTS, SSL redirect, content-type-nosniff).
+- CSRF protection on the custom cookie-JWT auth class hasn't been
+  explicitly tested (SameSite=Lax likely mitigates it, but unverified).
+- No MFA on admin accounts.
+- reCAPTCHA is scaffolded (settings key exists) but not wired up.
+- CNIC images in vendor applications aren't validated for file
+  type/size the way banner images already are.
+
+## Feature gaps flagged during the marketplace-UX survey
+- No vendor storefront page (click a vendor name → see everything they sell).
+- No wishlist / save-for-later.
+- No search autocomplete; Shop lost its rating filter when the mock catalog
+  was ripped out (real rating data exists now — cheap to re-add).
+- Multi-vendor cart/checkout doesn't show a per-vendor cost breakdown.
+- No customer-initiated order cancellation (only admin can change status).
+- No 404 page, no robots.txt/sitemap/meta tags, no favicon.
+- Checkout isn't idempotent — a slow network + retry could theoretically
+  create two real orders (no idempotency key yet).
+- No admin audit log (who approved/rejected what, and when) — a few
+  scattered fields exist (`decided_by`, `resolved_by`) but nothing unified.
+
+## Feedback page (§7.3, this session)
+- Photo upload on the feedback form is UI-only — the dropzone renders,
+  nothing is actually stored.
+- No loyalty points / rewards system exists (the "Earn 50 points" copy in
+  the reference UI wasn't implemented as a real feature).
+
+## Real-time inventory sync (§7.1)
+- Not started — the one deliberately-postponed piece of Phase 7. Needs a
+  real architecture decision (Django Channels + ASGI + Redis channel
+  layer, docker-compose changes) before implementation.
+
+## Quick follow-ups (no external config needed — cheap, do anytime)
+- Add rating stars + count to Shop/Home product cards (ProductDetail
+  already shows it; `average_rating`/`rating_count` exist on the API).
+- Re-add Shop's rating filter/sort (removed when mock catalog was ripped
+  out since there was no real rating data yet — that data exists now).

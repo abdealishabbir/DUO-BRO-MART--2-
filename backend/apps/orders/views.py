@@ -32,6 +32,7 @@ class OrderCreateView(APIView):
     """§4.6: place an order — guest checkout allowed."""
 
     permission_classes = [permissions.AllowAny]
+    throttle_scope = "order-create"
 
     def post(self, request):
         serializer = OrderCreateSerializer(data=request.data, context={"request": request})
@@ -58,6 +59,7 @@ class TrackOrderView(APIView):
     """
 
     permission_classes = [permissions.AllowAny]
+    throttle_scope = "order-track"
 
     def get(self, request):
         order_code = request.query_params.get("order_code", "").strip()

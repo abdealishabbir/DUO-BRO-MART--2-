@@ -13,11 +13,14 @@ Reserved namespaces (filled in starting Phase 2, per PRD §10.4):
 """
 
 from django.conf import settings
+
+from apps.core.views import sitemap_xml
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
 
 urlpatterns = [
+    path("sitemap.xml", sitemap_xml, name="sitemap"),
     path("django-admin/", admin.site.urls),  # Django's own admin, not the platform Admin Panel (that's /api/admin/ + React /admin/*)
     path("api/", include("apps.core.urls")),
     path("api/", include("apps.accounts.urls")),

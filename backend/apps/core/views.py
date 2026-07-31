@@ -53,3 +53,25 @@ class PublicSettingsView(APIView):
 
     def get(self, request):
         return Response(PublicPlatformSettingsSerializer(PlatformSettings.get_solo()).data)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def sitemap_xml(request):
+    """§8.2: dynamic sitemap — static routes + every approved/active product + category."""
+    from django.conf import settings
+    from django.http import HttpResponse
+
+    from apps.products.models import Category, Product
+
+    base = settings.FRONTEND_URL.rstrip("/")
+    urls = [base, f"{base}/shop"]
+    urls += [f"{base}/shop?category={c.slug}" for c in Category.objects.all()]
+    urls += [
+        f"{base}/product/{p.slug}"
+        for p in Product.objects.filter(status=Product.Status.APPROVED, is_active=True).only("slug")
+    ]
+    xml = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    xml += [f"<url><loc>{u}</loc></url>" for u in urls]
+    xml.append("</urlset>")
+    return HttpResponse("\n".join(xml), content_type="application/xml")

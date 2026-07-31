@@ -16,5 +16,6 @@ Pillow==11.0.0                         # required by ImageField (banner uploads)
 
 # --- Added in later phases, pinned now so builds stay reproducible ---
 # celery==5.4.0                      # Phase 7: banner expiry, low-stock jobs
-# channels==4.1.0                    # Phase 7: WebSocket stock/dashboard push
-# channels-redis==4.2.0              # Phase 7
+daphne==4.1.2                       # §7.1: ASGI server, hijacks `runserver` for WS+HTTP in dev
+channels==4.1.0                     # §7.1: WebSocket stock/dashboard push
+channels-redis==4.2.0               # §7.1: channel layer backed by the existing Redis

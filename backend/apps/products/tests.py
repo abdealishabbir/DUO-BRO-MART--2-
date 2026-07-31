@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.urls import reverse
 from rest_framework.test import APITestCase
 
@@ -18,6 +19,7 @@ def make_user(role, email, **extra):
 
 class ProductsTestBase(APITestCase):
     def setUp(self):
+        cache.clear()
         self.vendor = make_user(User.Role.VENDOR, "vendor@example.com")
         self.other_vendor = make_user(User.Role.VENDOR, "other-vendor@example.com")
         self.admin = make_user(User.Role.ADMIN, "admin@example.com")
@@ -603,3 +605,57 @@ class LowStockTests(ProductsTestBase):
         self.make_product(status=Product.Status.APPROVED, stock_quantity=3)
         resp = self.client.get(reverse("product-list"))
         self.assertTrue(resp.data["results"][0]["is_low_stock"])
+
+
+class InventoryWebSocketTests(ProductsTestBase):
+    """§7.1: stock changes broadcast to the inventory WebSocket group."""
+
+    def test_stock_change_broadcasts_update(self):
+        from asgiref.sync import async_to_sync, sync_to_async
+        from channels.testing import WebsocketCommunicator
+
+        from config.asgi import application
+
+        product = self.make_product(status=Product.Status.APPROVED, stock_quantity=10)
+
+        async def run():
+            communicator = WebsocketCommunicator(application, "ws/inventory/")
+            connected, _ = await communicator.connect()
+            assert connected
+
+            def change_stock():
+                product.stock_quantity = 3
+                product.save()
+
+            await sync_to_async(change_stock, thread_sensitive=True)()
+            message = await communicator.receive_json_from(timeout=2)
+            await communicator.disconnect()
+            return message
+
+        message = async_to_sync(run)()
+        self.assertEqual(message["product_id"], product.id)
+        self.assertEqual(message["stock_quantity"], 3)
+        self.assertTrue(message["is_low_stock"])
+
+    def test_no_broadcast_when_stock_unchanged(self):
+        from asgiref.sync import async_to_sync, sync_to_async
+        from channels.testing import WebsocketCommunicator
+
+        from config.asgi import application
+
+        product = self.make_product(status=Product.Status.APPROVED, stock_quantity=10)
+
+        async def run():
+            communicator = WebsocketCommunicator(application, "ws/inventory/")
+            await communicator.connect()
+
+            def rename():
+                product.name = "Renamed, stock untouched"
+                product.save()
+
+            await sync_to_async(rename, thread_sensitive=True)()
+            got_nothing = await communicator.receive_nothing(timeout=1)
+            await communicator.disconnect()
+            return got_nothing
+
+        self.assertTrue(async_to_sync(run)())

@@ -140,7 +140,20 @@ class Product(models.Model):
                 n += 1
                 slug = f"{base_slug}-{n}"
             self.slug = slug
+
+        # §7.1: broadcast to any connected client whenever stock actually
+        # changes — catches every path (order decrement, restock approval,
+        # admin edit) from one place instead of repeating this at each call site.
+        old_stock = None
+        if self.pk:
+            old_stock = Product.objects.filter(pk=self.pk).values_list("stock_quantity", flat=True).first()
+
         super().save(*args, **kwargs)
+
+        if old_stock is not None and old_stock != self.stock_quantity:
+            from .realtime import broadcast_stock_update
+
+            broadcast_stock_update(self)
 
     def __str__(self):
         return f"{self.name} ({self.vendor})"

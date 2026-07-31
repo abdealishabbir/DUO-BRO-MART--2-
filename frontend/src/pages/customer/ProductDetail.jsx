@@ -4,6 +4,7 @@ import { Minus, Plus, ShoppingCart, Zap, Store, ChevronLeft, ChevronRight, Star 
 import { api } from "../../lib/api.js";
 import { useCart } from "../../cart/CartContext.jsx";
 import { formatPKR } from "../../lib/currency.js";
+import { useInventorySocket } from "../../lib/useInventorySocket.js";
 
 function ImageCarousel({ images, name }) {
   const [active, setActive] = useState(0);
@@ -99,6 +100,13 @@ export default function ProductDetail() {
   const { slug } = useParams();
   const { addItem } = useCart();
   const [product, setProduct] = useState(null);
+
+  useInventorySocket((update) => {
+    setProduct((current) => {
+      if (!current || current.id !== update.product_id) return current;
+      return { ...current, stock_quantity: update.stock_quantity, is_low_stock: update.is_low_stock };
+    });
+  });
   const [related, setRelated] = useState([]);
   const [notFound, setNotFound] = useState(false);
   const [quantity, setQuantity] = useState(1);

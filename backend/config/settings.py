@@ -10,24 +10,49 @@ RBAC classes that Phase 2+ views will use.
 
 from pathlib import Path
 from decouple import config, Csv
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # --- Core ---
-SECRET_KEY = config("DJANGO_SECRET_KEY", default="dev-insecure-key-change-me")
+_INSECURE_DEFAULT_SECRET_KEY = "dev-insecure-key-change-me"
+SECRET_KEY = config("DJANGO_SECRET_KEY", default=_INSECURE_DEFAULT_SECRET_KEY)
 DEBUG = config("DJANGO_DEBUG", default=True, cast=bool)
 ALLOWED_HOSTS = config(
     "DJANGO_ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv()
 )
 
+# §8.1: the dev fallback above is fine for local work, but nothing was
+# stopping someone from actually launching with it still in place — that's
+# a full account-takeover risk (anyone can forge valid session/reset
+# tokens). Fail loudly at startup instead of silently running insecure.
+if not DEBUG and SECRET_KEY == _INSECURE_DEFAULT_SECRET_KEY:
+    raise ImproperlyConfigured(
+        "DJANGO_SECRET_KEY is still the insecure default. Set a real secret "
+        "key via the DJANGO_SECRET_KEY environment variable before running "
+        "with DEBUG=False."
+    )
+
+# §8.1: production security headers. All no-ops in DEBUG/dev (no HTTPS
+# locally), take effect automatically once DEBUG=False in a real deployment.
+SECURE_SSL_REDIRECT = not DEBUG
+SECURE_HSTS_SECONDS = 0 if DEBUG else 31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
+SECURE_HSTS_PRELOAD = not DEBUG
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+
 # --- Applications ---
 INSTALLED_APPS = [
+    "daphne",  # §7.1: must be first — hijacks `runserver` to serve ASGI (HTTP+WS) in dev
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "channels",
     # third-party
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",  # refresh-token revocation on logout/reset (S4.2/S4.4)
@@ -72,6 +97,14 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "config.wsgi.application"
+ASGI_APPLICATION = "config.asgi.application"  # §7.1: WebSocket routing lives here
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {"hosts": [config("REDIS_URL", default="redis://redis:6379/0")]},
+    },
+}
 ASGI_APPLICATION = "config.asgi.application"
 
 # --- Database ---
@@ -203,6 +236,14 @@ REST_FRAMEWORK = {
     # accounts/utils.py (record_failed_login / is_locked_out).
     "DEFAULT_THROTTLE_RATES": {
         "auth-write": "10/min",
+        # §8.1: order-track is a guessable-code + contact lookup — must be
+        # throttled or it's brute-forceable. order-create is throttled
+        # loosely (real shoppers rarely place >20 orders/min); public-catalog
+        # is generous since it's just read traffic but still shouldn't be
+        # scrapeable without limit.
+        "order-track": "10/min",
+        "order-create": "20/min",
+        "public-catalog": "60/min",
     },
 }
 

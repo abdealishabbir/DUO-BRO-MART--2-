@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.core import mail
+from django.core.cache import cache
 from django.urls import reverse
 from rest_framework.test import APITestCase
 
@@ -34,6 +35,7 @@ VALID_SHIPPING = {
 
 class OrdersTestBase(APITestCase):
     def setUp(self):
+        cache.clear()
         self.vendor = make_user(User.Role.VENDOR, "vendor@example.com")
         self.other_vendor = make_user(User.Role.VENDOR, "other-vendor@example.com")
         self.admin = make_user(User.Role.ADMIN, "admin@example.com")

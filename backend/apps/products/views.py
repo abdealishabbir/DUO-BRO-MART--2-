@@ -79,6 +79,7 @@ class PublicProductViewSet(ReadOnlyModelViewSet):
 
     permission_classes = [permissions.AllowAny]
     lookup_field = "slug"
+    throttle_scope = "public-catalog"
 
     def get_serializer_class(self):
         return PublicProductDetailSerializer if self.action == "retrieve" else PublicProductListSerializer

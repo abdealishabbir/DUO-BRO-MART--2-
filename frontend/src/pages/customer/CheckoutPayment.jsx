@@ -40,6 +40,7 @@ export default function CheckoutPayment() {
   const { address, deliveryMethod, paymentMethod, setPaymentMethod, placeOrder } = useCheckout();
   const navigate = useNavigate();
   const [placing, setPlacing] = useState(false);
+  const [couponCode, setCouponCode] = useState("");
   const [error, setError] = useState("");
   const [platformSettings, setPlatformSettings] = useState(null);
   const [selectedWallet, setSelectedWallet] = useState("NayaPay");
@@ -73,6 +74,7 @@ export default function CheckoutPayment() {
         lines,
         billingAddress,
         wallet: paymentMethod === "wallet" ? selectedWallet : null,
+        couponCode,
       });
       clearCart();
       navigate("/checkout/confirmation", { state: { order } });
@@ -227,6 +229,16 @@ export default function CheckoutPayment() {
                 </FormField>
               </div>
             )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              placeholder="Coupon code (optional)"
+              value={couponCode}
+              onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm uppercase focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+            />
           </div>
 
           <div className="flex items-center justify-between">

@@ -57,6 +57,7 @@ export default function CustomerLayout() {
               <input
                 type="search"
                 placeholder="Search for products, brands and more..."
+                aria-label="Search products"
                 className="w-full rounded-full border border-gray-300 bg-white py-2 pl-9 pr-4 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
               />
             </div>
@@ -99,6 +100,7 @@ export default function CustomerLayout() {
               <input
                 type="search"
                 placeholder="Search..."
+                aria-label="Search products"
                 className="w-full rounded-full border border-gray-300 bg-white py-2 pl-9 pr-4 text-sm focus:border-brand focus:outline-none"
               />
             </div>

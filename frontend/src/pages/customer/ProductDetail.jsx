@@ -18,12 +18,14 @@ function ImageCarousel({ images, name }) {
           <>
             <button
               onClick={() => setActive((i) => (i - 1 + shown.length) % shown.length)}
+              aria-label="Previous image"
               className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-1.5 shadow hover:bg-white"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
             <button
               onClick={() => setActive((i) => (i + 1) % shown.length)}
+              aria-label="Next image"
               className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-1.5 shadow hover:bg-white"
             >
               <ChevronRight className="h-4 w-4" />
@@ -51,6 +53,7 @@ function QuantityStepper({ quantity, setQuantity, max }) {
     <div className="flex items-center rounded-md border border-gray-300">
       <button
         onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+        aria-label="Decrease quantity"
         className="p-2.5 text-gray-600 hover:text-brand disabled:opacity-40"
         disabled={quantity <= 1}
       >
@@ -69,6 +72,7 @@ function QuantityStepper({ quantity, setQuantity, max }) {
       />
       <button
         onClick={() => setQuantity((q) => Math.min(max, q + 1))}
+        aria-label="Increase quantity"
         className="p-2.5 text-gray-600 hover:text-brand disabled:opacity-40"
         disabled={quantity >= max}
       >

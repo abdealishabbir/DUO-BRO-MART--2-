@@ -11,21 +11,22 @@ Endpoint map:
   Admin:    GET   /api/orders/admin/
             PATCH /api/orders/admin/<id>/            (status/courier/admin_notes)
             GET   /api/orders/admin/dashboard/        (§6.1 KPI dashboard)
+            /api/orders/admin/coupons/                (§8.3 CRUD)
 """
 
 from datetime import timedelta
 from decimal import Decimal
 
 from django.utils import timezone
-from rest_framework import permissions, status
+from rest_framework import permissions, status, viewsets
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.permissions import IsAdminRole, IsVendorRole
 
-from .models import Order, OrderItem
-from .serializers import OrderCreateSerializer, OrderSerializer
+from .models import Coupon, Order, OrderItem
+from .serializers import CouponSerializer, OrderCreateSerializer, OrderSerializer
 
 
 class OrderCreateView(APIView):
@@ -229,3 +230,11 @@ class AdminDashboardView(APIView):
             "recent_orders": recent_orders,
             "top_products": top_products,
         })
+
+
+class AdminCouponViewSet(viewsets.ModelViewSet):
+    """§8.3: admin CRUD for discount codes."""
+
+    permission_classes = [permissions.IsAuthenticated, IsAdminRole]
+    serializer_class = CouponSerializer
+    queryset = Coupon.objects.all().order_by("-created_at")

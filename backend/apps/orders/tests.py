@@ -510,3 +510,95 @@ class LowStockAlertTests(OrdersTestBase):
             format="json",
         )
         self.assertEqual(len(mail.outbox), 0)
+
+
+class CouponTests(OrdersTestBase):
+    """§8.3: discount codes applied at checkout."""
+
+    def make_coupon(self, **kwargs):
+        from .models import Coupon
+        defaults = dict(code="SAVE10", discount_type="percent", discount_value=Decimal("10.00"), is_active=True)
+        defaults.update(kwargs)
+        return Coupon.objects.create(**defaults)
+
+    def test_percent_coupon_applies_discount(self):
+        self.make_coupon()
+        product = self.make_product(base_price=Decimal("1000.00"))  # selling_price 1100
+        resp = self.client.post(
+            reverse("order-create"),
+            {**VALID_SHIPPING, "coupon_code": "SAVE10", "items": [{"product": product.id, "quantity": 1}]},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201, resp.data)
+        self.assertEqual(Decimal(resp.data["discount_amount"]), Decimal("110.00"))
+        self.assertEqual(resp.data["coupon_code"], "SAVE10")
+
+    def test_fixed_coupon_applies_discount(self):
+        self.make_coupon(code="FLAT50", discount_type="fixed", discount_value=Decimal("50.00"))
+        product = self.make_product(base_price=Decimal("1000.00"))
+        resp = self.client.post(
+            reverse("order-create"),
+            {**VALID_SHIPPING, "coupon_code": "FLAT50", "items": [{"product": product.id, "quantity": 1}]},
+            format="json",
+        )
+        self.assertEqual(Decimal(resp.data["discount_amount"]), Decimal("50.00"))
+
+    def test_invalid_coupon_code_rejected(self):
+        product = self.make_product()
+        resp = self.client.post(
+            reverse("order-create"),
+            {**VALID_SHIPPING, "coupon_code": "NOPE", "items": [{"product": product.id, "quantity": 1}]},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_inactive_coupon_rejected(self):
+        self.make_coupon(is_active=False)
+        product = self.make_product()
+        resp = self.client.post(
+            reverse("order-create"),
+            {**VALID_SHIPPING, "coupon_code": "SAVE10", "items": [{"product": product.id, "quantity": 1}]},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_min_order_value_enforced(self):
+        self.make_coupon(min_order_value=Decimal("5000.00"))
+        product = self.make_product(base_price=Decimal("1000.00"))
+        resp = self.client.post(
+            reverse("order-create"),
+            {**VALID_SHIPPING, "coupon_code": "SAVE10", "items": [{"product": product.id, "quantity": 1}]},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_max_uses_enforced(self):
+        coupon = self.make_coupon(max_uses=1, used_count=1)
+        product = self.make_product()
+        resp = self.client.post(
+            reverse("order-create"),
+            {**VALID_SHIPPING, "coupon_code": "SAVE10", "items": [{"product": product.id, "quantity": 1}]},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_used_count_increments_on_success(self):
+        coupon = self.make_coupon()
+        product = self.make_product()
+        self.client.post(
+            reverse("order-create"),
+            {**VALID_SHIPPING, "coupon_code": "SAVE10", "items": [{"product": product.id, "quantity": 1}]},
+            format="json",
+        )
+        coupon.refresh_from_db()
+        self.assertEqual(coupon.used_count, 1)
+
+    def test_admin_can_manage_coupons(self):
+        self.login_as(self.admin)
+        resp = self.client.post(reverse("admin-coupon-list"), {"code": "NEW20", "discount_type": "percent", "discount_value": "20.00"}, format="json")
+        self.assertEqual(resp.status_code, 201, resp.data)
+
+    def test_non_admin_cannot_manage_coupons(self):
+        self.login_as(self.vendor)
+        resp = self.client.get(reverse("admin-coupon-list"))
+        self.assertEqual(resp.status_code, 403)

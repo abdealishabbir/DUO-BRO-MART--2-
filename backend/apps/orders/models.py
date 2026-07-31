@@ -53,6 +53,47 @@ def _generate_order_code():
     return f"DBM-{year}-{count_this_year:04d}"
 
 
+class Coupon(models.Model):
+    """§8.3: simple admin-managed discount codes, applied once per order at checkout."""
+
+    class DiscountType(models.TextChoices):
+        PERCENT = "percent", "Percent Off"
+        FIXED = "fixed", "Fixed Amount Off"
+
+    code = models.CharField(max_length=30, unique=True)
+    discount_type = models.CharField(max_length=10, choices=DiscountType.choices)
+    discount_value = models.DecimalField(max_digits=10, decimal_places=2, help_text="e.g. 10 for 10% or Rs. 10 fixed off, depending on discount_type.")
+    min_order_value = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    max_uses = models.PositiveIntegerField(null=True, blank=True, help_text="Blank = unlimited.")
+    used_count = models.PositiveIntegerField(default=0)
+    valid_from = models.DateTimeField(null=True, blank=True)
+    valid_until = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.code
+
+    def is_valid_for(self, subtotal):
+        now = timezone.now()
+        if not self.is_active:
+            return False, "This coupon is no longer active."
+        if self.valid_from and now < self.valid_from:
+            return False, "This coupon isn't active yet."
+        if self.valid_until and now > self.valid_until:
+            return False, "This coupon has expired."
+        if self.max_uses is not None and self.used_count >= self.max_uses:
+            return False, "This coupon has reached its usage limit."
+        if subtotal < self.min_order_value:
+            return False, f"This coupon requires a minimum order of Rs. {self.min_order_value}."
+        return True, ""
+
+    def discount_amount(self, subtotal):
+        if self.discount_type == self.DiscountType.PERCENT:
+            return (subtotal * self.discount_value / Decimal("100")).quantize(Decimal("0.01"))
+        return min(self.discount_value, subtotal)
+
+
 class Order(models.Model):
     class DeliveryMethod(models.TextChoices):
         STANDARD = "standard", "Standard"
@@ -108,6 +149,8 @@ class Order(models.Model):
     admin_notes = models.TextField(blank=True, help_text="Internal note, e.g. reason for cancellation.")
     courier_name = models.CharField(max_length=100, blank=True)
 
+    coupon = models.ForeignKey(Coupon, on_delete=models.SET_NULL, null=True, blank=True, related_name="orders")
+    discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     subtotal = models.DecimalField(max_digits=12, decimal_places=2)
     shipping_fee = models.DecimalField(max_digits=10, decimal_places=2)
     total = models.DecimalField(max_digits=12, decimal_places=2)

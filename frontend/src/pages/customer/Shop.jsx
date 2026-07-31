@@ -316,10 +316,10 @@ export default function Shop() {
                   </select>
                 </label>
                 <div className="flex gap-1 rounded-md border border-gray-300 p-1">
-                  <button onClick={() => setView("grid")} className={`rounded p-1 ${view === "grid" ? "bg-brand text-white" : "text-gray-500"}`}>
+                  <button onClick={() => setView("grid")} aria-label="Grid view" aria-pressed={view === "grid"} className={`rounded p-1 ${view === "grid" ? "bg-brand text-white" : "text-gray-500"}`}>
                     <Grid2x2 className="h-4 w-4" />
                   </button>
-                  <button onClick={() => setView("list")} className={`rounded p-1 ${view === "list" ? "bg-brand text-white" : "text-gray-500"}`}>
+                  <button onClick={() => setView("list")} aria-label="List view" aria-pressed={view === "list"} className={`rounded p-1 ${view === "list" ? "bg-brand text-white" : "text-gray-500"}`}>
                     <List className="h-4 w-4" />
                   </button>
                 </div>

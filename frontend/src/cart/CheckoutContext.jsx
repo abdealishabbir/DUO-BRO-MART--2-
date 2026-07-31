@@ -23,7 +23,7 @@ export function CheckoutProvider({ children }) {
    *   - a fresh guest/new-address form object from CheckoutShipping,
    *     which *does* carry email/area_type directly.
    */
-  const placeOrder = async ({ lines, deliveryMethod: method, billingAddress, wallet }) => {
+  const placeOrder = async ({ lines, deliveryMethod: method, billingAddress, wallet, couponCode }) => {
     const isRural = address.area_type ? address.area_type === "rural" : Boolean(address.landmark);
 
     const body = {
@@ -40,6 +40,7 @@ export function CheckoutProvider({ children }) {
       delivery_method: method ?? deliveryMethod,
       payment_method: paymentMethod,
       wallet_provider: paymentMethod === "wallet" ? wallet ?? "" : "",
+      coupon_code: couponCode || "",
     };
 
     if (billingAddress && billingAddress !== address) {

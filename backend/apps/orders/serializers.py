@@ -6,7 +6,17 @@ from rest_framework import serializers
 from apps.products.models import Product
 from apps.products.utils import maybe_send_low_stock_alert
 
-from .models import DELIVERY_ESTIMATE_DAYS, DELIVERY_FEES, Order, OrderItem
+from .models import DELIVERY_ESTIMATE_DAYS, DELIVERY_FEES, Coupon, Order, OrderItem
+
+
+class CouponSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Coupon
+        fields = [
+            "id", "code", "discount_type", "discount_value", "min_order_value",
+            "max_uses", "used_count", "valid_from", "valid_until", "is_active", "created_at",
+        ]
+        read_only_fields = ["id", "used_count", "created_at"]
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
@@ -51,6 +61,7 @@ class OrderSerializer(serializers.ModelSerializer):
 
     items = OrderItemSerializer(many=True, read_only=True)
     commission_total = serializers.SerializerMethodField()
+    coupon_code = serializers.CharField(source="coupon.code", read_only=True, default=None)
     net_to_vendor_total = serializers.SerializerMethodField()
 
     class Meta:
@@ -62,7 +73,7 @@ class OrderSerializer(serializers.ModelSerializer):
             "shipping_city", "shipping_address_line", "shipping_is_rural", "shipping_landmark",
             "billing_same_as_shipping", "billing_full_name", "billing_phone_number",
             "billing_province", "billing_city", "billing_address_line",
-            "subtotal", "shipping_fee", "total", "estimated_delivery_days", "delivered_at",
+            "subtotal", "discount_amount", "coupon_code", "shipping_fee", "total", "estimated_delivery_days", "delivered_at",
             "commission_total", "net_to_vendor_total",
             "items", "created_at", "updated_at",
         ]
@@ -104,6 +115,7 @@ class OrderCreateSerializer(serializers.Serializer):
     delivery_method = serializers.ChoiceField(choices=Order.DeliveryMethod.choices)
     payment_method = serializers.ChoiceField(choices=Order.PaymentMethod.choices)
     wallet_provider = serializers.CharField(max_length=30, required=False, allow_blank=True, default="")
+    coupon_code = serializers.CharField(max_length=30, required=False, allow_blank=True, default="")
 
     def validate_items(self, items):
         if not items:
@@ -145,6 +157,20 @@ class OrderCreateSerializer(serializers.Serializer):
                 raise serializers.ValidationError({"items": f'"{product.name}" is no longer available.'})
             if line["quantity"] > product.stock_quantity:
                 raise serializers.ValidationError({"items": f'Only {product.stock_quantity} left in stock for "{product.name}".'})
+
+        if data.get("coupon_code"):
+            from .models import Coupon
+
+            try:
+                coupon = Coupon.objects.get(code__iexact=data["coupon_code"].strip())
+            except Coupon.DoesNotExist:
+                raise serializers.ValidationError({"coupon_code": "Invalid coupon code."})
+            estimated_subtotal = sum((line["product"].discounted_price * line["quantity"] for line in data["items"]), Decimal("0.00"))
+            valid, message = coupon.is_valid_for(estimated_subtotal)
+            if not valid:
+                raise serializers.ValidationError({"coupon_code": message})
+            data["_coupon"] = coupon
+
         return data
 
     @transaction.atomic
@@ -169,11 +195,16 @@ class OrderCreateSerializer(serializers.Serializer):
 
         if subtotal >= PlatformSettings.get_solo().free_shipping_threshold:
             shipping_fee = Decimal("0.00")
-        total = subtotal + shipping_fee
+
+        coupon = validated_data.get("_coupon")
+        discount_amount = coupon.discount_amount(subtotal) if coupon else Decimal("0.00")
+        total = subtotal - discount_amount + shipping_fee
 
         billing_same = validated_data["billing_same_as_shipping"]
         order = Order.objects.create(
             customer=request.user if request.user.is_authenticated else None,
+            coupon=coupon,
+            discount_amount=discount_amount,
             shipping_full_name=validated_data["shipping_full_name"],
             shipping_phone_number=validated_data["shipping_phone_number"],
             shipping_email=validated_data["shipping_email"],
@@ -216,5 +247,9 @@ class OrderCreateSerializer(serializers.Serializer):
             product.stock_quantity -= quantity
             product.save(update_fields=["stock_quantity"])
             maybe_send_low_stock_alert(product, stock_before)
+
+        if coupon:
+            coupon.used_count += 1
+            coupon.save(update_fields=["used_count"])
 
         return order

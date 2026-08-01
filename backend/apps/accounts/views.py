@@ -40,6 +40,7 @@ from .utils import (
     clear_jwt_cookies,
     is_locked_out,
     issue_jwt_cookies,
+    maybe_send_new_vendor_application_alert,
     record_failed_login,
     send_password_reset_email,
     send_verification_email,
@@ -392,6 +393,10 @@ class VendorApplicationCreateView(generics.CreateAPIView):
 
     permission_classes = [permissions.AllowAny]
     serializer_class = VendorApplicationCreateSerializer
+
+    def perform_create(self, serializer):
+        application = serializer.save()
+        maybe_send_new_vendor_application_alert(application)
 
 
 class AdminVendorApplicationViewSet(viewsets.ReadOnlyModelViewSet):

@@ -63,6 +63,30 @@ def send_vendor_credentials_email(user, temporary_password: str) -> None:
     )
 
 
+def maybe_send_new_vendor_application_alert(application) -> None:
+    """§6.7/§7.7: admin notification toggle — fires once, right after a
+    public vendor application is submitted (§5.7), same pattern as
+    apps.products.utils.maybe_send_low_stock_alert."""
+    from apps.core.models import PlatformSettings
+
+    settings_row = PlatformSettings.get_solo()
+    if not settings_row.notify_new_vendor_applications:
+        return
+
+    send_mail(
+        subject=f"New vendor application: {application.business_name}",
+        message=(
+            f"{application.business_name} ({application.owner_name}) applied to sell on Duo Bro Mart.\n\n"
+            f"Contact: {application.email} / {application.phone_number}\n"
+            f"Business type: {application.business_type}\n\n"
+            "Review it in the admin Vendors panel."
+        ),
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[settings_row.store_email],
+        fail_silently=True,  # a missed alert email should never fail the applicant's submission
+    )
+
+
 def provision_vendor_account(email: str, first_name: str = "", last_name: str = ""):
     """
     §4.3/§6.5: creates the vendor User account + temp password + sends

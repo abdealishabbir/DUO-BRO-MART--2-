@@ -14,11 +14,12 @@ alongside the security/market recommendations already discussed.
   - "Order delivered — leave feedback" email (the actual link-in-email flow
     for `/order-feedback/:orderCode` doesn't exist yet — customers only
     reach that page via Account → Orders right now)
-  - Low-stock admin alerts (logic is wired, §7.2, but goes nowhere real)
+  - Low-stock admin alerts (logic is wired, §7.2, but goes nowhere real
+    without SMTP configured — see note above)
   - The 4 notification toggles in Admin Settings (§7.7 — New Order, New
-    Vendor Application, Low-Stock, Payout Requests) save correctly but
-    don't trigger any actual email yet; called out explicitly in the PRD
-    itself now rather than left implicit
+    Vendor Application, Low-Stock, Payout Requests) are now all wired to
+    real triggers (previously only Low-Stock was). Still subject to the
+    same "no SMTP configured" limitation as everything else on this list.
 - **No SMS notifications** — common expectation in the Pakistani market
   (order confirmation/delivery updates via SMS), not built at all.
 

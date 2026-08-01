@@ -408,6 +408,33 @@ class VendorApplicationSubmitTests(_ClearsCacheMixin, APITestCase):
         self.assertEqual(resp.status_code, 400)
 
 
+class NewVendorApplicationAlertTests(_ClearsCacheMixin, APITestCase):
+    """§6.7/§7.7 admin notification: New Vendor Application toggle."""
+
+    def submit(self):
+        return self.client.post(
+            reverse("vendor-application-create"),
+            {**VALID_APPLICATION, "cnic_front": make_image("front.png"), "cnic_back": make_image("back.png")},
+            format="multipart",
+        )
+
+    def test_alert_sent_on_submission_by_default(self):
+        resp = self.submit()
+        self.assertEqual(resp.status_code, 201, resp.data)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("New vendor application", mail.outbox[0].subject)
+
+    def test_no_alert_when_notify_new_vendor_applications_disabled(self):
+        from apps.core.models import PlatformSettings
+
+        settings_obj = PlatformSettings.get_solo()
+        settings_obj.notify_new_vendor_applications = False
+        settings_obj.save()
+
+        self.submit()
+        self.assertEqual(len(mail.outbox), 0)
+
+
 class AdminVendorApplicationReviewTests(_ClearsCacheMixin, APITestCase):
     def setUp(self):
         self.admin = make_admin()

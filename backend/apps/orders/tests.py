@@ -469,6 +469,17 @@ class PlatformSettingsIntegrationTests(OrdersTestBase):
 class LowStockAlertTests(OrdersTestBase):
     """§7.2: crossing into low stock sends exactly one admin alert email."""
 
+    def setUp(self):
+        super().setUp()
+        # Isolate from the New Order alert (§6.7/§7.7, added alongside this
+        # one) so this class keeps testing only the low-stock trigger, not
+        # every notification that happens to fire on order creation.
+        from apps.core.models import PlatformSettings
+
+        settings_obj = PlatformSettings.get_solo()
+        settings_obj.notify_new_orders = False
+        settings_obj.save()
+
     def test_alert_sent_when_order_crosses_into_low_stock(self):
         product = self.make_product(stock_quantity=6)  # order of 1 -> 5, at the threshold
         resp = self.client.post(
@@ -717,3 +728,82 @@ class PayoutTests(OrdersTestBase):
         resp = self.client.post(reverse("admin-payout-generate"))
         # still inside the 7-day cooldown from the first batch, so no new batch yet
         self.assertEqual(resp.data["created_count"], 0)
+
+
+class NewOrderAlertTests(OrdersTestBase):
+    """§6.7/§7.7 admin notification: New Order toggle."""
+
+    def place_order(self):
+        product = self.make_product()
+        return self.client.post(
+            reverse("order-create"),
+            {**VALID_SHIPPING, "items": [{"product": product.id, "quantity": 1}]},
+            format="json",
+        )
+
+    def test_alert_sent_on_new_order_by_default(self):
+        resp = self.place_order()
+        self.assertEqual(resp.status_code, 201, resp.data)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("New order", mail.outbox[0].subject)
+
+    def test_no_alert_when_notify_new_orders_disabled(self):
+        from apps.core.models import PlatformSettings
+
+        settings_obj = PlatformSettings.get_solo()
+        settings_obj.notify_new_orders = False
+        settings_obj.save()
+
+        self.place_order()
+        self.assertEqual(len(mail.outbox), 0)
+
+
+class PayoutReadyAlertTests(OrdersTestBase):
+    """§6.7/§7.7 admin notification: Payout Requests toggle."""
+
+    def make_delivered_order_item(self, base_price=Decimal("1000.00")):
+        from django.utils import timezone
+
+        product = self.make_product(base_price=base_price)
+        order = Order.objects.create(
+            order_code=f"DBM-ALERT-{OrderItem.objects.count() + 1}",
+            shipping_full_name="Test Customer", shipping_phone_number="03001234567", shipping_email="c@example.com",
+            shipping_province="sindh", shipping_city="Karachi", shipping_address_line="Street 1",
+            subtotal=base_price, shipping_fee=Decimal("0.00"), total=base_price,
+            status=Order.Status.DELIVERED,
+            delivered_at=timezone.now() - timedelta(days=10),
+        )
+        return OrderItem.objects.create(
+            order=order, product=product, vendor=product.vendor,
+            product_name=product.name, product_slug=product.slug,
+            quantity=1, unit_price=product.selling_price, unit_base_price=base_price,
+        )
+
+    def test_alert_sent_when_batches_generated(self):
+        self.make_delivered_order_item()
+        self.login_as(self.admin)
+        mail.outbox.clear()
+        resp = self.client.post(reverse("admin-payout-generate"))
+        self.assertEqual(resp.data["created_count"], 1)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("payout batch", mail.outbox[0].subject)
+
+    def test_no_alert_when_nothing_generated(self):
+        self.login_as(self.admin)
+        mail.outbox.clear()
+        resp = self.client.post(reverse("admin-payout-generate"))
+        self.assertEqual(resp.data["created_count"], 0)
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_no_alert_when_notify_payout_requests_disabled(self):
+        from apps.core.models import PlatformSettings
+
+        settings_obj = PlatformSettings.get_solo()
+        settings_obj.notify_payout_requests = False
+        settings_obj.save()
+
+        self.make_delivered_order_item()
+        self.login_as(self.admin)
+        mail.outbox.clear()
+        self.client.post(reverse("admin-payout-generate"))
+        self.assertEqual(len(mail.outbox), 0)

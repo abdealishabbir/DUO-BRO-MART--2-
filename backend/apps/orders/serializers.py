@@ -7,6 +7,7 @@ from apps.products.models import Product
 from apps.products.utils import maybe_send_low_stock_alert
 
 from .models import DELIVERY_ESTIMATE_DAYS, DELIVERY_FEES, Coupon, Order, OrderItem, Payout, PayoutItem
+from .notifications import maybe_send_new_order_alert
 
 
 class CouponSerializer(serializers.ModelSerializer):
@@ -252,6 +253,7 @@ class OrderCreateSerializer(serializers.Serializer):
             coupon.used_count += 1
             coupon.save(update_fields=["used_count"])
 
+        maybe_send_new_order_alert(order)
         return order
 
 

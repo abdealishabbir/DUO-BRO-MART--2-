@@ -17,6 +17,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from .models import Order, OrderItem, Payout, PayoutItem
+from .notifications import maybe_send_payout_ready_alert
 
 
 def eligible_order_items_for_vendor(vendor, as_of=None):
@@ -54,7 +55,6 @@ def next_eligible_at_for_vendor(vendor):
     return last.created_at + timedelta(days=cycle_days)
 
 
-@transaction.atomic
 def generate_payouts(vendor=None):
     """
     Creates one Payout per eligible vendor (or just the given one) covering
@@ -63,6 +63,14 @@ def generate_payouts(vendor=None):
     batch. Returns the list of newly created Payout rows (empty batches,
     i.e. nothing eligible, are never created).
     """
+    created = _generate_payouts_atomic(vendor)
+    if created:
+        maybe_send_payout_ready_alert(created)
+    return created
+
+
+@transaction.atomic
+def _generate_payouts_atomic(vendor=None):
     from django.contrib.auth import get_user_model
 
     UserModel = get_user_model()

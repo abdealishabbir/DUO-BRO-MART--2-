@@ -604,7 +604,7 @@ Two tabs:
 
 > Example: admin wants only vendor-application emails → turns that ON and the other two OFF; only those emails are generated.
 >
-> **Implementation note:** these four toggles are stored and editable, but as of §6.7/§7.8 there is no admin-notification-email subsystem wired up at all yet (only customer/vendor-facing transactional emails exist — vendor credentials, password reset, order status). Flipping any of these four today changes nothing observable; that belongs with the real-time/notification work still ahead.
+> **Implementation note:** all four toggles are now wired to a real trigger — New Order (fires on checkout), New Vendor Application (fires on §5.7 submission), Low-Stock (fires once as a product crosses the threshold), and Payout Requests (fires once per "Generate Payouts" run — one summary email listing every new batch, not one per vendor). All four respect their toggle and fail silently so a missed alert email never blocks the customer/vendor-facing action that triggered it.
 
 **(d) Payment Settings (gateway toggles):**
 - Independent On/Off switches: **Cards** • **E-Wallets (NayaPay/Easypaisa/JazzCash)** • **COD**.

@@ -113,11 +113,99 @@ function EditProductForm({ product, categories, onSaved, onCancel }) {
   );
 }
 
+function CategoryResolutionModal({ product, categories, onResolved, onCancel }) {
+  const [mode, setMode] = useState("existing"); // "existing" | "new"
+  const [categoryId, setCategoryId] = useState("");
+  const [newCategoryName, setNewCategoryName] = useState(product.requested_category_name || "");
+  const [commissionRate, setCommissionRate] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const submit = async () => {
+    setError("");
+    if (mode === "existing" && !categoryId) {
+      setError("Pick a category to assign this product to.");
+      return;
+    }
+    if (mode === "new" && (!newCategoryName.trim() || !commissionRate)) {
+      setError("Enter a name and a commission rate for the new category.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const body = mode === "existing"
+        ? { category_id: categoryId }
+        : { new_category_name: newCategoryName.trim(), commission_rate_percent: commissionRate };
+      await api.post(`/products/admin/products/${product.id}/approve/`, body);
+      onResolved();
+    } catch (err) {
+      setError(err.data?.detail || "Couldn't approve this product.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <tr className="border-t border-gray-100 bg-amber-50/60">
+      <td colSpan={8} className="p-3">
+        <div className="rounded-md border border-amber-200 bg-white p-3">
+          <p className="text-xs font-semibold text-amber-800">
+            "{product.name}" doesn't match any existing category — the vendor requested "{product.requested_category_name}".
+          </p>
+          <p className="mt-0.5 text-xs text-gray-500">Resolve this before approving: assign it to an existing category, or add "{product.requested_category_name}" as a new one.</p>
+
+          <div className="mt-3 flex gap-4 text-xs">
+            <label className="flex items-center gap-1.5">
+              <input type="radio" checked={mode === "existing"} onChange={() => setMode("existing")} />
+              Assign to existing category
+            </label>
+            <label className="flex items-center gap-1.5">
+              <input type="radio" checked={mode === "new"} onChange={() => setMode("new")} />
+              Create new category
+            </label>
+          </div>
+
+          {mode === "existing" ? (
+            <select className={`${inputClass} mt-2 w-64`} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+              <option value="" disabled>Select category</option>
+              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          ) : (
+            <div className="mt-2 flex flex-wrap gap-2">
+              <input
+                className={`${inputClass} w-56`} placeholder="New category name"
+                value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)}
+              />
+              <input
+                className={`${inputClass} w-40`} type="number" min="0" step="0.01" placeholder="Commission rate %"
+                value={commissionRate} onChange={(e) => setCommissionRate(e.target.value)}
+              />
+            </div>
+          )}
+
+          <div className="mt-3 flex items-center gap-3">
+            <button disabled={saving} onClick={submit} className="rounded-md bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700 disabled:opacity-60">
+              {saving ? "Approving..." : "Resolve & Approve"}
+            </button>
+            <button onClick={onCancel} className="text-xs text-gray-500 hover:underline">Cancel</button>
+            {error && <span className="text-xs text-red-600">{error}</span>}
+          </div>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
 function ProductRow({ product, categories, onChanged }) {
   const [editing, setEditing] = useState(false);
+  const [resolvingCategory, setResolvingCategory] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const decide = async (action) => {
+    if (action === "approve" && product.has_category_mismatch) {
+      setResolvingCategory(true);
+      return;
+    }
     setBusy(true);
     try {
       await api.post(`/products/admin/products/${product.id}/${action}/`, {});
@@ -149,6 +237,17 @@ function ProductRow({ product, categories, onChanged }) {
     );
   }
 
+  if (resolvingCategory) {
+    return (
+      <CategoryResolutionModal
+        product={product}
+        categories={categories}
+        onResolved={() => { setResolvingCategory(false); onChanged(); }}
+        onCancel={() => setResolvingCategory(false)}
+      />
+    );
+  }
+
   return (
     <tr className="border-t border-gray-100 text-sm">
       <td className="p-2">
@@ -156,7 +255,13 @@ function ProductRow({ product, categories, onChanged }) {
         <p className="text-xs text-gray-500">{product.brand}{product.sku ? ` · SKU ${product.sku}` : ""}</p>
       </td>
       <td className="p-2 text-xs text-gray-600">{product.vendor_name}</td>
-      <td className="p-2 text-xs text-gray-600">{product.category_name}</td>
+      <td className="p-2 text-xs">
+        {product.has_category_mismatch ? (
+          <span className="rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-700">Wants: {product.requested_category_name}</span>
+        ) : (
+          <span className="text-gray-600">{product.category_name}</span>
+        )}
+      </td>
       <td className="p-2">{formatPKR(product.base_price)}</td>
       <td className="p-2">{product.stock_quantity}</td>
       <td className="p-2"><StatusBadge status={product.status} /></td>

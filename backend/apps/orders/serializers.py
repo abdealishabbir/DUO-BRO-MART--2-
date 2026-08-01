@@ -30,7 +30,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
         model = OrderItem
         fields = [
             "id", "product", "product_name", "product_slug", "quantity", "unit_price", "line_total",
-            "net_to_vendor", "commission_amount", "vendor_name", "image",
+            "net_to_vendor", "commission_amount", "vendor_id", "vendor_name", "image",
         ]
         read_only_fields = fields
 

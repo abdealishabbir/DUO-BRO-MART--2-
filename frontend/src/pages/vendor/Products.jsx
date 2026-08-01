@@ -7,7 +7,8 @@ import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
 import FormField, { inputClass } from "../../components/FormField.jsx";
 
-const EMPTY_FORM = { name: "", sku: "", category: "", base_price: "", stock_quantity: "", description: "" };
+const OTHER_CATEGORY = "__other__";
+const EMPTY_FORM = { name: "", sku: "", category: "", customCategory: "", base_price: "", stock_quantity: "", description: "" };
 
 const STATUS_BADGE = {
   draft: "bg-gray-100 text-gray-600",
@@ -40,7 +41,9 @@ function ProductForm({ categories, editingProduct, onDone, onCancel }) {
   const [form, setForm] = useState(
     editingProduct
       ? {
-          name: editingProduct.name, sku: editingProduct.sku, category: editingProduct.category,
+          name: editingProduct.name, sku: editingProduct.sku,
+          category: editingProduct.category ?? (editingProduct.requested_category_name ? OTHER_CATEGORY : ""),
+          customCategory: editingProduct.requested_category_name || "",
           base_price: editingProduct.base_price, stock_quantity: editingProduct.stock_quantity,
           description: editingProduct.description,
         }
@@ -60,13 +63,25 @@ function ProductForm({ categories, editingProduct, onDone, onCancel }) {
 
   const submit = async (asDraft) => {
     setError("");
+    const isOther = form.category === OTHER_CATEGORY;
     if (!form.name || !form.category || !form.base_price || form.stock_quantity === "" || !form.description) {
       setError("Please fill in all required fields.");
       return;
     }
+    if (isOther && !form.customCategory.trim()) {
+      setError("Enter a name for your custom category, or pick one of the listed categories instead.");
+      return;
+    }
     setSaving(true);
     try {
-      const payload = { ...form, base_price: Number(form.base_price), stock_quantity: Number(form.stock_quantity) };
+      const { customCategory, ...rest } = form;
+      const payload = {
+        ...rest,
+        base_price: Number(form.base_price),
+        stock_quantity: Number(form.stock_quantity),
+        category: isOther ? null : form.category,
+        requested_category_name: isOther ? customCategory.trim() : "",
+      };
       let product;
       if (editingProduct) {
         product = await api.patch(`/products/vendor/products/${editingProduct.id}/`, payload);
@@ -114,12 +129,31 @@ function ProductForm({ categories, editingProduct, onDone, onCancel }) {
             {estimatedListPrice && <p className="mt-1 text-xs text-gray-400">Customer sees ~{estimatedListPrice} (incl. commission)</p>}
           </FormField>
           <FormField label="Category *">
-            <select className={inputClass} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+            <select
+              className={inputClass}
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value, customCategory: e.target.value === OTHER_CATEGORY ? form.customCategory : "" })}
+            >
               <option value="" disabled>Select category</option>
               {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              <option value={OTHER_CATEGORY}>Other (not listed)</option>
             </select>
           </FormField>
         </div>
+
+        <FormField label="Custom Category Name *">
+          <input
+            className={inputClass}
+            placeholder={'e.g. "Electric Vehicles" — used if your product doesn\'t fit any category above'}
+            value={form.customCategory}
+            disabled={form.category !== OTHER_CATEGORY}
+            onChange={(e) => setForm({ ...form, customCategory: e.target.value })}
+            style={form.category !== OTHER_CATEGORY ? { backgroundColor: "#f3f4f6", color: "#9ca3af", cursor: "not-allowed" } : undefined}
+          />
+          {form.category === OTHER_CATEGORY && (
+            <p className="mt-1 text-xs text-gray-400">An admin will review this and either place it in an existing category or add yours to the platform.</p>
+          )}
+        </FormField>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField label="Stock Quantity *">
@@ -352,6 +386,9 @@ export default function VendorProducts() {
                           <p className="truncate font-medium text-ink">{p.name}</p>
                           {p.status === "rejected" && p.admin_notes && (
                             <p className="truncate text-xs text-red-500">{p.admin_notes}</p>
+                          )}
+                          {p.has_category_mismatch && (
+                            <p className="truncate text-xs text-amber-600">Custom category "{p.requested_category_name}" — awaiting admin review</p>
                           )}
                         </div>
                       </div>

@@ -83,7 +83,7 @@ class AdminPricingSerializer(serializers.ModelSerializer):
     """§6.6 Pricing Manager: read-only breakdown of sale price -> commission -> vendor receives, per product."""
 
     vendor_name = serializers.SerializerMethodField()
-    category_name = serializers.CharField(source="category.name", read_only=True)
+    category_name = serializers.SerializerMethodField()
     sale_price = serializers.DecimalField(source="selling_price", max_digits=10, decimal_places=2, read_only=True)
     commission_rate_percent = serializers.DecimalField(max_digits=5, decimal_places=2, read_only=True)
     commission_amount = serializers.SerializerMethodField()
@@ -99,6 +99,10 @@ class AdminPricingSerializer(serializers.ModelSerializer):
     def get_vendor_name(self, obj):
         return f"{obj.vendor.first_name} {obj.vendor.last_name}".strip() or obj.vendor.username
 
+    def get_category_name(self, obj):
+        # Unresolved "Other" category requests (§6.2) have no category yet.
+        return obj.category.name if obj.category_id else f"Requested: {obj.requested_category_name}" if obj.requested_category_name else None
+
     def get_commission_amount(self, obj):
         return obj.selling_price - obj.base_price
 
@@ -111,7 +115,7 @@ class ProductCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = [
-            "id", "category", "name", "sku", "description", "brand",
+            "id", "category", "requested_category_name", "name", "sku", "description", "brand",
             "base_price", "stock_quantity", "attributes", "is_active",
             "status", "created_at",
         ]
@@ -127,6 +131,21 @@ class ProductCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Stock cannot be negative.")
         return value
 
+    def validate(self, data):
+        # A vendor picks either a fixed category, or (§6.2 "Other") types in
+        # their own suggested category name for an admin to resolve later —
+        # never both, never neither.
+        category = data.get("category", getattr(self.instance, "category", None))
+        requested_name = data.get("requested_category_name", getattr(self.instance, "requested_category_name", "")).strip()
+        if category and requested_name:
+            data["requested_category_name"] = ""
+        elif not category and not requested_name:
+            raise serializers.ValidationError({"category": "Select a category, or choose \"Other\" and enter your own."})
+        elif requested_name:
+            data["category"] = None
+            data["requested_category_name"] = requested_name
+        return data
+
     def create(self, validated_data):
         return Product.objects.create(vendor=self.context["request"].user, **validated_data)
 
@@ -136,7 +155,8 @@ class ProductSerializer(serializers.ModelSerializer):
     later, the admin review queue (§7.2)."""
 
     vendor_name = serializers.SerializerMethodField()
-    category_name = serializers.CharField(source="category.name", read_only=True)
+    category_name = serializers.SerializerMethodField()
+    has_category_mismatch = serializers.BooleanField(read_only=True)
     selling_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     discounted_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     is_deal_active = serializers.BooleanField(read_only=True)
@@ -146,7 +166,8 @@ class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = [
-            "id", "vendor", "vendor_name", "category", "category_name", "name", "slug", "sku",
+            "id", "vendor", "vendor_name", "category", "category_name", "requested_category_name",
+            "has_category_mismatch", "name", "slug", "sku",
             "description", "brand", "base_price", "selling_price", "discounted_price",
             "active_discount_percent", "deal_starts_at", "deal_ends_at", "is_deal_active", "is_low_stock",
             "bogo_eligible", "gift_card_eligible", "stock_quantity", "is_active",
@@ -157,6 +178,9 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def get_vendor_name(self, obj):
         return f"{obj.vendor.first_name} {obj.vendor.last_name}".strip() or obj.vendor.username
+
+    def get_category_name(self, obj):
+        return obj.category.name if obj.category_id else None
 
 
 class AdminProductUpdateSerializer(serializers.ModelSerializer):
@@ -175,6 +199,14 @@ class AdminProductUpdateSerializer(serializers.ModelSerializer):
             "base_price", "stock_quantity", "attributes", "is_active",
         ]
         read_only_fields = ["id"]
+
+    def validate(self, data):
+        # Assigning a real category here (e.g. from the Edit form) resolves
+        # any pending "Other" request just as cleanly as the dedicated
+        # resolve-category flow (see AdminProductViewSet.approve()).
+        if data.get("category"):
+            self.instance.requested_category_name = ""
+        return data
 
     def validate_base_price(self, value):
         if value <= 0:

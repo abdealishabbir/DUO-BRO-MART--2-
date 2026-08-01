@@ -92,7 +92,16 @@ class Product(models.Model):
         REJECTED = "rejected", "Rejected"
 
     vendor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="products")
-    category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name="products")
+    # Nullable: a vendor whose product doesn't fit any fixed category (§6.2)
+    # picks "Other" instead and leaves category unset — see
+    # requested_category_name below. An admin must resolve this (assign an
+    # existing category, or create a new one with its own commission rate)
+    # before the product can be approved; see AdminProductViewSet.approve().
+    category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name="products", null=True, blank=True)
+    requested_category_name = models.CharField(
+        max_length=100, blank=True, default="",
+        help_text="Vendor's suggested category name, only set when category is null (vendor chose 'Other'). Cleared once an admin resolves it.",
+    )
 
     name = models.CharField(max_length=200)
     slug = models.SlugField(max_length=220, unique=True, blank=True)
@@ -159,8 +168,15 @@ class Product(models.Model):
         return f"{self.name} ({self.vendor})"
 
     @property
+    def has_category_mismatch(self):
+        """True while a vendor's 'Other' category request (§6.2) is still awaiting admin resolution."""
+        return self.category_id is None and bool(self.requested_category_name)
+
+    @property
     def commission_rate_percent(self):
         """§6.6: this category's admin-set rate, or the provisional flat rate if none has been set yet."""
+        if self.category_id is None:
+            return PROVISIONAL_COMMISSION_RATE * Decimal("100")
         try:
             return self.category.commission_rate.rate_percent
         except CommissionRate.DoesNotExist:

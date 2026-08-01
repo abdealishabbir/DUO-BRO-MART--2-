@@ -290,11 +290,69 @@ class AdminProductViewSet(ModelViewSet):
         product = self.get_object()
         if product.status != Product.Status.PENDING:
             return Response({"detail": "Only pending products can be approved."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if product.has_category_mismatch:
+            resolution_error = self._resolve_category(product, request.data)
+            if resolution_error:
+                return resolution_error
+
         product.status = Product.Status.APPROVED
         product.decided_at = timezone.now()
         product.admin_notes = request.data.get("admin_notes", product.admin_notes)
-        product.save(update_fields=["status", "decided_at", "admin_notes"])
+        product.save(update_fields=["status", "decided_at", "admin_notes", "category", "requested_category_name"])
         return Response(ProductSerializer(product, context={"request": request}).data)
+
+    def _resolve_category(self, product, data):
+        """
+        §6.2: a product submitted under "Other" (no fixed category fit —
+        e.g. an electric car listed as a toy) can't go live without a real
+        Category. The admin must either:
+          - assign an existing category: {"category_id": <id>}, or
+          - create a brand-new one on the spot: {"new_category_name": "...",
+            "commission_rate_percent": "10.00"} — which also sets that
+            category's commission rate immediately, matching the same
+            §6.6 CommissionRate mechanism every other category uses.
+        Returns a DRF Response describing what's missing if neither was
+        given, or None if the product's category was resolved successfully.
+        """
+        category_id = data.get("category_id")
+        new_category_name = (data.get("new_category_name") or "").strip()
+
+        if category_id:
+            try:
+                category = Category.objects.get(pk=category_id)
+            except Category.DoesNotExist:
+                return Response({"detail": "That category no longer exists."}, status=status.HTTP_404_NOT_FOUND)
+            product.category = category
+            product.requested_category_name = ""
+            return None
+
+        if new_category_name:
+            commission_rate_percent = data.get("commission_rate_percent")
+            if commission_rate_percent in (None, ""):
+                return Response(
+                    {"detail": "Set a commission rate for the new category."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            category, _ = Category.objects.get_or_create(name=new_category_name)
+            CommissionRate.objects.update_or_create(category=category, defaults={"rate_percent": commission_rate_percent})
+            product.category = category
+            product.requested_category_name = ""
+            return None
+
+        return Response(
+            {
+                "detail": (
+                    f"This product doesn't match an existing category — the vendor requested "
+                    f"\"{product.requested_category_name}\". Assign it to an existing category "
+                    "(category_id) or create a new one (new_category_name + commission_rate_percent) "
+                    "before approving."
+                ),
+                "requires_category_resolution": True,
+                "requested_category_name": product.requested_category_name,
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     @action(detail=True, methods=["post"])
     def reject(self, request, pk=None):

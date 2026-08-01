@@ -102,6 +102,43 @@ class VendorProductCreateTests(ProductsTestBase):
         product = Product.objects.get(pk=resp.data["id"])
         self.assertEqual(product.selling_price, Decimal("1100.00"))  # 10% provisional commission
 
+    def test_vendor_can_request_custom_category(self):
+        """§6.2: a product that doesn't fit any fixed category (e.g. an
+        electric car under 'Toys') can be submitted with no category and a
+        requested_category_name instead."""
+        self.login_as(self.vendor)
+        resp = self.client.post(reverse("vendor-product-list"), {
+            "requested_category_name": "Electric Vehicles",
+            "name": "Kids Electric Car", "description": "Ride-on toy car.",
+            "brand": "RideOn", "base_price": "50000.00", "stock_quantity": 3,
+        })
+        self.assertEqual(resp.status_code, 201, resp.data)
+        product = Product.objects.get(pk=resp.data["id"])
+        self.assertIsNone(product.category)
+        self.assertEqual(product.requested_category_name, "Electric Vehicles")
+        self.assertTrue(product.has_category_mismatch)
+
+    def test_cannot_submit_without_category_or_custom_name(self):
+        self.login_as(self.vendor)
+        resp = self.client.post(reverse("vendor-product-list"), {
+            "name": "X", "description": "Y", "brand": "Z",
+            "base_price": "10.00", "stock_quantity": 1,
+        })
+        self.assertEqual(resp.status_code, 400)
+
+    def test_cannot_submit_with_both_category_and_custom_name(self):
+        """Both provided — the fixed category wins and the custom name is dropped, rather than erroring."""
+        self.login_as(self.vendor)
+        resp = self.client.post(reverse("vendor-product-list"), {
+            "category": self.category.id, "requested_category_name": "Electric Vehicles",
+            "name": "X", "description": "Y", "brand": "Z",
+            "base_price": "10.00", "stock_quantity": 1,
+        })
+        self.assertEqual(resp.status_code, 201, resp.data)
+        product = Product.objects.get(pk=resp.data["id"])
+        self.assertEqual(product.category, self.category)
+        self.assertEqual(product.requested_category_name, "")
+
 
 class VendorProductVisibilityTests(ProductsTestBase):
     def test_vendor_only_sees_own_products(self):
@@ -275,6 +312,85 @@ class AdminProductReviewTests(ProductsTestBase):
         resp = self.client.delete(reverse("admin-product-detail", args=[product.id]))
         self.assertEqual(resp.status_code, 403)
         self.assertTrue(Product.objects.filter(id=product.id).exists())
+
+
+class AdminCategoryMismatchTests(ProductsTestBase):
+    """§6.2: a pending product submitted under 'Other' (no category fit)
+    must be resolved — assign an existing category or create a new one
+    with its own commission — before it can be approved."""
+
+    def make_mismatched_product(self):
+        return self.make_product(
+            status=Product.Status.PENDING, category=None,
+            requested_category_name="Electric Vehicles",
+        )
+
+    def test_approve_blocked_without_resolution(self):
+        product = self.make_mismatched_product()
+        self.login_as(self.admin)
+        resp = self.client.post(reverse("admin-product-approve", args=[product.id]))
+        self.assertEqual(resp.status_code, 400)
+        self.assertTrue(resp.data.get("requires_category_resolution"))
+        self.assertEqual(resp.data.get("requested_category_name"), "Electric Vehicles")
+        product.refresh_from_db()
+        self.assertEqual(product.status, Product.Status.PENDING)
+
+    def test_admin_can_assign_existing_category_and_approve(self):
+        product = self.make_mismatched_product()
+        self.login_as(self.admin)
+        resp = self.client.post(
+            reverse("admin-product-approve", args=[product.id]),
+            {"category_id": self.category.id},
+        )
+        self.assertEqual(resp.status_code, 200, resp.data)
+        product.refresh_from_db()
+        self.assertEqual(product.status, Product.Status.APPROVED)
+        self.assertEqual(product.category, self.category)
+        self.assertEqual(product.requested_category_name, "")
+
+    def test_admin_can_create_new_category_with_commission_and_approve(self):
+        product = self.make_mismatched_product()
+        self.login_as(self.admin)
+        resp = self.client.post(
+            reverse("admin-product-approve", args=[product.id]),
+            {"new_category_name": "Electric Vehicles", "commission_rate_percent": "15.00"},
+        )
+        self.assertEqual(resp.status_code, 200, resp.data)
+        product.refresh_from_db()
+        self.assertEqual(product.status, Product.Status.APPROVED)
+        self.assertIsNotNone(product.category)
+        self.assertEqual(product.category.name, "Electric Vehicles")
+        self.assertEqual(product.category.commission_rate.rate_percent, Decimal("15.00"))
+        self.assertEqual(product.requested_category_name, "")
+
+    def test_new_category_requires_commission_rate(self):
+        product = self.make_mismatched_product()
+        self.login_as(self.admin)
+        resp = self.client.post(
+            reverse("admin-product-approve", args=[product.id]),
+            {"new_category_name": "Electric Vehicles"},
+        )
+        self.assertEqual(resp.status_code, 400)
+        product.refresh_from_db()
+        self.assertEqual(product.status, Product.Status.PENDING)
+        self.assertIsNone(product.category)
+
+    def test_matching_category_product_approves_directly(self):
+        """A product that already matches a fixed category needs no resolution step."""
+        product = self.make_product(status=Product.Status.PENDING)
+        self.login_as(self.admin)
+        resp = self.client.post(reverse("admin-product-approve", args=[product.id]))
+        self.assertEqual(resp.status_code, 200, resp.data)
+        product.refresh_from_db()
+        self.assertEqual(product.status, Product.Status.APPROVED)
+
+    def test_reject_does_not_require_category_resolution(self):
+        product = self.make_mismatched_product()
+        self.login_as(self.admin)
+        resp = self.client.post(reverse("admin-product-reject", args=[product.id]), {"admin_notes": "Not a fit"})
+        self.assertEqual(resp.status_code, 200, resp.data)
+        product.refresh_from_db()
+        self.assertEqual(product.status, Product.Status.REJECTED)
 
 
 class ProductChangeRequestTests(ProductsTestBase):

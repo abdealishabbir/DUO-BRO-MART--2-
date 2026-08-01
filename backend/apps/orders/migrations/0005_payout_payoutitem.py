@@ -1,3 +1,5 @@
+import decimal
+
 import django.db.models.deletion
 from django.conf import settings
 from django.db import migrations, models
@@ -17,7 +19,7 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('period_start', models.DateField()),
                 ('period_end', models.DateField()),
-                ('total_amount', models.DecimalField(decimal_places=2, default='0.00', max_digits=12)),
+                ('total_amount', models.DecimalField(decimal_places=2, default=decimal.Decimal('0.00'), max_digits=12)),
                 ('status', models.CharField(choices=[('pending', 'Pending'), ('processing', 'Processing'), ('paid', 'Paid')], default='pending', max_length=20)),
                 ('reference', models.CharField(blank=True, help_text='Bank/wallet transaction reference, entered by the admin when marking this paid.', max_length=100)),
                 ('admin_notes', models.TextField(blank=True)),

@@ -338,7 +338,7 @@ class ProductView(models.Model):
     viewed_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        indexes = [models.Index(fields=["product", "viewed_at"])]
+        indexes = [models.Index(fields=["product", "viewed_at"], name="products_view_product_time_idx")]
 
     def __str__(self):
         return f"View of {self.product.name} ({self.source}) at {self.viewed_at}"

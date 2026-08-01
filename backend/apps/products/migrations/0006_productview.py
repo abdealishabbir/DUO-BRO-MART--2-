@@ -20,6 +20,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name='productview',
-            index=models.Index(fields=['product', 'viewed_at'], name='products_pr_product_a5d3f1_idx'),
+            index=models.Index(fields=['product', 'viewed_at'], name='products_view_product_time_idx'),
         ),
     ]

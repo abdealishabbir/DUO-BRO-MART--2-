@@ -30,6 +30,8 @@ implements. Endpoint map:
            GET   /api/products/vendor/analytics/?range=7d|30d|90d  (§6.7/Phase 6+ real analytics)
 """
 
+from decimal import Decimal, InvalidOperation
+
 from django.db.models import Q
 from django.utils import timezone
 from rest_framework import generics, permissions, status, viewsets
@@ -411,6 +413,14 @@ class AdminProductViewSet(ModelViewSet):
                     {"detail": "Set a commission rate for the new category."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
+            try:
+                # request.data delivers this as a string — DecimalField
+                # doesn't coerce it in-memory until re-fetched from the DB,
+                # so leaving it as-is here would crash the very next read
+                # of rate_percent (e.g. in Product.commission_rate_percent).
+                commission_rate_percent = Decimal(str(commission_rate_percent))
+            except InvalidOperation:
+                return Response({"detail": "Commission rate must be a number."}, status=status.HTTP_400_BAD_REQUEST)
             category, _ = Category.objects.get_or_create(name=new_category_name)
             CommissionRate.objects.update_or_create(category=category, defaults={"rate_percent": commission_rate_percent})
             product.category = category

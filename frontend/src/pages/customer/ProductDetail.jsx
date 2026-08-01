@@ -6,6 +6,23 @@ import { useCart } from "../../cart/CartContext.jsx";
 import { formatPKR } from "../../lib/currency.js";
 import { useInventorySocket } from "../../lib/useInventorySocket.js";
 
+// Feeds the vendor Analytics traffic-source breakdown (§6.7/Phase 6+). No
+// UTM parsing, no session tracking — just a coarse bucket from referrer,
+// same spirit as the metric it feeds: directional, not exact.
+function detectTrafficSource() {
+  const ref = typeof document !== "undefined" ? document.referrer : "";
+  if (!ref) return "direct";
+  try {
+    const host = new URL(ref).hostname.replace("www.", "");
+    if (/google|bing|yahoo|duckduckgo/.test(host)) return "search";
+    if (/facebook|instagram|twitter|x\.com|tiktok|pinterest|whatsapp/.test(host)) return "social";
+    if (host === window.location.hostname) return "direct";
+    return "other";
+  } catch {
+    return "direct";
+  }
+}
+
 function ImageCarousel({ images, name }) {
   const [active, setActive] = useState(0);
   const shown = images.length ? images : ["https://placehold.co/600x600?text=No+Image"];
@@ -121,7 +138,7 @@ export default function ProductDetail() {
     setNotFound(false);
     setQuantity(1);
     api
-      .get(`/products/${slug}/`)
+      .get(`/products/${slug}/?src=${detectTrafficSource()}`)
       .then((data) => {
         setProduct(data);
         return api.get(`/products/?category=${data.category_slug}`);

@@ -12,6 +12,7 @@ class PlatformSettingsSerializer(serializers.ModelSerializer):
             "store_name", "store_email", "currency",
             "default_shipping_rate", "free_shipping_threshold", "handling_time",
             "cod_enabled", "card_enabled", "jazzcash_enabled", "easypaisa_enabled",
+            "payout_hold_days", "payout_cycle_days",
             "notify_new_orders", "notify_new_vendor_applications", "notify_low_stock", "notify_payout_requests",
             "updated_at",
         ]

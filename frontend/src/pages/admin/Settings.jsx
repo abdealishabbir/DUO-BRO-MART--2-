@@ -107,6 +107,22 @@ export default function AdminSettings() {
         </div>
 
         <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <h2 className="mb-3 text-sm font-bold text-gray-900">Payout Schedule</h2>
+          <div className="space-y-3">
+            <label className="block text-xs">
+              <span className="mb-1 block font-medium text-gray-700">Hold Period (days after delivery)</span>
+              <input type="number" min="0" className={inputClass} value={form.payout_hold_days} onChange={(e) => set("payout_hold_days")(e.target.value)} />
+              <span className="mt-1 block text-[10px] text-gray-400">Covers the return/complaint window before a delivered order's earnings become payout-eligible.</span>
+            </label>
+            <label className="block text-xs">
+              <span className="mb-1 block font-medium text-gray-700">Payout Cycle (days)</span>
+              <input type="number" min="1" className={inputClass} value={form.payout_cycle_days} onChange={(e) => set("payout_cycle_days")(e.target.value)} />
+              <span className="mt-1 block text-[10px] text-gray-400">Minimum gap between payout batches for the same vendor.</span>
+            </label>
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
           <h2 className="mb-3 text-sm font-bold text-gray-900">Email Notifications</h2>
           <div className="space-y-3">
             {[

@@ -15,8 +15,10 @@ alongside the security/market recommendations already discussed.
     for `/order-feedback/:orderCode` doesn't exist yet — customers only
     reach that page via Account → Orders right now)
   - Low-stock admin alerts (logic is wired, §7.2, but goes nowhere real)
-  - The 4 notification toggles in Admin Settings (§6.7) save but don't
-    trigger anything except low-stock
+  - The 4 notification toggles in Admin Settings (§7.7 — New Order, New
+    Vendor Application, Low-Stock, Payout Requests) save correctly but
+    don't trigger any actual email yet; called out explicitly in the PRD
+    itself now rather than left implicit
 - **No SMS notifications** — common expectation in the Pakistani market
   (order confirmation/delivery updates via SMS), not built at all.
 
@@ -91,3 +93,32 @@ alongside the security/market recommendations already discussed.
 - **Rate limits (order-track/order-create/public-catalog) use rough,
   unvalidated numbers** — reasonable guesses, not tuned against real
   traffic patterns.
+
+## Vendor Orders, Payouts & Analytics (this session)
+Real Orders page, real Payouts ledger (vendor + admin), and real Analytics
+(revenue/views/conversion/traffic-source) replaced the old "Phase 6+"
+placeholders. What's still genuinely missing, not faked or stubbed:
+
+- **No live bank/wallet transfer integration** — "Generate Payouts" creates
+  correct batches from real delivered-order data, but "Mark Paid" is a
+  manual admin action with a free-text reference field. No NayaPay/
+  Easypaisa/bank payout API is called. This is the single biggest gap
+  standing between what's built and an actual working payout system.
+- **Payout schedule is platform-wide, not per-vendor** — one hold period +
+  one cycle length (Admin Settings) applies to every vendor. A real system
+  would likely let vendors choose their own cadence (Etsy-style) or let
+  admin set tiers by vendor trust level.
+- **No payout failure/retry handling** — if a "Paid" batch's transfer
+  actually failed outside the platform, there's no way to reopen it; an
+  admin would have to fix it directly in Django admin.
+- **Traffic-source detection is referrer-based only** — no UTM parameter
+  capture, no campaign tracking, no session/cookie-level attribution. It's
+  a coarse direct/search/social/other bucket, good enough for a directional
+  read, not for real marketing attribution.
+- **Conversion rate is a simple ratio** (orders in range ÷ views in range),
+  not a true session-to-purchase funnel — a customer who views on Monday
+  and buys Thursday still counts, and there's no per-session linkage.
+- **No returning-vs-new-visitor split, no geographic breakdown** — nothing
+  captures visitor identity or location at all (deliberately — kept PII-free).
+- **Analytics/Payouts admin views have no CSV export** and the date range
+  is fixed to 7/30/90-day tabs, no custom picker.

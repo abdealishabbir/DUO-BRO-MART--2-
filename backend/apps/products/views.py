@@ -27,6 +27,7 @@ implements. Endpoint map:
            GET   /api/products/admin/commission-rates/          (§6.6)
            PATCH /api/products/admin/commission-rates/
            GET   /api/products/admin/pricing/?search=&category=  (§6.6 Pricing Manager)
+           GET   /api/products/vendor/analytics/?range=7d|30d|90d  (§6.7/Phase 6+ real analytics)
 """
 
 from django.db.models import Q
@@ -40,7 +41,7 @@ from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
 from apps.accounts.permissions import IsAdminRole, IsVendorRole, ReadOnlyOrIsAdmin
 
-from .models import Category, CommissionRate, PROVISIONAL_COMMISSION_RATE, Product, ProductChangeRequest, ProductImage, StockChangeRequest
+from .models import Category, CommissionRate, PROVISIONAL_COMMISSION_RATE, Product, ProductChangeRequest, ProductImage, ProductView, StockChangeRequest
 from .serializers import (
     AdminPricingSerializer,
     AdminProductUpdateSerializer,
@@ -83,6 +84,20 @@ class PublicProductViewSet(ReadOnlyModelViewSet):
 
     def get_serializer_class(self):
         return PublicProductDetailSerializer if self.action == "retrieve" else PublicProductListSerializer
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        # Best-effort view logging for vendor Analytics (§6.7/Phase 6+) —
+        # never let a logging hiccup break the page itself.
+        try:
+            source = request.query_params.get("src", "direct")
+            if source not in ProductView.Source.values:
+                source = ProductView.Source.OTHER
+            ProductView.objects.create(product=instance, source=source)
+        except Exception:
+            pass
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
 
     def get_queryset(self):
         qs = (
@@ -141,6 +156,68 @@ class PublicProductViewSet(ReadOnlyModelViewSet):
 # ---------------------------------------------------------------------------
 # Vendor
 # ---------------------------------------------------------------------------
+
+class VendorAnalyticsView(APIView):
+    """
+    §6.7/Phase 6+ vendor Analytics — replaces the old placeholder. Built
+    entirely from data that genuinely exists: real orders (apps.orders)
+    for revenue/units/top products, and ProductView for traffic/conversion.
+    Deliberately NOT included: session-level funnels, returning-vs-new
+    visitor splits, or geographic breakdowns — none of that data is
+    captured anywhere yet (see DUOBROMART.md's Payout & Analytics Ledger
+    Subsystem section for what a fuller build would need).
+    """
+
+    permission_classes = [permissions.IsAuthenticated, IsVendorRole]
+
+    RANGE_DAYS = {"7d": 7, "30d": 30, "90d": 90}
+
+    def get(self, request):
+        from datetime import timedelta
+
+        from apps.orders.models import Order, OrderItem
+
+        days = self.RANGE_DAYS.get(request.query_params.get("range"), 30)
+        since = timezone.now() - timedelta(days=days)
+        vendor = request.user
+
+        items = OrderItem.objects.filter(
+            vendor=vendor, order__created_at__gte=since,
+        ).exclude(order__status=Order.Status.CANCELLED).select_related("order")
+
+        revenue = sum((i.net_to_vendor for i in items), 0)
+        units_sold = sum((i.quantity for i in items), 0)
+        order_ids = {i.order_id for i in items}
+
+        top_products = {}
+        for i in items:
+            entry = top_products.setdefault(i.product_name, {"units": 0, "revenue": 0})
+            entry["units"] += i.quantity
+            entry["revenue"] += i.net_to_vendor
+        top_products = sorted(
+            ({"name": name, **v} for name, v in top_products.items()),
+            key=lambda r: r["revenue"], reverse=True,
+        )[:5]
+
+        views_qs = ProductView.objects.filter(product__vendor=vendor, viewed_at__gte=since)
+        total_views = views_qs.count()
+        source_breakdown = {
+            choice: views_qs.filter(source=choice).count() for choice in ProductView.Source.values
+        }
+
+        conversion_rate = round((len(order_ids) / total_views) * 100, 2) if total_views else None
+
+        return Response({
+            "range_days": days,
+            "revenue": revenue,
+            "order_count": len(order_ids),
+            "units_sold": units_sold,
+            "total_views": total_views,
+            "conversion_rate": conversion_rate,
+            "traffic_sources": source_breakdown,
+            "top_products": top_products,
+        })
+
 
 class VendorProductViewSet(ModelViewSet):
     """A vendor's own product catalog — create, edit, submit for review,

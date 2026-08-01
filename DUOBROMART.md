@@ -493,15 +493,21 @@ Vendor applies for a banner slot from their panel with:
 
 Application goes to Admin → Banner section for review, payment confirmation, and publishing (§7.4).
 
-## 6.7 Vendor Orders & Sales View
-Vendor sees orders containing **their** products only: order ID, items, quantity, status; plus a sales summary (units sold, revenue after commission). *(Payouts ledger — Phase 2.)*
+## 6.7 Vendor Orders, Analytics & Payouts *(built beyond original roadmap — see §7.8)*
+Vendor sees orders containing **their** products only: order ID, items, quantity, status, and per-item earnings after commission — pulled from the real Order backend (not the mock/localStorage checkout the earlier draft of this section assumed).
+
+**Analytics:** real revenue, units sold, and top-products for a selected date range (7/30/90 days), plus product-view counts and a best-effort traffic-source breakdown (Direct / Search / Social / Other, inferred from referrer — not full UTM tracking) and a conversion rate (orders ÷ views). Views are logged automatically on every storefront product-detail page load.
+
+**Payouts ledger** *(replaces the old "Phase 2" placeholder — this is now built, see §7.8 for the admin side)*: delivered-order earnings accrue as a running balance. An order's earnings become payout-eligible a configurable number of days after delivery (**payout hold period**, default 3 days — covers the return/complaint window), then get batched into a payout covering everything eligible since the vendor's last batch, on a configurable minimum cycle (**payout cycle**, default 7 days). The vendor's Payouts page shows: current accruing (not-yet-batched) balance, lifetime paid total, when their next batch is eligible, and full history of past batches (period, amount, status, paid date).
+
+**Explicitly out of scope for now** (no live bank/wallet transfer integration exists — batches are marked paid manually by an admin once the transfer has actually been sent outside the platform): automatic NayaPay/Easypaisa/bank disbursement, payout failure retries, vendor-selectable payout schedule (currently platform-wide, not per-vendor), and full click/session-level analytics (returning-vs-new visitors, funnels, geographic breakdown).
 
 ## 6.8 Vendor Settings
 Change password, update contact info, view own application details, view commission rate, read Vendor T&C.
 
 ---
 
-# 7. PRD — ADMIN PANEL (DETAILED — 7 SECTIONS)
+# 7. PRD — ADMIN PANEL (DETAILED — 7 ORIGINAL SECTIONS + §7.8 PAYOUTS ADDED POST-LAUNCH-PLANNING)
 
 Admin logs in at `/admin/login` (separate hidden URL). Panel layout: left sidebar with the 7 sections + **Logout at the bottom of the page**.
 
@@ -594,14 +600,31 @@ Two tabs:
 | 📧 New Order received | On/Off |
 | 📧 New Vendor Application | On/Off |
 | 📧 Low-Stock Alert (product below threshold) | On/Off |
+| 📧 Payout Requests | On/Off |
 
 > Example: admin wants only vendor-application emails → turns that ON and the other two OFF; only those emails are generated.
+>
+> **Implementation note:** these four toggles are stored and editable, but as of §6.7/§7.8 there is no admin-notification-email subsystem wired up at all yet (only customer/vendor-facing transactional emails exist — vendor credentials, password reset, order status). Flipping any of these four today changes nothing observable; that belongs with the real-time/notification work still ahead.
 
 **(d) Payment Settings (gateway toggles):**
 - Independent On/Off switches: **Cards** • **E-Wallets (NayaPay/Easypaisa/JazzCash)** • **COD**.
 - Situational use: *if banking servers are down, admin turns off Cards and E-Wallets → checkout shows only COD.* Toggles reflect on the customer payment page instantly.
 
-**(e) Logout** — at the very end/bottom of the panel.
+**(e) Payout Schedule** *(new — see §6.7/§7.8)*:
+- **Hold period (days after delivery):** default 3 — how long after delivery before that order's vendor earnings become payout-eligible.
+- **Payout cycle (days):** default 7 — minimum gap between payout batches for the same vendor.
+
+**(f) Logout** — at the very end/bottom of the panel.
+
+---
+
+## 7.8 Section 8 — Payouts *(new — built beyond the original 7-section design, same way §7.3 Banners grew out of a vendor-side feature)*
+The admin counterpart to §6.7's vendor payout ledger.
+
+- **Batch list:** every payout ever generated — vendor, period covered, item count, amount, status (`Pending` / `Processing` / `Paid`), created date, and (once paid) the bank/wallet reference the admin entered.
+- **"Generate Payouts" action:** runs the eligibility engine — for every vendor with delivered-order earnings past the hold period and outside their cycle cooldown, creates one new payout batch covering everything currently eligible. An order line is claimed by exactly one batch, ever — it cannot be paid out twice even across separate generation runs.
+- **"Mark Paid" action:** opens the batch's line items (order + product + amount) for review, takes a bank/wallet transaction reference, and flips the batch to `Paid` with a timestamp. This is a manual admin action because no live transfer integration exists yet (see §6.7's "explicitly out of scope" list).
+- Filterable by status and by vendor.
 
 ---
 
@@ -730,6 +753,18 @@ Order(id, order_code 'DBM-YYYY-XXXXXX', user_id FK, subtotal, discount_total,
 OrderItem(id, order_id FK, product_id FK, vendor_id FK, qty, unit_price,
      line_total, commission_amount)
 
+Payout(id, vendor_id FK, period_start, period_end, total_amount,
+     status[pending|processing|paid], reference, admin_notes, paid_at, created_at)
+     -- new (§6.7/§7.8): a batch of one vendor's eligible earnings
+
+PayoutItem(id, payout_id FK, order_item_id FK UNIQUE, amount)
+     -- new: one delivered order line folded into a batch; UNIQUE on
+     -- order_item_id is the double-payment guard — an item can belong to
+     -- at most one Payout, ever
+
+ProductView(id, product_id FK, source[direct|search|social|other], viewed_at)
+     -- new (§6.7 Analytics): one row per storefront product-detail page load
+
 ShippingAddress(id, order_id FK, full_name, contact, email, address_text,
      province, city, is_rural BOOL, nearest_landmark nullable)
 
@@ -750,6 +785,7 @@ Complaint(id, order_id FK, reason[wrong_product|wrong_color|wrong_brand|
 
 Setting(key, value)   -- site_name, email, currency=PKR, default_ship=250,
                       -- per_km_rate, free_ship_threshold=5000,
+                      -- payout_hold_days=3, payout_cycle_days=7,
                       -- notify_new_order, notify_vendor_app, notify_low_stock,
                       -- pay_card_on, pay_wallet_on, pay_cod_on
 
@@ -763,7 +799,9 @@ AuditLog(id, admin_id, action, entity, entity_id, before, after, at)
 - `GET /api/products/?category=&brand=&min_price=&max_price=&rating=&page=` (20/page)
 - `POST /api/cart/items/` • `POST /api/orders/` • `GET /api/orders/track/{code}/`
 - `POST /api/vendor/apply/` • vendor CRUD: `/api/vendor/products/`, `/api/vendor/deals/`, `/api/vendor/banners/`, `/api/vendor/restock/`
+- `GET /api/orders/vendor/` (orders with this vendor's items) • `GET /api/orders/vendor/payouts/` (balance + history) • `GET /api/products/vendor/analytics/?range=7d|30d|90d`
 - Admin: `/api/admin/dashboard/`, `/api/admin/products/`, `/api/admin/banners/`, `/api/admin/orders/`, `/api/admin/vendors/`, `/api/admin/pricing/`, `/api/admin/settings/`
+- `GET /api/orders/admin/payouts/` • `POST /api/orders/admin/payouts/generate/` • `POST /api/orders/admin/payouts/<id>/mark-paid/`
 - `POST /api/feedback/{order_code}/` • `POST /api/complaints/{order_code}/`
 - WebSocket: `/ws/stock/` (live inventory), `/ws/admin/dashboard/`
 

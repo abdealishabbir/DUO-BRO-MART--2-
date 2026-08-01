@@ -7,11 +7,15 @@ Endpoint map:
   Customer: GET  /api/orders/mine/
 
   Vendor:   GET  /api/orders/vendor/                (orders containing this vendor's products)
+            GET  /api/orders/vendor/payouts/         (§6.7/Phase 6+ payout ledger: balance + history)
 
   Admin:    GET   /api/orders/admin/
             PATCH /api/orders/admin/<id>/            (status/courier/admin_notes)
             GET   /api/orders/admin/dashboard/        (§6.1 KPI dashboard)
             /api/orders/admin/coupons/                (§8.3 CRUD)
+            GET   /api/orders/admin/payouts/           (list every payout batch)
+            POST  /api/orders/admin/payouts/generate/  (batch-generate eligible payouts)
+            POST  /api/orders/admin/payouts/<id>/mark-paid/
 """
 
 from datetime import timedelta
@@ -19,14 +23,17 @@ from decimal import Decimal
 
 from django.utils import timezone
 from rest_framework import permissions, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.permissions import IsAdminRole, IsVendorRole
 
-from .models import Coupon, Order, OrderItem
-from .serializers import CouponSerializer, OrderCreateSerializer, OrderSerializer
+from .models import Coupon, Order, OrderItem, Payout
+from .payouts import eligible_order_items_for_vendor, generate_payouts, next_eligible_at_for_vendor
+from .serializers import CouponSerializer, OrderCreateSerializer, OrderSerializer, PayoutSerializer
+
 
 
 class OrderCreateView(APIView):
@@ -90,6 +97,34 @@ class VendorOrdersView(ListAPIView):
 
     def get_queryset(self):
         return Order.objects.filter(items__vendor=self.request.user).distinct().prefetch_related("items")
+
+
+class VendorPayoutsView(APIView):
+    """
+    §6.7/Phase 6+: a vendor's own payout ledger — current accruing
+    (not-yet-batched) balance, when their next batch is allowed, and the
+    full history of past payout batches. See apps.orders.payouts for the
+    eligibility rules.
+    """
+
+    permission_classes = [permissions.IsAuthenticated, IsVendorRole]
+
+    def get(self, request):
+        vendor = request.user
+        pending_items = eligible_order_items_for_vendor(vendor)
+        pending_balance = sum((i.net_to_vendor for i in pending_items), Decimal("0.00"))
+
+        payouts = Payout.objects.filter(vendor=vendor).prefetch_related("items")
+
+        return Response({
+            "pending_balance": pending_balance,
+            "pending_item_count": pending_items.count(),
+            "next_eligible_at": next_eligible_at_for_vendor(vendor),
+            "lifetime_paid": sum(
+                (p.total_amount for p in payouts if p.status == Payout.Status.PAID), Decimal("0.00")
+            ),
+            "payouts": PayoutSerializer(payouts, many=True, context={"request": request}).data,
+        })
 
 
 class AdminOrdersView(ListAPIView):
@@ -238,3 +273,48 @@ class AdminCouponViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated, IsAdminRole]
     serializer_class = CouponSerializer
     queryset = Coupon.objects.all().order_by("-created_at")
+
+
+class AdminPayoutViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    §6.7/Phase 6+: admin's payout ledger — list every batch ever generated,
+    trigger generation of new eligible batches, and mark a batch paid once
+    the transfer has actually been sent (no live bank/wallet API — see
+    models.Payout docstring).
+    """
+
+    permission_classes = [permissions.IsAuthenticated, IsAdminRole]
+    serializer_class = PayoutSerializer
+
+    def get_queryset(self):
+        qs = Payout.objects.select_related("vendor").prefetch_related("items").all()
+        status_filter = self.request.query_params.get("status")
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        vendor_filter = self.request.query_params.get("vendor")
+        if vendor_filter:
+            qs = qs.filter(vendor_id=vendor_filter)
+        return qs
+
+    @action(detail=False, methods=["post"])
+    def generate(self, request):
+        created = generate_payouts()
+        return Response(
+            {
+                "created_count": len(created),
+                "payouts": PayoutSerializer(created, many=True, context={"request": request}).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=True, methods=["post"], url_path="mark-paid")
+    def mark_paid(self, request, pk=None):
+        payout = self.get_object()
+        if payout.status == Payout.Status.PAID:
+            return Response({"detail": "This payout is already marked paid."}, status=status.HTTP_400_BAD_REQUEST)
+        payout.status = Payout.Status.PAID
+        payout.reference = request.data.get("reference", payout.reference)
+        payout.admin_notes = request.data.get("admin_notes", payout.admin_notes)
+        payout.paid_at = timezone.now()
+        payout.save(update_fields=["status", "reference", "admin_notes", "paid_at"])
+        return Response(PayoutSerializer(payout, context={"request": request}).data)

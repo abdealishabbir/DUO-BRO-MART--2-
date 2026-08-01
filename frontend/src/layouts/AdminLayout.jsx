@@ -7,6 +7,7 @@ const NAV_LINKS = [
   { to: "/admin/products", label: "Products" },
   { to: "/admin/banners", label: "Banners & Promotion" },
   { to: "/admin/orders", label: "Orders" },
+  { to: "/admin/payouts", label: "Payouts" },
   { to: "/admin/vendors", label: "Vendors" },
   { to: "/admin/pricing", label: "Pricing & Commission" },
   { to: "/admin/settings", label: "Settings" },

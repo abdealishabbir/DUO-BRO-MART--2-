@@ -6,6 +6,7 @@ import AdminDashboard from "../pages/admin/Dashboard.jsx";
 import AdminProducts from "../pages/admin/Products.jsx";
 import AdminBannersPromotion from "../pages/admin/BannersPromotion.jsx";
 import AdminOrders from "../pages/admin/Orders.jsx";
+import AdminPayouts from "../pages/admin/Payouts.jsx";
 import AdminVendors from "../pages/admin/Vendors.jsx";
 import AdminPricing from "../pages/admin/Pricing.jsx";
 import AdminSettings from "../pages/admin/Settings.jsx";
@@ -26,6 +27,7 @@ export default function AdminRoutes() {
           <Route path="products" element={<AdminProducts />} />
           <Route path="banners" element={<AdminBannersPromotion />} />
           <Route path="orders" element={<AdminOrders />} />
+          <Route path="payouts" element={<AdminPayouts />} />
           <Route path="vendors" element={<AdminVendors />} />
           <Route path="pricing" element={<AdminPricing />} />
           <Route path="settings" element={<AdminSettings />} />

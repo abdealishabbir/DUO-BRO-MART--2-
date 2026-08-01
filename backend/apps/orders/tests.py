@@ -1,5 +1,7 @@
 from decimal import Decimal
 
+from datetime import timedelta
+
 from django.contrib.auth import get_user_model
 from django.core import mail
 from django.core.cache import cache
@@ -602,3 +604,116 @@ class CouponTests(OrdersTestBase):
         self.login_as(self.vendor)
         resp = self.client.get(reverse("admin-coupon-list"))
         self.assertEqual(resp.status_code, 403)
+
+
+class PayoutTests(OrdersTestBase):
+    """§6.7/Phase 6+: payout eligibility (hold + cycle) and batch generation."""
+
+    def make_delivered_order_item(self, vendor=None, base_price=Decimal("1000.00"), quantity=1, delivered_days_ago=10):
+        from django.utils import timezone
+
+        product = self.make_product(vendor=vendor or self.vendor, base_price=base_price)
+        order = Order.objects.create(
+            order_code=f"DBM-TEST-{OrderItem.objects.count() + 1}",
+            shipping_full_name="Test Customer", shipping_phone_number="03001234567", shipping_email="c@example.com",
+            shipping_province="sindh", shipping_city="Karachi", shipping_address_line="Street 1",
+            subtotal=base_price * quantity, shipping_fee=Decimal("0.00"), total=base_price * quantity,
+            status=Order.Status.DELIVERED,
+            delivered_at=timezone.now() - timedelta(days=delivered_days_ago),
+        )
+        return OrderItem.objects.create(
+            order=order, product=product, vendor=product.vendor,
+            product_name=product.name, product_slug=product.slug,
+            quantity=quantity, unit_price=product.selling_price, unit_base_price=base_price,
+        )
+
+    def test_item_not_eligible_before_hold_period(self):
+        from apps.core.models import PlatformSettings
+
+        settings_obj = PlatformSettings.get_solo()
+        settings_obj.payout_hold_days = 5
+        settings_obj.save()
+        self.make_delivered_order_item(delivered_days_ago=2)  # inside hold window
+        self.login_as(self.admin)
+        resp = self.client.post(reverse("admin-payout-generate"))
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.data["created_count"], 0)
+
+    def test_item_eligible_after_hold_period(self):
+        from apps.core.models import PlatformSettings
+
+        settings_obj = PlatformSettings.get_solo()
+        settings_obj.payout_hold_days = 3
+        settings_obj.save()
+        self.make_delivered_order_item(delivered_days_ago=10, base_price=Decimal("1000.00"))
+        self.login_as(self.admin)
+        resp = self.client.post(reverse("admin-payout-generate"))
+        self.assertEqual(resp.status_code, 201, resp.data)
+        self.assertEqual(resp.data["created_count"], 1)
+        self.assertEqual(Decimal(resp.data["payouts"][0]["total_amount"]), Decimal("1000.00"))
+
+    def test_item_not_double_counted_across_batches(self):
+        self.make_delivered_order_item(delivered_days_ago=10)
+        self.login_as(self.admin)
+        first = self.client.post(reverse("admin-payout-generate"))
+        self.assertEqual(first.data["created_count"], 1)
+        second = self.client.post(reverse("admin-payout-generate"))
+        self.assertEqual(second.data["created_count"], 0)
+
+    def test_vendor_sees_pending_balance_before_batch_generated(self):
+        self.make_delivered_order_item(delivered_days_ago=10, base_price=Decimal("500.00"))
+        self.login_as(self.vendor)
+        resp = self.client.get(reverse("vendor-payouts"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(Decimal(resp.data["pending_balance"]), Decimal("500.00"))
+        self.assertEqual(resp.data["payouts"], [])
+
+    def test_vendor_sees_payout_history_after_generation(self):
+        self.make_delivered_order_item(delivered_days_ago=10, base_price=Decimal("750.00"))
+        self.login_as(self.admin)
+        self.client.post(reverse("admin-payout-generate"))
+        self.login_as(self.vendor)
+        resp = self.client.get(reverse("vendor-payouts"))
+        self.assertEqual(len(resp.data["payouts"]), 1)
+        self.assertEqual(Decimal(resp.data["payouts"][0]["total_amount"]), Decimal("750.00"))
+        self.assertEqual(Decimal(resp.data["pending_balance"]), Decimal("0.00"))
+
+    def test_admin_can_mark_payout_paid(self):
+        self.make_delivered_order_item(delivered_days_ago=10)
+        self.login_as(self.admin)
+        gen = self.client.post(reverse("admin-payout-generate"))
+        payout_id = gen.data["payouts"][0]["id"]
+        resp = self.client.post(reverse("admin-payout-mark-paid", args=[payout_id]), {"reference": "TXN123"})
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertEqual(resp.data["status"], "paid")
+        self.assertEqual(resp.data["reference"], "TXN123")
+
+    def test_cannot_mark_already_paid_payout_paid_again(self):
+        self.make_delivered_order_item(delivered_days_ago=10)
+        self.login_as(self.admin)
+        gen = self.client.post(reverse("admin-payout-generate"))
+        payout_id = gen.data["payouts"][0]["id"]
+        self.client.post(reverse("admin-payout-mark-paid", args=[payout_id]))
+        resp = self.client.post(reverse("admin-payout-mark-paid", args=[payout_id]))
+        self.assertEqual(resp.status_code, 400)
+
+    def test_vendor_cannot_access_admin_payout_endpoints(self):
+        self.login_as(self.vendor)
+        resp = self.client.get(reverse("admin-payout-list"))
+        self.assertEqual(resp.status_code, 403)
+
+    def test_second_batch_respects_cycle_cooldown(self):
+        from apps.core.models import PlatformSettings
+
+        settings_obj = PlatformSettings.get_solo()
+        settings_obj.payout_cycle_days = 7
+        settings_obj.save()
+
+        self.make_delivered_order_item(delivered_days_ago=10, base_price=Decimal("100.00"))
+        self.login_as(self.admin)
+        self.client.post(reverse("admin-payout-generate"))  # first batch, sets cooldown
+
+        self.make_delivered_order_item(delivered_days_ago=10, base_price=Decimal("200.00"))
+        resp = self.client.post(reverse("admin-payout-generate"))
+        # still inside the 7-day cooldown from the first batch, so no new batch yet
+        self.assertEqual(resp.data["created_count"], 0)

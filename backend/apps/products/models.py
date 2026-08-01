@@ -314,3 +314,31 @@ class StockChangeRequest(models.Model):
 
     def __str__(self):
         return f"+{self.requested_increase} stock request for {self.product.name}"
+
+
+class ProductView(models.Model):
+    """
+    §6.7/Phase 6+ vendor Analytics — the missing ingredient the old
+    "Analytics" placeholder called out (real order data now exists via
+    apps.orders, but there was never anywhere that recorded a customer
+    *looking* at a product, so conversion rate/traffic source had nothing
+    to compute from). One row per storefront product-detail page load.
+    Deliberately minimal / no PII: no user identity, no IP address — just
+    enough to compute views-over-time and a traffic-source breakdown.
+    """
+
+    class Source(models.TextChoices):
+        DIRECT = "direct", "Direct"
+        SEARCH = "search", "Search"
+        SOCIAL = "social", "Social"
+        OTHER = "other", "Other"
+
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="views")
+    source = models.CharField(max_length=10, choices=Source.choices, default=Source.DIRECT)
+    viewed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["product", "viewed_at"])]
+
+    def __str__(self):
+        return f"View of {self.product.name} ({self.source}) at {self.viewed_at}"

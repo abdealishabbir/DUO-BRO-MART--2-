@@ -5,7 +5,7 @@ from django.core.cache import cache
 from django.urls import reverse
 from rest_framework.test import APITestCase
 
-from .models import Category, CommissionRate, Product, ProductChangeRequest, StockChangeRequest
+from .models import Category, CommissionRate, Product, ProductChangeRequest, ProductView, StockChangeRequest
 
 User = get_user_model()
 
@@ -775,3 +775,72 @@ class InventoryWebSocketTests(ProductsTestBase):
             return got_nothing
 
         self.assertTrue(async_to_sync(run)())
+
+
+class ProductViewTrackingTests(ProductsTestBase):
+    """§6.7/Phase 6+ Analytics: a storefront product-detail load records a ProductView."""
+
+    def test_viewing_approved_product_logs_a_view(self):
+        product = self.make_product(status=Product.Status.APPROVED, is_active=True)
+        resp = self.client.get(reverse("product-detail", args=[product.slug]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(ProductView.objects.filter(product=product).count(), 1)
+
+    def test_source_query_param_is_recorded(self):
+        product = self.make_product(status=Product.Status.APPROVED, is_active=True)
+        self.client.get(reverse("product-detail", args=[product.slug]) + "?src=search")
+        view = ProductView.objects.get(product=product)
+        self.assertEqual(view.source, ProductView.Source.SEARCH)
+
+    def test_invalid_source_falls_back_to_other(self):
+        product = self.make_product(status=Product.Status.APPROVED, is_active=True)
+        self.client.get(reverse("product-detail", args=[product.slug]) + "?src=nonsense")
+        view = ProductView.objects.get(product=product)
+        self.assertEqual(view.source, ProductView.Source.OTHER)
+
+    def test_repeated_views_all_logged(self):
+        product = self.make_product(status=Product.Status.APPROVED, is_active=True)
+        for _ in range(3):
+            self.client.get(reverse("product-detail", args=[product.slug]))
+        self.assertEqual(ProductView.objects.filter(product=product).count(), 3)
+
+
+class VendorAnalyticsTests(ProductsTestBase):
+    def test_analytics_with_no_activity_is_all_zero(self):
+        self.login_as(self.vendor)
+        resp = self.client.get(reverse("vendor-analytics"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["revenue"], 0)
+        self.assertEqual(resp.data["total_views"], 0)
+        self.assertIsNone(resp.data["conversion_rate"])
+
+    def test_views_are_counted_and_conversion_rate_computed(self):
+        product = self.make_product(status=Product.Status.APPROVED, is_active=True)
+        for _ in range(4):
+            self.client.get(reverse("product-detail", args=[product.slug]))
+        self.login_as(self.vendor)
+        resp = self.client.get(reverse("vendor-analytics"))
+        self.assertEqual(resp.data["total_views"], 4)
+        self.assertEqual(resp.data["order_count"], 0)
+        self.assertEqual(resp.data["conversion_rate"], 0.0)
+
+    def test_traffic_source_breakdown(self):
+        product = self.make_product(status=Product.Status.APPROVED, is_active=True)
+        url = reverse("product-detail", args=[product.slug])
+        self.client.get(url + "?src=search")
+        self.client.get(url + "?src=social")
+        self.client.get(url)  # direct
+        self.login_as(self.vendor)
+        resp = self.client.get(reverse("vendor-analytics"))
+        self.assertEqual(resp.data["traffic_sources"]["search"], 1)
+        self.assertEqual(resp.data["traffic_sources"]["social"], 1)
+        self.assertEqual(resp.data["traffic_sources"]["direct"], 1)
+
+    def test_only_this_vendors_views_are_counted(self):
+        my_product = self.make_product(vendor=self.vendor, status=Product.Status.APPROVED, is_active=True)
+        other_product = self.make_product(vendor=self.other_vendor, status=Product.Status.APPROVED, is_active=True, sku="OTHER-SKU")
+        self.client.get(reverse("product-detail", args=[my_product.slug]))
+        self.client.get(reverse("product-detail", args=[other_product.slug]))
+        self.login_as(self.vendor)
+        resp = self.client.get(reverse("vendor-analytics"))
+        self.assertEqual(resp.data["total_views"], 1)

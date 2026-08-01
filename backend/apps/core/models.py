@@ -9,6 +9,14 @@ called out explicitly rather than silently doing nothing:
     whatever the chosen delivery method would otherwise cost.
   - cod_enabled/card_enabled/jazzcash_enabled/easypaisa_enabled: wired —
     OrderCreateSerializer rejects a checkout using a disabled method.
+  - payout_hold_days / payout_cycle_days: wired — apps.orders.payouts
+    (Phase 6+ vendor payout ledger). Mirrors the hold-then-cycle pattern
+    every real marketplace uses (Amazon: 7-day post-delivery hold + 14-day
+    cycle; Etsy: reserve + weekly/biweekly/monthly deposit choice) —
+    delivered order items only become payout-eligible payout_hold_days
+    after delivery (covers the return/complaint window), and
+    "Generate Payouts" batches everything eligible since a vendor's last
+    payout, at most once per payout_cycle_days.
   - notify_new_orders / notify_new_vendor_applications / notify_low_stock
     / notify_payout_requests: NOT wired to any actual email trigger yet.
     There's no admin-notification-email subsystem built at all currently
@@ -45,6 +53,14 @@ class PlatformSettings(models.Model):
     card_enabled = models.BooleanField(default=False)
     jazzcash_enabled = models.BooleanField(default=False)
     easypaisa_enabled = models.BooleanField(default=False)
+
+    # Vendor payouts (§6.7 / Phase 6+ — see module docstring)
+    payout_hold_days = models.PositiveSmallIntegerField(
+        default=3, help_text="Days after delivery before a vendor's earnings on that order become payout-eligible.",
+    )
+    payout_cycle_days = models.PositiveSmallIntegerField(
+        default=7, help_text="Minimum days between payout batches for the same vendor.",
+    )
 
     # Email notifications (see module docstring — not all wired to real triggers yet)
     notify_new_orders = models.BooleanField(default=True)

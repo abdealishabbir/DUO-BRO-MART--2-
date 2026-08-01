@@ -211,3 +211,52 @@ class OrderItem(models.Model):
     def commission_amount(self):
         """Platform's cut — sale price minus what goes to the vendor. Reflects whatever per-category commission rate (§6.6, apps/products/models.CommissionRate) was in effect at order time, since unit_price is snapshotted from Product.discounted_price."""
         return (self.line_total - self.net_to_vendor).quantize(Decimal("0.01"))
+
+
+class Payout(models.Model):
+    """
+    §6.7/Phase 6+ vendor payout ledger — replaces the old "Payouts" page
+    placeholder. There's no live bank/wallet transfer integration (no
+    NayaPay/Easypaisa payout API is wired up), so this mirrors how every
+    real marketplace actually works day-to-day even *with* that
+    integration: earnings accrue, get batched into a payout covering a
+    period, and an admin (or the automated transfer, once that exists)
+    marks it paid — see apps.orders.payouts.generate_payouts_for_vendor()
+    for the eligibility rules (hold period + cycle spacing, same shape as
+    Amazon's 7-day hold/14-day cycle or Etsy's reserve+deposit schedule).
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        PROCESSING = "processing", "Processing"
+        PAID = "paid", "Paid"
+
+    vendor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="payouts")
+    period_start = models.DateField()
+    period_end = models.DateField()
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    reference = models.CharField(max_length=100, blank=True, help_text="Bank/wallet transaction reference, entered by the admin when marking this paid.")
+    admin_notes = models.TextField(blank=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Payout #{self.id} — {self.vendor} — Rs. {self.total_amount} ({self.status})"
+
+
+class PayoutItem(models.Model):
+    """One delivered order line folded into a payout batch. OneToOne on
+    order_item is the double-payment guard — once an item is claimed by a
+    Payout, generate_payouts_for_vendor() will never pick it up again,
+    even across separate batches."""
+
+    payout = models.ForeignKey(Payout, on_delete=models.CASCADE, related_name="items")
+    order_item = models.OneToOneField(OrderItem, on_delete=models.CASCADE, related_name="payout_item")
+    amount = models.DecimalField(max_digits=10, decimal_places=2, help_text="Snapshot of order_item.net_to_vendor at batch-generation time.")
+
+    def __str__(self):
+        return f"Rs. {self.amount} from {self.order_item}"

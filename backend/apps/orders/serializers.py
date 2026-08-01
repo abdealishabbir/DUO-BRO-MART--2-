@@ -6,7 +6,7 @@ from rest_framework import serializers
 from apps.products.models import Product
 from apps.products.utils import maybe_send_low_stock_alert
 
-from .models import DELIVERY_ESTIMATE_DAYS, DELIVERY_FEES, Coupon, Order, OrderItem
+from .models import DELIVERY_ESTIMATE_DAYS, DELIVERY_FEES, Coupon, Order, OrderItem, Payout, PayoutItem
 
 
 class CouponSerializer(serializers.ModelSerializer):
@@ -253,3 +253,32 @@ class OrderCreateSerializer(serializers.Serializer):
             coupon.save(update_fields=["used_count"])
 
         return order
+
+
+class PayoutItemSerializer(serializers.ModelSerializer):
+    order_code = serializers.CharField(source="order_item.order.order_code", read_only=True)
+    product_name = serializers.CharField(source="order_item.product_name", read_only=True)
+    quantity = serializers.IntegerField(source="order_item.quantity", read_only=True)
+
+    class Meta:
+        model = PayoutItem
+        fields = ["id", "order_code", "product_name", "quantity", "amount"]
+        read_only_fields = fields
+
+
+class PayoutSerializer(serializers.ModelSerializer):
+    """§6.7/Phase 6+ vendor payout batch — see models.Payout docstring."""
+
+    items = PayoutItemSerializer(many=True, read_only=True)
+    vendor_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Payout
+        fields = [
+            "id", "vendor", "vendor_name", "period_start", "period_end", "total_amount",
+            "status", "reference", "admin_notes", "paid_at", "created_at", "items",
+        ]
+        read_only_fields = [f for f in fields if f not in ("reference", "admin_notes")]
+
+    def get_vendor_name(self, obj):
+        return f"{obj.vendor.first_name} {obj.vendor.last_name}".strip() or obj.vendor.username

@@ -114,9 +114,25 @@ export default function TrackOrder() {
             </div>
           )}
 
-          <div className="mt-6 flex justify-between border-t border-gray-100 pt-4 text-base font-bold text-gray-900">
-            <span>Total</span>
-            <span>{formatPKR(order.total)}</span>
+          <div className="mt-6 space-y-2 border-t border-gray-100 pt-4 text-sm">
+            <div className="flex justify-between text-gray-600">
+              <span>Subtotal</span>
+              <span>{formatPKR(order.subtotal)}</span>
+            </div>
+            {Number(order.discount_amount) > 0 && (
+              <div className="flex justify-between text-green-700">
+                <span>Coupon applied{order.coupon_code ? ` (${order.coupon_code})` : ""}</span>
+                <span>–{formatPKR(order.discount_amount)}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-gray-600">
+              <span>Shipping</span>
+              <span>{Number(order.shipping_fee) === 0 ? <span className="text-green-700">Free</span> : formatPKR(order.shipping_fee)}</span>
+            </div>
+            <div className="flex justify-between border-t border-gray-100 pt-2 text-base font-bold text-gray-900">
+              <span>Total</span>
+              <span>{formatPKR(order.total)}</span>
+            </div>
           </div>
         </div>
       )}

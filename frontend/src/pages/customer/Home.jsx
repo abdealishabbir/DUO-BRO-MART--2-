@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowRight, ChevronLeft, ChevronRight, Zap, ShieldCheck, Truck, RotateCcw, Headphones,
-  Laptop, Shirt, Home as HomeIcon, Dumbbell, BookOpen, Sparkles, Gamepad2, Coffee,
+  Laptop, Shirt, Home as HomeIcon, Dumbbell, BookOpen, Sparkles, Gamepad2, Coffee, Star,
 } from "lucide-react";
 import CountdownTimer from "../../components/CountdownTimer.jsx";
 import { api } from "../../lib/api.js";
@@ -186,6 +186,12 @@ function FlashDeals({ items }) {
                 <img src={item.images[0] || "https://placehold.co/300x300?text=No+Image"} alt={item.name} className="h-32 w-full rounded-md object-cover" />
               </div>
               <p className="mt-2 line-clamp-2 text-sm font-medium text-gray-900">{item.name}</p>
+              {item.rating_count > 0 && (
+                <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-500">
+                  <Star className="h-3 w-3 fill-gold text-gold" /> {item.average_rating}
+                  <span className="text-gray-400">({item.rating_count})</span>
+                </p>
+              )}
               <p className="mt-1 text-sm">
                 <span className="font-bold text-red-600">{formatPKR(item.price)}</span>{" "}
                 {item.original_price && <span className="text-xs text-gray-400 line-through">{formatPKR(item.original_price)}</span>}
@@ -369,6 +375,12 @@ function TopSelling({ items }) {
               <img src={item.images[0] || "https://placehold.co/300x300?text=No+Image"} alt={item.name} className="h-36 w-full rounded-md object-cover" />
             </div>
             <p className="mt-2 line-clamp-2 text-sm font-medium text-gray-900">{item.name}</p>
+            {item.rating_count > 0 && (
+              <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-500">
+                <Star className="h-3 w-3 fill-gold text-gold" /> {item.average_rating}
+                <span className="text-gray-400">({item.rating_count})</span>
+              </p>
+            )}
             <p className="mt-1 text-sm">
               <span className="font-bold text-gray-900">{formatPKR(item.price)}</span>{" "}
               {item.original_price && (

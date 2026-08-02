@@ -68,9 +68,25 @@ export default function CheckoutConfirmation() {
             </div>
           ))}
         </div>
-        <div className="mt-4 flex justify-between text-base font-bold text-gray-900">
-          <span>Total Paid</span>
-          <span>{formatPKR(order.total)}</span>
+        <div className="mt-4 space-y-2 text-sm">
+          <div className="flex justify-between text-gray-600">
+            <span>Subtotal</span>
+            <span>{formatPKR(order.subtotal)}</span>
+          </div>
+          {Number(order.discount_amount) > 0 && (
+            <div className="flex justify-between text-green-700">
+              <span>Coupon applied{order.coupon_code ? ` (${order.coupon_code})` : ""}</span>
+              <span>–{formatPKR(order.discount_amount)}</span>
+            </div>
+          )}
+          <div className="flex justify-between text-gray-600">
+            <span>Shipping</span>
+            <span>{Number(order.shipping_fee) === 0 ? <span className="text-green-700">Free</span> : formatPKR(order.shipping_fee)}</span>
+          </div>
+          <div className="flex justify-between border-t border-gray-100 pt-2 text-base font-bold text-gray-900">
+            <span>Total Paid</span>
+            <span>{formatPKR(order.total)}</span>
+          </div>
         </div>
       </div>
 

@@ -844,3 +844,62 @@ class VendorAnalyticsTests(ProductsTestBase):
         self.login_as(self.vendor)
         resp = self.client.get(reverse("vendor-analytics"))
         self.assertEqual(resp.data["total_views"], 1)
+
+
+class CatalogRatingFilterSortTests(ProductsTestBase):
+    """Shop's rating filter/sort — real average_rating/rating_count data
+    now exists (§7.3 Feedback), this was just never wired into the
+    catalog queryset's filter/sort options."""
+
+    def make_rated_product(self, name, quality_rating=None):
+        from decimal import Decimal
+
+        from apps.feedback.models import Feedback
+        from apps.orders.models import Order, OrderItem
+
+        product = self.make_product(status=Product.Status.APPROVED, is_active=True, name=name)
+        if quality_rating is None:
+            return product
+
+        order = Order.objects.create(
+            order_code=f"DBM-RATING-{product.id}",
+            shipping_full_name="Rater", shipping_phone_number="03001234567", shipping_email="r@example.com",
+            shipping_province="sindh", shipping_city="Karachi", shipping_address_line="Street 1",
+            subtotal=Decimal("100.00"), shipping_fee=Decimal("0.00"), total=Decimal("100.00"),
+            status=Order.Status.DELIVERED,
+        )
+        OrderItem.objects.create(
+            order=order, product=product, vendor=product.vendor,
+            product_name=product.name, product_slug=product.slug,
+            quantity=1, unit_price=product.selling_price, unit_base_price=product.base_price,
+        )
+        Feedback.objects.create(
+            order=order, customer=self.vendor,  # customer identity doesn't matter for this test
+            delivery_rating=quality_rating, packaging_rating=quality_rating,
+            quality_rating=quality_rating, service_rating=quality_rating, overall_rating=quality_rating,
+        )
+        return product
+
+    def test_min_rating_filters_out_lower_rated_products(self):
+        self.make_rated_product("Five Star", quality_rating=5)
+        self.make_rated_product("Two Star", quality_rating=2)
+        self.make_rated_product("Unrated")
+
+        resp = self.client.get(reverse("product-list") + "?min_rating=4")
+        names = [p["name"] for p in resp.data["results"]]
+        self.assertEqual(names, ["Five Star"])
+
+    def test_sort_by_rating_orders_highest_first_unrated_last(self):
+        self.make_rated_product("Mid", quality_rating=3)
+        self.make_rated_product("Top", quality_rating=5)
+        self.make_rated_product("No Reviews")
+
+        resp = self.client.get(reverse("product-list") + "?sort=rating")
+        names = [p["name"] for p in resp.data["results"]]
+        self.assertEqual(names, ["Top", "Mid", "No Reviews"])
+
+    def test_no_rating_filter_returns_everything(self):
+        self.make_rated_product("A", quality_rating=5)
+        self.make_rated_product("B")
+        resp = self.client.get(reverse("product-list"))
+        self.assertEqual(len(resp.data["results"]), 2)

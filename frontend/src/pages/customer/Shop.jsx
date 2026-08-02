@@ -1,21 +1,17 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ChevronLeft, ChevronRight, SlidersHorizontal, Grid2x2, List, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, SlidersHorizontal, Grid2x2, List, X, Star } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { useCart } from "../../cart/CartContext.jsx";
 import { formatPKR } from "../../lib/currency.js";
 
-const DEFAULT_FILTERS = { categories: [], brands: [], minPrice: "", maxPrice: "", dealsOnly: false };
+const DEFAULT_FILTERS = { categories: [], brands: [], minPrice: "", maxPrice: "", dealsOnly: false, minRating: "" };
 
 // PRD §14.9.C: pagination (and filters) must appear in the URL, and
 // active filters must render as removable chips. These helpers keep
 // the URL and the filters/sort/view/page state in sync both ways —
 // reading a shared link restores the exact same view, and changing
 // any control updates the URL without a full navigation.
-//
-// Note: there's no rating filter/sort here — Product has no rating
-// field yet (reviews/ratings are the Phase 7/8 Feedback subsystem,
-// not built yet), so it's left out rather than faked.
 function filtersFromParams(params) {
   return {
     categories: params.get("categories") ? params.get("categories").split(",") : [],
@@ -23,6 +19,7 @@ function filtersFromParams(params) {
     minPrice: params.get("minPrice") ?? "",
     maxPrice: params.get("maxPrice") ?? "",
     dealsOnly: params.get("deals") === "1",
+    minRating: params.get("minRating") ?? "",
   };
 }
 
@@ -33,6 +30,7 @@ function paramsFromState({ filters, sort, view, page }) {
   if (filters.minPrice) params.minPrice = filters.minPrice;
   if (filters.maxPrice) params.maxPrice = filters.maxPrice;
   if (filters.dealsOnly) params.deals = "1";
+  if (filters.minRating) params.minRating = filters.minRating;
   if (sort !== "newest") params.sort = sort;
   if (view !== "grid") params.view = view;
   if (page !== 1) params.page = String(page);
@@ -93,6 +91,23 @@ function FiltersSidebar({ filters, setFilters, categories, brands }) {
       </div>
 
       <div>
+        <h4 className="mb-2 text-sm font-semibold text-gray-700">Minimum Rating</h4>
+        <div className="flex flex-wrap gap-1.5">
+          {[4, 3, 2, 1].map((n) => (
+            <button
+              key={n}
+              onClick={() => setFilters((f) => ({ ...f, minRating: f.minRating === String(n) ? "" : String(n) }))}
+              className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${
+                filters.minRating === String(n) ? "border-brand bg-brand text-white" : "border-gray-300 text-gray-600 hover:border-brand"
+              }`}
+            >
+              <Star className={`h-3 w-3 ${filters.minRating === String(n) ? "fill-white" : "fill-gold text-gold"}`} /> {n}+
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
         <h4 className="mb-2 text-sm font-semibold text-gray-700">Brands</h4>
         <ul className="space-y-1.5 text-sm">
           {brands.map((brand) => (
@@ -138,6 +153,10 @@ function ActiveFilterChips({ filters, setFilters, categories }) {
   if (filters.minPrice || filters.maxPrice) {
     const label = `${filters.minPrice ? formatPKR(filters.minPrice) : "PKR 0"} - ${filters.maxPrice ? formatPKR(filters.maxPrice) : "Any"}`;
     chips.push({ key: "price", label, onRemove: () => setFilters((f) => ({ ...f, minPrice: "", maxPrice: "" })) });
+  }
+
+  if (filters.minRating) {
+    chips.push({ key: "rating", label: `${filters.minRating}+ stars`, onRemove: () => setFilters((f) => ({ ...f, minRating: "" })) });
   }
 
   if (chips.length === 0) return null;
@@ -190,6 +209,12 @@ function ProductCard({ product, view }) {
       <div className={isList ? "flex-1" : "mt-3"}>
         <p className="text-xs font-medium text-brand">{product.category_name}</p>
         <p className="mt-0.5 font-semibold text-gray-900">{product.name}</p>
+        {product.rating_count > 0 && (
+          <p className="mt-1 flex items-center gap-1 text-xs text-gray-500">
+            <Star className="h-3.5 w-3.5 fill-gold text-gold" /> {product.average_rating}
+            <span className="text-gray-400">({product.rating_count})</span>
+          </p>
+        )}
         <div className="mt-2 flex items-center justify-between gap-2">
           <p>
             <span className="font-bold text-gray-900">{formatPKR(product.price)}</span>{" "}
@@ -270,6 +295,7 @@ export default function Shop() {
     if (filters.minPrice) params.set("min_price", filters.minPrice);
     if (filters.maxPrice) params.set("max_price", filters.maxPrice);
     if (filters.dealsOnly) params.set("deals", "1");
+    if (filters.minRating) params.set("min_rating", filters.minRating);
     if (sort !== "newest") params.set("sort", sort);
 
     api.get(`/products/?${params.toString()}`).then((data) => {
@@ -313,6 +339,7 @@ export default function Shop() {
                     <option value="newest">Newest Arrivals</option>
                     <option value="price-asc">Price: Low to High</option>
                     <option value="price-desc">Price: High to Low</option>
+                    <option value="rating">Highest Rated</option>
                   </select>
                 </label>
                 <div className="flex gap-1 rounded-md border border-gray-300 p-1">

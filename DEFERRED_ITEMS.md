@@ -74,11 +74,21 @@ alongside the security/market recommendations already discussed.
 ## Feature gaps flagged during the marketplace-UX survey
 - No vendor storefront page (click a vendor name → see everything they sell).
 - No wishlist / save-for-later.
-- No search autocomplete; Shop lost its rating filter when the mock catalog
-  was ripped out (real rating data exists now — cheap to re-add).
+- No search autocomplete.
+- ~~Shop lost its rating filter when the mock catalog was ripped out~~ —
+  **fixed**: `min_rating` filter + `sort=rating` re-added to the catalog
+  endpoint (DB-level annotation matching `Product.average_rating` exactly),
+  plus a "Minimum Rating" filter and "Highest Rated" sort in the Shop UI.
+  Caught a real bug along the way: the `Avg()` annotation was silently
+  defeating the model's default ordering — the exact thing Django's
+  `UnorderedObjectListWarning` flags — fixed by making it explicit.
+- ~~Rating stars missing from Home/Shop product cards~~ — **fixed**: added
+  using the same data ProductDetail already displayed.
 - Multi-vendor cart/checkout doesn't show a per-vendor cost breakdown.
 - No customer-initiated order cancellation (only admin can change status).
-- No 404 page, no robots.txt/sitemap/meta tags, no favicon.
+- ~~No 404 page, no robots.txt/sitemap/meta tags, no favicon~~ — **partially
+  stale**: 404 page, favicon, and robots.txt all already exist. Sitemap
+  and meta tags genuinely still don't.
 - Checkout isn't idempotent — a slow network + retry could theoretically
   create two real orders (no idempotency key yet).
 - No admin audit log (who approved/rejected what, and when) — a few
@@ -91,30 +101,31 @@ alongside the security/market recommendations already discussed.
   the reference UI wasn't implemented as a real feature).
 
 ## Real-time inventory sync (§7.1)
-- Not started — the one deliberately-postponed piece of Phase 7. Needs a
-  real architecture decision (Django Channels + ASGI + Redis channel
-  layer, docker-compose changes) before implementation.
+~~Not started — the one deliberately-postponed piece of Phase 7.~~ **This
+was stale — already fully built**: `apps/products/consumers.py`,
+`routing.py`, `config/asgi.py`, Django Channels + Redis channel layer,
+with `InventoryWebSocketTests` passing.
 
 ## Quick follow-ups (no external config needed — cheap, do anytime)
-- Add rating stars + count to Shop/Home product cards (ProductDetail
-  already shows it; `average_rating`/`rating_count` exist on the API).
-- Re-add Shop's rating filter/sort (removed when mock catalog was ripped
-  out since there was no real rating data yet — that data exists now).
+- ~~Add rating stars + count to Shop/Home product cards~~ — **done, see above**.
+- ~~Re-add Shop's rating filter/sort~~ — **done, see above**.
 
 ## Phase 8 additions (this session)
-- **Admin coupons UI** — backend CRUD (`/api/orders/admin/coupons/`) is real
-  and tested, but there's no `Coupons.jsx` admin page yet. Creating/editing
-  codes currently needs direct API calls (Postman, Django admin, etc.).
+- ~~**Admin coupons UI**~~ — **built**: `Coupons.jsx` (list, create, edit,
+  delete, active/expired/inactive status). Backend CRUD was already real
+  and tested.
 - **Accessibility pass was a spot-fix, not an audit** — only the highest-
   traffic pages got aria-labels (global header search, Shop view toggle,
   ProductDetail carousel/stepper). Admin panel, vendor panel, and the
   checkout flow's icon-only buttons haven't been reviewed. A real
   accessibility audit (screen reader pass, keyboard nav, color contrast,
   skip-to-content link) is still outstanding.
-- **CheckoutConfirmation/OrderSummarySidebar don't display coupon
-  discounts** — the backend applies and returns `discount_amount`/
-  `coupon_code` correctly (tested), but the confirmation page and cart
-  sidebar UI weren't updated to show a "Coupon applied: -Rs. X" line.
+- ~~**CheckoutConfirmation/OrderSummarySidebar don't display coupon
+  discounts**~~ — **fixed**: `CheckoutConfirmation.jsx` and `TrackOrder.jsx`
+  now show the real subtotal/coupon-discount/shipping breakdown from the
+  actual order data (the coupon-code input itself, and the backend
+  validation, were already real and working — this was purely a display
+  gap on two pages).
 - **Security headers/HSTS/SSL-redirect are configured but unverified in a
   real deployment** — they're correct Django settings, but have only been
   exercised via `DEBUG=False` unit checks, not a real HTTPS environment.

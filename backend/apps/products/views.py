@@ -3,7 +3,7 @@ See models.py module docstring for the full business-rule writeup this
 implements. Endpoint map:
 
   Public:  GET  /api/products/categories/
-           GET  /api/products/?category=&brand=&min_price=&max_price=&deals=1&sort=&search=&page=
+           GET  /api/products/?category=&brand=&min_price=&max_price=&deals=1&min_rating=&sort=&search=&page=
            GET  /api/products/<slug>/
 
   Vendor:  GET/POST    /api/products/vendor/products/
@@ -102,10 +102,15 @@ class PublicProductViewSet(ReadOnlyModelViewSet):
         return Response(serializer.data)
 
     def get_queryset(self):
+        from django.db.models import Avg, F
+
         qs = (
             Product.objects.filter(status=Product.Status.APPROVED, is_active=True)
             .select_related("vendor", "category")
             .prefetch_related("images")
+            # Matches the exact join Product.average_rating (models.py) uses,
+            # so sort=rating/min_rating agree with what ProductDetail shows.
+            .annotate(_avg_rating=Avg("order_items__order__feedback__quality_rating"))
         )
 
         category = self.request.query_params.get("category")
@@ -130,6 +135,10 @@ class PublicProductViewSet(ReadOnlyModelViewSet):
         if deals_only == "1":
             qs = qs.filter(active_discount_percent__isnull=False)
 
+        min_rating = self.request.query_params.get("min_rating")
+        if min_rating:
+            qs = qs.filter(_avg_rating__gte=min_rating)
+
         search = self.request.query_params.get("search")
         if search:
             qs = qs.filter(Q(name__icontains=search) | Q(brand__icontains=search) | Q(description__icontains=search))
@@ -139,7 +148,17 @@ class PublicProductViewSet(ReadOnlyModelViewSet):
             qs = qs.order_by("base_price")
         elif ordering == "price-desc":
             qs = qs.order_by("-base_price")
-        # default (including "newest") keeps Product.Meta's "-created_at"
+        elif ordering == "rating":
+            # nulls_last: an unrated product isn't "worse than 1 star", it
+            # just has no data yet — it shouldn't outrank real 5-star products.
+            qs = qs.order_by(F("_avg_rating").desc(nulls_last=True))
+        else:
+            # Explicit instead of relying on Product.Meta's "-created_at":
+            # the Avg() annotation above adds a GROUP BY, which can silently
+            # defeat a model's implicit default ordering and make paginated
+            # results genuinely inconsistent between requests (this is
+            # exactly what DRF's UnorderedObjectListWarning is warning about).
+            qs = qs.order_by("-created_at")
 
         return qs
 

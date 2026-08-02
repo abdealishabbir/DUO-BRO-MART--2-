@@ -14,6 +14,161 @@ function Toggle({ checked, onChange }) {
   );
 }
 
+function RecoveryCodesDisplay({ codes, onDone }) {
+  return (
+    <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3">
+      <p className="text-xs font-semibold text-amber-800">Save these recovery codes now — they won't be shown again.</p>
+      <p className="mt-0.5 text-[10px] text-amber-700">Each works once, if you ever lose access to your authenticator app.</p>
+      <div className="mt-2 grid grid-cols-2 gap-1.5 font-mono text-xs text-ink">
+        {codes.map((c) => <div key={c} className="rounded bg-white px-2 py-1 text-center">{c}</div>)}
+      </div>
+      <button onClick={onDone} className="mt-3 rounded-md bg-ink px-3 py-1.5 text-xs font-semibold text-white hover:bg-black">
+        I've saved these
+      </button>
+    </div>
+  );
+}
+
+function MFASettingsCard() {
+  const [status, setStatus] = useState(null); // { is_enabled }
+  const [stage, setStage] = useState("idle"); // idle | setting_up | disabling
+  const [qrDataUri, setQrDataUri] = useState(null);
+  const [secret, setSecret] = useState(null);
+  const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
+  const [recoveryCodes, setRecoveryCodes] = useState(null);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const load = () => api.get("/auth/admin/mfa/status/").then(setStatus).catch(() => {});
+  useEffect(load, []);
+
+  const startSetup = async () => {
+    setError("");
+    setBusy(true);
+    try {
+      const res = await api.post("/auth/admin/mfa/setup/", {});
+      setSecret(res.secret);
+      setQrDataUri(res.qr_code_data_uri);
+      setStage("setting_up");
+    } catch {
+      setError("Couldn't start setup. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmSetup = async () => {
+    setError("");
+    setBusy(true);
+    try {
+      const res = await api.post("/auth/admin/mfa/confirm/", { code });
+      setRecoveryCodes(res.recovery_codes);
+      setCode("");
+    } catch (err) {
+      setError(err.data?.detail || "Invalid code — check your authenticator app and try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const finishAfterRecoveryCodes = () => {
+    setRecoveryCodes(null);
+    setQrDataUri(null);
+    setSecret(null);
+    setStage("idle");
+    load();
+  };
+
+  const disable = async () => {
+    setError("");
+    setBusy(true);
+    try {
+      await api.post("/auth/admin/mfa/disable/", { password, code });
+      setStage("idle");
+      setPassword("");
+      setCode("");
+      load();
+    } catch (err) {
+      setError(err.data?.detail || "Couldn't disable — check your password and code.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const regenerate = async () => {
+    const currentCode = window.prompt("Enter your current authenticator code or a recovery code to confirm:");
+    if (!currentCode) return;
+    setError("");
+    try {
+      const res = await api.post("/auth/admin/mfa/recovery-codes/regenerate/", { code: currentCode });
+      setRecoveryCodes(res.recovery_codes);
+    } catch (err) {
+      setError(err.data?.detail || "Invalid code.");
+    }
+  };
+
+  if (!status) return null;
+
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white p-4">
+      <h2 className="mb-3 text-sm font-bold text-gray-900">Security — Two-Factor Authentication</h2>
+
+      {recoveryCodes ? (
+        <RecoveryCodesDisplay codes={recoveryCodes} onDone={finishAfterRecoveryCodes} />
+      ) : status.is_enabled ? (
+        <>
+          <p className="flex items-center gap-1.5 text-xs font-medium text-green-700">● Two-factor authentication is enabled</p>
+          {stage !== "disabling" ? (
+            <div className="mt-3 flex gap-2">
+              <button onClick={regenerate} className="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:border-brand">
+                Regenerate recovery codes
+              </button>
+              <button onClick={() => setStage("disabling")} className="rounded-md border border-red-300 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50">
+                Disable
+              </button>
+            </div>
+          ) : (
+            <div className="mt-3 space-y-2">
+              <p className="text-[10px] text-gray-500">Confirm your password and current code to disable two-factor.</p>
+              <input type="password" placeholder="Password" className={`${inputClass} text-xs`} value={password} onChange={(e) => setPassword(e.target.value)} />
+              <input placeholder="123456 or recovery code" className={`${inputClass} text-xs`} value={code} onChange={(e) => setCode(e.target.value)} />
+              <div className="flex gap-2">
+                <button disabled={busy} onClick={disable} className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-60">
+                  {busy ? "Disabling..." : "Confirm Disable"}
+                </button>
+                <button onClick={() => { setStage("idle"); setPassword(""); setCode(""); setError(""); }} className="text-xs text-gray-500 hover:underline">Cancel</button>
+              </div>
+            </div>
+          )}
+        </>
+      ) : stage === "idle" ? (
+        <>
+          <p className="text-xs text-gray-500">Not enabled. Optional — add an authenticator-app code as a second step at login.</p>
+          <button disabled={busy} onClick={startSetup} className="mt-3 rounded-md bg-ink px-3 py-1.5 text-xs font-semibold text-white hover:bg-black disabled:opacity-60">
+            {busy ? "Starting..." : "Enable Two-Factor Authentication"}
+          </button>
+        </>
+      ) : (
+        <div className="mt-1 space-y-3">
+          <p className="text-xs text-gray-600">Scan this with Google Authenticator, Authy, or similar:</p>
+          {qrDataUri && <img src={qrDataUri} alt="MFA QR code" className="h-40 w-40 rounded-md border border-gray-200" />}
+          <p className="text-[10px] text-gray-400">Can't scan? Enter this key manually: <span className="font-mono">{secret}</span></p>
+          <input placeholder="Enter the 6-digit code" className={`${inputClass} text-xs`} value={code} onChange={(e) => setCode(e.target.value)} />
+          <div className="flex gap-2">
+            <button disabled={busy} onClick={confirmSetup} className="rounded-md bg-ink px-3 py-1.5 text-xs font-semibold text-white hover:bg-black disabled:opacity-60">
+              {busy ? "Confirming..." : "Confirm & Enable"}
+            </button>
+            <button onClick={() => { setStage("idle"); setQrDataUri(null); setSecret(null); setCode(""); setError(""); }} className="text-xs text-gray-500 hover:underline">Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+    </div>
+  );
+}
+
 export default function AdminSettings() {
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -138,10 +293,12 @@ export default function AdminSettings() {
             ))}
           </div>
           <p className="mt-3 text-[10px] text-gray-400">
-            These flags are saved, but the actual admin-notification emails aren't wired up yet — that lands with Phase 7's
-            real-time/notification work.
+            All four alerts fire for real to your store email below. Delivery depends on SMTP being configured — without
+            it, emails print to the backend console instead of reaching an inbox.
           </p>
         </div>
+
+        <MFASettingsCard />
       </div>
 
       <button

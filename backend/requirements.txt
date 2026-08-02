@@ -19,3 +19,7 @@ Pillow==11.0.0                         # required by ImageField (banner uploads)
 daphne==4.1.2                       # §7.1: ASGI server, hijacks `runserver` for WS+HTTP in dev
 channels==4.1.0                     # §7.1: WebSocket stock/dashboard push
 channels-redis==4.2.0               # §7.1: channel layer backed by the existing Redis
+
+# --- §8.1 hardening: opt-in TOTP two-factor for admin accounts ---
+pyotp==2.9.0                        # TOTP secret generation + verification
+qrcode==8.0                         # server-side QR code image for authenticator-app setup

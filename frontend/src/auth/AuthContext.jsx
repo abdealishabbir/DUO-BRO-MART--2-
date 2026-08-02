@@ -32,6 +32,13 @@ export function AuthProvider({ children }) {
 
   const adminLogin = async (email, password) => {
     const data = await api.post("/auth/admin/login/", { email, password });
+    if (data.mfa_required) return data; // { mfa_required: true, mfa_token } — no session yet, see adminMfaVerify
+    setUser(data.user);
+    return data.user;
+  };
+
+  const adminMfaVerify = async (mfaToken, code) => {
+    const data = await api.post("/auth/admin/mfa/verify/", { mfa_token: mfaToken, code });
     setUser(data.user);
     return data.user;
   };
@@ -71,6 +78,7 @@ export function AuthProvider({ children }) {
       login,
       vendorLogin,
       adminLogin,
+      adminMfaVerify,
       googleLogin,
       signup,
       logout,

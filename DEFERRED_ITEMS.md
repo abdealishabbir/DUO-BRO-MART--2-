@@ -31,18 +31,45 @@ alongside the security/market recommendations already discussed.
 - Only Cash on Delivery is a "real" payment method end-to-end.
 
 ## Security (recap from the audit — see chat history for full detail)
-- Rate limiting is narrower than it looks — only auth endpoints are
-  throttled; product listing, order creation, and especially
-  `/orders/track/` (guessable code + contact lookup) are not.
-- `SECRET_KEY` has an insecure dev fallback with no startup check
-  preventing accidental production use.
-- No production security headers (HSTS, SSL redirect, content-type-nosniff).
-- CSRF protection on the custom cookie-JWT auth class hasn't been
-  explicitly tested (SameSite=Lax likely mitigates it, but unverified).
-- No MFA on admin accounts.
-- reCAPTCHA is scaffolded (settings key exists) but not wired up.
-- CNIC images in vendor applications aren't validated for file
-  type/size the way banner images already are.
+- ~~Rate limiting is narrower than it looks~~ — **fixed**: `order-create`,
+  `order-track`, and `public-catalog` all have `ScopedRateThrottle` rates
+  set (see config/settings.py `DEFAULT_THROTTLE_RATES`). The rates
+  themselves are still rough/unvalidated guesses, not tuned against real
+  traffic — that's the one genuine caveat left, see the rate-limits bullet
+  further down this file.
+- ~~`SECRET_KEY` has an insecure dev fallback with no startup check~~ —
+  **fixed**: config/settings.py raises `ImproperlyConfigured` at startup
+  if `DEBUG=False` and the key is still the dev default.
+- ~~No production security headers~~ — **fixed** in code (HSTS, SSL
+  redirect, nosniff, secure cookies, all conditional on `DEBUG`). Only
+  caveat: exercised via `DEBUG=False` unit checks, not a real HTTPS
+  deployment yet.
+- **CSRF protection on the cookie-JWT auth class** — now has real test
+  coverage (`CsrfCookieAttributeTests`): confirms the auth cookies are
+  issued with `HttpOnly` + `SameSite=Lax`, which is what actually
+  prevents CSRF here. Important limitation, not a gap: SameSite
+  enforcement happens in the *browser*, not the server, so no unit test
+  can simulate an actual cross-origin request being blocked — that would
+  need a real browser-based test (Playwright) or manual verification.
+- ~~No MFA on admin accounts~~ — **built**: opt-in TOTP two-factor
+  (Admin Settings → Security). An admin scans a QR code with any
+  authenticator app, confirms one code to enable, and gets 8 single-use
+  recovery codes shown exactly once. Login becomes two-step only for
+  admins who've turned it on — password first, then a short-lived
+  pending token that a correct TOTP/recovery code exchanges for the real
+  session. Disabling 2FA requires both the account password AND a valid
+  code, so a stolen logged-in session alone can't turn it off. 17 tests
+  covering setup, confirm, login, lockout after repeated wrong codes,
+  disable, and recovery-code regeneration.
+- ~~reCAPTCHA is scaffolded but not wired up~~ — **already wired**
+  (`verify_recaptcha()` is called on signup); it no-ops (passes) until
+  `RECAPTCHA_SECRET_KEY` is set in `.env`. Getting real Google reCAPTCHA
+  keys is on the user, same as the SMTP/payment-gateway credentials above
+  — not a code gap.
+- ~~CNIC images in vendor applications aren't validated~~ — **fixed**:
+  `validate_cnic_image()` (apps/accounts/models.py) now checks file type
+  (PNG/JPEG), a 5MB size cap, and a legibility-driven minimum dimension,
+  mirroring the existing banner-image validator.
 
 ## Feature gaps flagged during the marketplace-UX survey
 - No vendor storefront page (click a vendor name → see everything they sell).

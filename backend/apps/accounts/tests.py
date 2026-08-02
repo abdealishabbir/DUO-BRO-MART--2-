@@ -538,3 +538,272 @@ class AdminVendorListTests(_ClearsCacheMixin, APITestCase):
         self.client.force_authenticate(user=self.vendor)
         resp = self.client.get(reverse("admin-vendor-list"))
         self.assertEqual(resp.status_code, 403)
+
+
+def make_small_image(name="tiny.png", size=(50, 50)):
+    buf = io.BytesIO()
+    Image.new("RGB", size, color="red").save(buf, format="PNG")
+    return SimpleUploadedFile(name, buf.getvalue(), content_type="image/png")
+
+
+def make_non_image_file(name="not-a-photo.txt"):
+    return SimpleUploadedFile(name, b"this is definitely not image data", content_type="text/plain")
+
+
+def make_oversized_image(name="huge.png"):
+    """A technically-valid PNG whose file size alone exceeds the 5MB cap —
+    dimensions are irrelevant here, only the byte count matters."""
+    buf = io.BytesIO()
+    Image.new("RGB", (2000, 2000), color="green").save(buf, format="PNG", compress_level=0)
+    data = buf.getvalue()
+    if len(data) <= 5 * 1024 * 1024:
+        data += b"\x00" * (5 * 1024 * 1024 - len(data) + 1024)  # pad past the cap; PNG readers ignore trailing junk
+    return SimpleUploadedFile(name, data, content_type="image/png")
+
+
+class CnicImageValidationTests(_ClearsCacheMixin, APITestCase):
+    """§8.1: CNIC images weren't validated for type/size the way banner images already are."""
+
+    def submit(self, cnic_front, cnic_back):
+        return self.client.post(
+            reverse("vendor-application-create"),
+            {**VALID_APPLICATION, "cnic_front": cnic_front, "cnic_back": cnic_back},
+            format="multipart",
+        )
+
+    def test_valid_images_accepted(self):
+        resp = self.submit(make_image("front.png"), make_image("back.png"))
+        self.assertEqual(resp.status_code, 201, resp.data)
+
+    def test_non_image_file_rejected(self):
+        resp = self.submit(make_non_image_file(), make_image("back.png"))
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("cnic_front", resp.data)
+
+    def test_too_small_image_rejected(self):
+        resp = self.submit(make_small_image(), make_image("back.png"))
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("cnic_front", resp.data)
+
+    def test_oversized_file_rejected(self):
+        resp = self.submit(make_oversized_image(), make_image("back.png"))
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("cnic_front", resp.data)
+
+
+class CsrfCookieAttributeTests(_ClearsCacheMixin, APITestCase):
+    """
+    §8.1: the cookie-JWT auth class had never been explicitly checked for
+    CSRF safety. What actually protects against CSRF here is SameSite=Lax
+    on the auth cookies — Lax means browsers withhold the cookie on
+    cross-site subrequests (the classic CSRF vector: an attacker's page
+    auto-submitting a form or firing a fetch() at this API), while still
+    sending it on same-site requests and top-level navigations.
+
+    IMPORTANT LIMITATION: SameSite enforcement happens in the browser, not
+    on the server — Django's test client has no concept of "site" and will
+    happily attach cookies regardless, so no APIClient-based test can
+    simulate an actual cross-origin request being blocked. What CAN be
+    verified here, and is the real regression risk, is that the cookies
+    are actually issued with the right attributes in the first place — if
+    a future change accidentally dropped `samesite="Lax"` from
+    issue_jwt_cookies(), every request would go back to being CSRF-able
+    and nothing here would catch it without this test. Full end-to-end
+    confirmation needs a real cross-origin browser test (e.g. Playwright)
+    or manual verification, not a unit test.
+    """
+
+    def test_access_and_refresh_cookies_are_httponly(self):
+        make_customer()
+        resp = self.client.post(reverse("auth-login"), {"email": "alice@example.com", "password": VALID_PASSWORD})
+        self.assertTrue(resp.cookies["dbm_access"]["httponly"])
+        self.assertTrue(resp.cookies["dbm_refresh"]["httponly"])
+
+    def test_access_and_refresh_cookies_are_samesite_lax(self):
+        make_customer()
+        resp = self.client.post(reverse("auth-login"), {"email": "alice@example.com", "password": VALID_PASSWORD})
+        self.assertEqual(resp.cookies["dbm_access"]["samesite"], "Lax")
+        self.assertEqual(resp.cookies["dbm_refresh"]["samesite"], "Lax")
+
+    def test_state_changing_request_without_any_cookie_is_rejected(self):
+        """Not a CSRF simulation (see class docstring) — but confirms the
+        baseline every CSRF defense here depends on: an attacker's forged
+        request has no way to obtain a valid dbm_access value at all
+        (HttpOnly blocks JS access to it, and it isn't guessable), so even
+        in a hypothetical SameSite bypass, the request still has nothing
+        to authenticate with."""
+        resp = self.client.post(reverse("address-list"), {"label": "Home"})
+        self.assertEqual(resp.status_code, 401)
+
+
+class MFAFlowTests(_ClearsCacheMixin, APITestCase):
+    """§8.1: opt-in TOTP two-factor for admin accounts (user-confirmed
+    scope: optional, with recovery codes)."""
+
+    def setUp(self):
+        super().setUp()
+        self.admin = make_admin()
+
+    def login_admin(self):
+        return self.client.post(reverse("auth-admin-login"), {"email": "admin@example.com", "password": VALID_PASSWORD})
+
+    def enable_mfa(self):
+        """Full setup->confirm flow, returns (secret, recovery_codes)."""
+        import pyotp
+
+        self.login_admin()
+        setup_resp = self.client.post(reverse("mfa-setup"))
+        secret = setup_resp.data["secret"]
+        code = pyotp.TOTP(secret).now()
+        confirm_resp = self.client.post(reverse("mfa-confirm"), {"code": code})
+        return secret, confirm_resp.data["recovery_codes"]
+
+    # --- Setup / confirm ---
+
+    def test_setup_returns_secret_and_qr_code(self):
+        self.login_admin()
+        resp = self.client.post(reverse("mfa-setup"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.data["secret"])
+        self.assertTrue(resp.data["qr_code_data_uri"].startswith("data:image/png;base64,"))
+
+    def test_device_not_enabled_until_confirmed(self):
+        self.login_admin()
+        self.client.post(reverse("mfa-setup"))
+        status_resp = self.client.get(reverse("mfa-status"))
+        self.assertFalse(status_resp.data["is_enabled"])
+
+    def test_confirm_with_wrong_code_fails_and_stays_disabled(self):
+        self.login_admin()
+        self.client.post(reverse("mfa-setup"))
+        resp = self.client.post(reverse("mfa-confirm"), {"code": "000000"})
+        self.assertEqual(resp.status_code, 400)
+        self.assertFalse(self.client.get(reverse("mfa-status")).data["is_enabled"])
+
+    def test_confirm_with_correct_code_enables_and_returns_recovery_codes(self):
+        secret, codes = self.enable_mfa()
+        self.assertEqual(len(codes), 8)
+        self.assertTrue(self.client.get(reverse("mfa-status")).data["is_enabled"])
+
+    # --- Login flow once enabled ---
+
+    def test_login_with_mfa_enabled_does_not_issue_cookies_yet(self):
+        self.enable_mfa()
+        self.client.cookies.clear()
+        resp = self.login_admin()
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.data["mfa_required"])
+        self.assertNotIn("dbm_access", resp.cookies)
+        self.assertTrue(resp.data["mfa_token"])
+
+    def test_correct_totp_code_completes_login(self):
+        import pyotp
+
+        secret, _ = self.enable_mfa()
+        self.client.cookies.clear()
+        login_resp = self.login_admin()
+        code = pyotp.TOTP(secret).now()
+        verify_resp = self.client.post(reverse("auth-mfa-verify"), {"mfa_token": login_resp.data["mfa_token"], "code": code})
+        self.assertEqual(verify_resp.status_code, 200, verify_resp.data)
+        self.assertIn("dbm_access", verify_resp.cookies)
+
+    def test_wrong_totp_code_rejected(self):
+        self.enable_mfa()
+        self.client.cookies.clear()
+        login_resp = self.login_admin()
+        resp = self.client.post(reverse("auth-mfa-verify"), {"mfa_token": login_resp.data["mfa_token"], "code": "000000"})
+        self.assertEqual(resp.status_code, 400)
+        self.assertNotIn("dbm_access", resp.cookies)
+
+    def test_recovery_code_completes_login_and_is_single_use(self):
+        _, codes = self.enable_mfa()
+        self.client.cookies.clear()
+        login_resp = self.login_admin()
+
+        first_use = self.client.post(reverse("auth-mfa-verify"), {"mfa_token": login_resp.data["mfa_token"], "code": codes[0]})
+        self.assertEqual(first_use.status_code, 200)
+
+        # same code, fresh login attempt — must be rejected the second time
+        self.client.cookies.clear()
+        login_resp2 = self.login_admin()
+        second_use = self.client.post(reverse("auth-mfa-verify"), {"mfa_token": login_resp2.data["mfa_token"], "code": codes[0]})
+        self.assertEqual(second_use.status_code, 400)
+
+    def test_expired_or_unknown_mfa_token_rejected(self):
+        self.enable_mfa()
+        resp = self.client.post(reverse("auth-mfa-verify"), {"mfa_token": "not-a-real-token", "code": "123456"})
+        self.assertEqual(resp.status_code, 400)
+
+    def test_mfa_verify_locks_out_after_repeated_wrong_codes(self):
+        self.enable_mfa()
+        self.client.cookies.clear()
+        login_resp = self.login_admin()
+        token = login_resp.data["mfa_token"]
+
+        for _ in range(5):
+            self.client.post(reverse("auth-mfa-verify"), {"mfa_token": token, "code": "000000"})
+        locked = self.client.post(reverse("auth-mfa-verify"), {"mfa_token": token, "code": "000000"})
+        self.assertEqual(locked.status_code, 429)
+
+    def test_login_without_mfa_enabled_is_unaffected(self):
+        """Baseline: an admin who never opted in logs in exactly as before."""
+        resp = self.login_admin()
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("dbm_access", resp.cookies)
+        self.assertNotIn("mfa_required", resp.data)
+
+    # --- Disable ---
+
+    def test_disable_requires_correct_password_and_code(self):
+        import pyotp
+
+        secret, _ = self.enable_mfa()
+        code = pyotp.TOTP(secret).now()
+        resp = self.client.post(reverse("mfa-disable"), {"password": "wrong-password", "code": code})
+        self.assertEqual(resp.status_code, 400)
+        self.assertTrue(self.client.get(reverse("mfa-status")).data["is_enabled"])
+
+    def test_disable_succeeds_with_correct_password_and_code(self):
+        import pyotp
+
+        secret, _ = self.enable_mfa()
+        code = pyotp.TOTP(secret).now()
+        resp = self.client.post(reverse("mfa-disable"), {"password": VALID_PASSWORD, "code": code})
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertFalse(self.client.get(reverse("mfa-status")).data["is_enabled"])
+
+    def test_disable_with_recovery_code_also_works(self):
+        secret, codes = self.enable_mfa()
+        resp = self.client.post(reverse("mfa-disable"), {"password": VALID_PASSWORD, "code": codes[0]})
+        self.assertEqual(resp.status_code, 200, resp.data)
+
+    # --- Regenerate recovery codes ---
+
+    def test_regenerate_recovery_codes_invalidates_old_batch(self):
+        import pyotp
+
+        secret, old_codes = self.enable_mfa()
+        code = pyotp.TOTP(secret).now()
+        resp = self.client.post(reverse("mfa-recovery-regenerate"), {"code": code})
+        self.assertEqual(resp.status_code, 200, resp.data)
+        new_codes = resp.data["recovery_codes"]
+        self.assertEqual(len(new_codes), 8)
+        self.assertNotEqual(set(old_codes), set(new_codes))
+
+        # an old code no longer works after regeneration
+        self.client.cookies.clear()
+        login_resp = self.login_admin()
+        old_code_attempt = self.client.post(reverse("auth-mfa-verify"), {"mfa_token": login_resp.data["mfa_token"], "code": old_codes[0]})
+        self.assertEqual(old_code_attempt.status_code, 400)
+
+    # --- Access control ---
+
+    def test_non_admin_cannot_access_mfa_setup(self):
+        make_customer()
+        self.client.post(reverse("auth-login"), {"email": "alice@example.com", "password": VALID_PASSWORD})
+        resp = self.client.post(reverse("mfa-setup"))
+        self.assertEqual(resp.status_code, 403)
+
+    def test_anonymous_cannot_access_mfa_setup(self):
+        resp = self.client.post(reverse("mfa-setup"))
+        self.assertEqual(resp.status_code, 401)

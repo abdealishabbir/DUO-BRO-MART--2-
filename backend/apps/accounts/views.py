@@ -19,7 +19,7 @@ from rest_framework.throttling import ScopedRateThrottle
 
 from django.conf import settings
 
-from .models import Address, EmailVerificationToken, PasswordResetToken, VendorApplication
+from .models import Address, AdminMFADevice, EmailVerificationToken, PasswordResetToken, VendorApplication
 from .permissions import IsAdminRole, IsVendorRole
 from .utils import provision_vendor_account
 from .serializers import (
@@ -38,14 +38,23 @@ from .serializers import (
 from .utils import (
     clear_failed_logins,
     clear_jwt_cookies,
+    consume_mfa_pending_token,
+    generate_recovery_codes,
+    generate_totp_secret,
     is_locked_out,
     issue_jwt_cookies,
+    issue_mfa_pending_token,
     maybe_send_new_vendor_application_alert,
     record_failed_login,
+    resolve_mfa_pending_token,
     send_password_reset_email,
     send_verification_email,
+    totp_provisioning_uri,
+    totp_qr_code_data_uri,
+    verify_and_consume_recovery_code,
     verify_google_id_token,
     verify_recaptcha,
+    verify_totp_code,
     GoogleTokenError,
 )
 
@@ -335,8 +344,11 @@ class VendorLoginView(APIView):
 
 
 class AdminLoginView(APIView):
-    """§4.3: rate-limited and IP-loggable. TOTP two-factor is a Phase 8
-    hardening item (flagged there, not silently skipped)."""
+    """§4.3/§8.1: rate-limited and IP-loggable. If the admin has opted into
+    TOTP two-factor (AdminMFADevice.is_enabled), a correct password alone
+    does NOT issue session cookies — it returns an mfa_required + a
+    short-lived pending token instead, and MFALoginVerifyView finishes
+    the login once the second factor checks out."""
 
     permission_classes = [permissions.AllowAny]
     throttle_classes = [ScopedRateThrottle]
@@ -359,8 +371,137 @@ class AdminLoginView(APIView):
             return Response({"detail": "Invalid email or password."}, status=status.HTTP_400_BAD_REQUEST)
 
         clear_failed_logins(email)
+
+        device = getattr(user, "mfa_device", None)
+        if device is not None and device.is_enabled:
+            return Response({"mfa_required": True, "mfa_token": issue_mfa_pending_token(user)})
+
         response = Response({"user": UserSerializer(user).data})
         return issue_jwt_cookies(response, user, keep_logged_in=False)
+
+
+class MFALoginVerifyView(APIView):
+    """§8.1: second step of admin login when 2FA is enabled — completes
+    the session given a valid TOTP code or an unused recovery code."""
+
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth-write"
+
+    def post(self, request):
+        token = request.data.get("mfa_token", "")
+        code = request.data.get("code", "")
+
+        user_id = resolve_mfa_pending_token(token)
+        if user_id is None:
+            return Response({"detail": "That login attempt expired. Please sign in again."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.filter(pk=user_id, role=User.Role.ADMIN).first()
+        device = getattr(user, "mfa_device", None) if user else None
+        if user is None or device is None or not device.is_enabled:
+            consume_mfa_pending_token(token)
+            return Response({"detail": "That login attempt is no longer valid. Please sign in again."}, status=status.HTTP_400_BAD_REQUEST)
+
+        lockout_key = f"mfa:{user.email}"
+        if is_locked_out(lockout_key):
+            return Response({"detail": "Too many failed codes. Try again in 15 minutes."}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
+        valid = verify_totp_code(device.secret, code) or verify_and_consume_recovery_code(device, code)
+        if not valid:
+            record_failed_login(lockout_key)
+            return Response({"detail": "Invalid code."}, status=status.HTTP_400_BAD_REQUEST)
+
+        clear_failed_logins(lockout_key)
+        consume_mfa_pending_token(token)
+        response = Response({"user": UserSerializer(user).data})
+        return issue_jwt_cookies(response, user, keep_logged_in=False)
+
+
+class MFAStatusView(APIView):
+    """§8.1: whether the logged-in admin currently has 2FA enabled — drives the Settings toggle."""
+
+    permission_classes = [permissions.IsAuthenticated, IsAdminRole]
+
+    def get(self, request):
+        device = getattr(request.user, "mfa_device", None)
+        return Response({"is_enabled": bool(device and device.is_enabled)})
+
+
+class MFASetupView(APIView):
+    """§8.1: step 1 — mint a fresh (unconfirmed) secret + QR code. Calling
+    this again before confirming just replaces the pending secret, so an
+    admin can safely retry a botched QR scan."""
+
+    permission_classes = [permissions.IsAuthenticated, IsAdminRole]
+
+    def post(self, request):
+        secret = generate_totp_secret()
+        AdminMFADevice.objects.update_or_create(
+            user=request.user, defaults={"secret": secret, "is_enabled": False, "confirmed_at": None},
+        )
+        uri = totp_provisioning_uri(request.user, secret)
+        return Response({"secret": secret, "qr_code_data_uri": totp_qr_code_data_uri(uri)})
+
+
+class MFAConfirmView(APIView):
+    """§8.1: step 2 — prove the authenticator app actually works before
+    2FA starts being enforced on login. Returns the recovery codes exactly
+    once; nothing about them is retrievable again after this response."""
+
+    permission_classes = [permissions.IsAuthenticated, IsAdminRole]
+
+    def post(self, request):
+        device = getattr(request.user, "mfa_device", None)
+        if device is None:
+            return Response({"detail": "Start setup first."}, status=status.HTTP_400_BAD_REQUEST)
+        if not verify_totp_code(device.secret, request.data.get("code", "")):
+            return Response({"detail": "Invalid code."}, status=status.HTTP_400_BAD_REQUEST)
+
+        device.is_enabled = True
+        device.confirmed_at = timezone.now()
+        device.save(update_fields=["is_enabled", "confirmed_at"])
+        codes = generate_recovery_codes(device)
+        return Response({"recovery_codes": codes})
+
+
+class MFADisableView(APIView):
+    """§8.1: requires both the account password AND a valid second-factor
+    code — a stolen logged-in session alone isn't enough to turn off 2FA,
+    the same reasoning GitHub/Google apply to this exact action."""
+
+    permission_classes = [permissions.IsAuthenticated, IsAdminRole]
+
+    def post(self, request):
+        device = getattr(request.user, "mfa_device", None)
+        if device is None or not device.is_enabled:
+            return Response({"detail": "Two-factor authentication isn't enabled."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not request.user.check_password(request.data.get("password", "")):
+            return Response({"detail": "Incorrect password."}, status=status.HTTP_400_BAD_REQUEST)
+
+        code = request.data.get("code", "")
+        if not (verify_totp_code(device.secret, code) or verify_and_consume_recovery_code(device, code)):
+            return Response({"detail": "Invalid code."}, status=status.HTTP_400_BAD_REQUEST)
+
+        device.delete()
+        return Response({"detail": "Two-factor authentication has been disabled."})
+
+
+class MFARegenerateRecoveryCodesView(APIView):
+    """§8.1: invalidates every existing recovery code and issues a fresh batch."""
+
+    permission_classes = [permissions.IsAuthenticated, IsAdminRole]
+
+    def post(self, request):
+        device = getattr(request.user, "mfa_device", None)
+        if device is None or not device.is_enabled:
+            return Response({"detail": "Two-factor authentication isn't enabled."}, status=status.HTTP_400_BAD_REQUEST)
+
+        code = request.data.get("code", "")
+        if not (verify_totp_code(device.secret, code) or verify_and_consume_recovery_code(device, code)):
+            return Response({"detail": "Invalid code."}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({"recovery_codes": generate_recovery_codes(device)})
 
 
 # ---------------------------------------------------------------------------

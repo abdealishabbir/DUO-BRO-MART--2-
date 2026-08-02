@@ -10,11 +10,48 @@ import secrets
 from datetime import timedelta
 
 from django.contrib.auth.models import AbstractUser
+from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models
 from django.utils import timezone
+from PIL import Image
 
 from .managers import UserManager
+
+# §8.1: CNIC photos weren't validated for type/size at all (unlike banner
+# images, which already had this) — an easy way for a malicious upload to
+# slip through as a vendor "identity document". No fixed-ratio requirement
+# here (a real CNIC photo's proportions vary by phone/scanner), just: is it
+# actually a readable image, a sane format, and not a garbage-sized file.
+CNIC_MAX_FILE_SIZE_MB = 5
+CNIC_MIN_WIDTH = 400
+CNIC_MIN_HEIGHT = 250
+ALLOWED_CNIC_FORMATS = {"JPEG", "PNG"}
+
+
+def validate_cnic_image(image_file):
+    if image_file.size > CNIC_MAX_FILE_SIZE_MB * 1024 * 1024:
+        raise ValidationError(f"Image is too large — please upload a file under {CNIC_MAX_FILE_SIZE_MB}MB.")
+
+    try:
+        img = Image.open(image_file)
+        img.verify()
+        image_file.seek(0)
+        img = Image.open(image_file)  # re-open: verify() leaves the image unusable
+        width, height = img.size
+        image_format = img.format
+    except Exception as exc:
+        raise ValidationError("Couldn't read that image file — please upload a valid PNG or JPEG.") from exc
+    finally:
+        image_file.seek(0)
+
+    if image_format not in ALLOWED_CNIC_FORMATS:
+        raise ValidationError("Only PNG, JPG, or JPEG images are allowed.")
+    if width < CNIC_MIN_WIDTH or height < CNIC_MIN_HEIGHT:
+        raise ValidationError(
+            f"Image is only {width}x{height}px — it's too small to be a legible CNIC photo "
+            f"(minimum {CNIC_MIN_WIDTH}x{CNIC_MIN_HEIGHT}px)."
+        )
 
 # PRD §4.2: Pakistani phone format, e.g. +923001234567 or 03001234567
 pk_phone_validator = RegexValidator(
@@ -110,8 +147,8 @@ class VendorApplication(models.Model):
     social_links = models.CharField(max_length=255, blank=True)
 
     cnic_number = models.CharField(max_length=20)
-    cnic_front = models.ImageField(upload_to="vendor_applications/cnic/")
-    cnic_back = models.ImageField(upload_to="vendor_applications/cnic/")
+    cnic_front = models.ImageField(upload_to="vendor_applications/cnic/", validators=[validate_cnic_image])
+    cnic_back = models.ImageField(upload_to="vendor_applications/cnic/", validators=[validate_cnic_image])
 
     bank_name = models.CharField(max_length=100)
     account_title = models.CharField(max_length=150)
@@ -225,3 +262,42 @@ class PasswordResetToken(models.Model):
     @property
     def is_valid(self) -> bool:
         return self.used_at is None and timezone.now() < self.expires_at
+
+
+# ---------------------------------------------------------------------------
+# §8.1 hardening: opt-in TOTP two-factor for admin accounts (user-confirmed
+# scope: optional, not mandatory; recovery codes included)
+# ---------------------------------------------------------------------------
+
+class AdminMFADevice(models.Model):
+    """
+    One row per admin who has set up 2FA. `is_enabled` stays False during
+    setup — a device only "counts" (i.e. AdminLoginView starts requiring
+    it) once the admin has proven they can actually generate valid codes
+    by confirming one, same as every real TOTP setup flow (Google,
+    GitHub, etc.) — otherwise a typo'd QR scan could permanently lock an
+    admin out of their own account.
+    """
+
+    user = models.OneToOneField("accounts.User", on_delete=models.CASCADE, related_name="mfa_device")
+    secret = models.CharField(max_length=32)
+    is_enabled = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+
+
+class MFARecoveryCode(models.Model):
+    """
+    Single-use recovery codes, hashed the same way passwords are (never
+    stored or logged in plaintext) — shown to the admin exactly once, at
+    generation time, same UX as GitHub/Google's recovery-code screens.
+    """
+
+    device = models.ForeignKey(AdminMFADevice, on_delete=models.CASCADE, related_name="recovery_codes")
+    code_hash = models.CharField(max_length=128)
+    created_at = models.DateTimeField(auto_now_add=True)
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    @property
+    def is_used(self) -> bool:
+        return self.used_at is not None

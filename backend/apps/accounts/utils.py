@@ -4,7 +4,10 @@ stay readable — each function here does one job and is unit-testable on
 its own (see apps/accounts/tests.py).
 """
 
+import secrets
+
 from django.conf import settings
+from django.contrib.auth.hashers import check_password, make_password
 from django.core.cache import cache
 from django.core.mail import send_mail
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -252,3 +255,108 @@ def verify_google_id_token(id_token_str: str) -> dict:
         raise GoogleTokenError("Google account email is not verified.")
 
     return payload
+
+
+# ---------------------------------------------------------------------------
+# §8.1 hardening: opt-in TOTP two-factor for admin accounts
+# ---------------------------------------------------------------------------
+
+MFA_PENDING_TOKEN_TTL = 300  # 5 minutes to complete the second factor after a correct password
+MFA_RECOVERY_CODE_COUNT = 8
+
+
+def _mfa_pending_cache_key(token: str) -> str:
+    return f"mfa-pending:{token}"
+
+
+def issue_mfa_pending_token(user) -> str:
+    """After a correct password for an admin with MFA enabled: mint a
+    short-lived opaque token identifying who's mid-login, instead of
+    issuing real session cookies yet. Deliberately not a JWT — this token
+    must NOT be usable as a bearer credential for anything, only as a
+    lookup key the second-factor step consumes once."""
+    token = secrets.token_urlsafe(32)
+    cache.set(_mfa_pending_cache_key(token), user.id, timeout=MFA_PENDING_TOKEN_TTL)
+    return token
+
+
+def resolve_mfa_pending_token(token: str):
+    """Returns the pending user's id, or None if the token is missing/expired/already used."""
+    return cache.get(_mfa_pending_cache_key(token))
+
+
+def consume_mfa_pending_token(token: str) -> None:
+    cache.delete(_mfa_pending_cache_key(token))
+
+
+def generate_totp_secret() -> str:
+    import pyotp
+
+    return pyotp.random_base32()
+
+
+def totp_provisioning_uri(user, secret: str) -> str:
+    import pyotp
+
+    return pyotp.totp.TOTP(secret).provisioning_uri(name=user.email, issuer_name="Duo Bro Mart Admin")
+
+
+def totp_qr_code_data_uri(provisioning_uri: str) -> str:
+    """Renders the provisioning URI as a base64 PNG the frontend can drop
+    straight into an <img src="...">, so the frontend needs no QR library
+    of its own."""
+    import base64
+    import io
+
+    import qrcode
+
+    img = qrcode.make(provisioning_uri)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode("ascii")
+
+
+def verify_totp_code(secret: str, code: str) -> bool:
+    import pyotp
+
+    if not code:
+        return False
+    # valid_window=1 tolerates the ~30s clock drift real phones/servers
+    # routinely have, without widening the brute-force window enough to matter.
+    return pyotp.TOTP(secret).verify(code.strip(), valid_window=1)
+
+
+def generate_recovery_codes(device) -> list[str]:
+    """Creates MFA_RECOVERY_CODE_COUNT fresh single-use codes for `device`,
+    deleting any previous ones first (regenerating invalidates the old
+    batch entirely — same behavior as GitHub/Google). Returns the
+    PLAINTEXT codes — this is the only moment they ever exist outside a
+    hash; the caller must show them to the admin now, nothing persists them."""
+    from .models import MFARecoveryCode
+
+    device.recovery_codes.all().delete()
+    plaintext_codes = []
+    for _ in range(MFA_RECOVERY_CODE_COUNT):
+        # xxxx-xxxx shape: easy to read/type back, ~1.7e9 possibilities per
+        # code from this alphabet — plenty for an 8-code single-use pool.
+        raw = "".join(secrets.choice("ABCDEFGHJKLMNPQRSTUVWXYZ23456789") for _ in range(8))
+        code = f"{raw[:4]}-{raw[4:]}"
+        plaintext_codes.append(code)
+        MFARecoveryCode.objects.create(device=device, code_hash=make_password(code))
+    return plaintext_codes
+
+
+def verify_and_consume_recovery_code(device, code: str) -> bool:
+    """Checks `code` against every unused recovery code on `device`; marks
+    the matching one used (single-use) and returns True, or returns False
+    if none match. O(n) over ~8 rows — fine at this scale."""
+    from django.utils import timezone
+
+    if not code:
+        return False
+    for recovery_code in device.recovery_codes.filter(used_at__isnull=True):
+        if check_password(code.strip(), recovery_code.code_hash):
+            recovery_code.used_at = timezone.now()
+            recovery_code.save(update_fields=["used_at"])
+            return True
+    return False

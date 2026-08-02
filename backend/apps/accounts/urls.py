@@ -20,6 +20,12 @@ auth_patterns = [
     path("reset-password/", views.ResetPasswordView.as_view(), name="auth-reset-password"),
     path("vendor/login/", views.VendorLoginView.as_view(), name="auth-vendor-login"),
     path("admin/login/", views.AdminLoginView.as_view(), name="auth-admin-login"),
+    path("admin/mfa/verify/", views.MFALoginVerifyView.as_view(), name="auth-mfa-verify"),
+    path("admin/mfa/status/", views.MFAStatusView.as_view(), name="mfa-status"),
+    path("admin/mfa/setup/", views.MFASetupView.as_view(), name="mfa-setup"),
+    path("admin/mfa/confirm/", views.MFAConfirmView.as_view(), name="mfa-confirm"),
+    path("admin/mfa/disable/", views.MFADisableView.as_view(), name="mfa-disable"),
+    path("admin/mfa/recovery-codes/regenerate/", views.MFARegenerateRecoveryCodesView.as_view(), name="mfa-recovery-regenerate"),
 ]
 
 account_patterns = [

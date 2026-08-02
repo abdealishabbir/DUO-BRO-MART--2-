@@ -21,6 +21,7 @@ Endpoint map:
 from datetime import timedelta
 from decimal import Decimal
 
+from django.db import IntegrityError
 from django.utils import timezone
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
@@ -37,15 +38,42 @@ from .serializers import CouponSerializer, OrderCreateSerializer, OrderSerialize
 
 
 class OrderCreateView(APIView):
-    """§4.6: place an order — guest checkout allowed."""
+    """§4.6/§8.4: place an order — guest checkout allowed.
+
+    Idempotency (§8.4): a client sends the same `idempotency_key` on a
+    retry of the *same* checkout attempt (network timeout, double-click,
+    etc.) — a slow response doesn't mean the first request failed, so
+    blindly retrying without this could create two real orders and
+    double-decrement stock. First call creates and returns 201; a retry
+    with the same key returns the original order with 200, no new order,
+    no second stock decrement. See models.Order.idempotency_key.
+    """
 
     permission_classes = [permissions.AllowAny]
     throttle_scope = "order-create"
 
     def post(self, request):
+        idempotency_key = (request.data.get("idempotency_key") or "").strip()
+        if idempotency_key:
+            existing = Order.objects.filter(idempotency_key=idempotency_key).first()
+            if existing:
+                return Response(OrderSerializer(existing, context={"request": request}).data, status=status.HTTP_200_OK)
+
         serializer = OrderCreateSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
-        order = serializer.save()
+        try:
+            order = serializer.save()
+        except IntegrityError:
+            # Two near-simultaneous requests with the same key both passed
+            # the check above before either committed; the DB's unique
+            # constraint on idempotency_key caught the duplicate at the
+            # database level — return whichever one actually won instead
+            # of a 500.
+            if idempotency_key:
+                existing = Order.objects.filter(idempotency_key=idempotency_key).first()
+                if existing:
+                    return Response(OrderSerializer(existing, context={"request": request}).data, status=status.HTTP_200_OK)
+            raise
         return Response(OrderSerializer(order, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
 

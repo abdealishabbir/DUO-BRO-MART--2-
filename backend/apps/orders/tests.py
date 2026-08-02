@@ -192,6 +192,77 @@ class OrderCreateTests(OrdersTestBase):
         self.assertEqual(Decimal(order["net_to_vendor_total"]), Decimal("1000.00"))
 
 
+class OrderIdempotencyTests(OrdersTestBase):
+    """§8.4: a retried checkout request (double-click, timeout+retry) must
+    never create a second real order or double-decrement stock."""
+
+    def test_retry_with_same_key_returns_original_order_not_a_duplicate(self):
+        product = self.make_product(stock_quantity=10)
+        body = {**VALID_SHIPPING, "items": [{"product": product.id, "quantity": 2}], "idempotency_key": "attempt-abc-123"}
+
+        first = self.client.post(reverse("order-create"), body, format="json")
+        self.assertEqual(first.status_code, 201, first.data)
+
+        second = self.client.post(reverse("order-create"), body, format="json")
+        self.assertEqual(second.status_code, 200, second.data)
+        self.assertEqual(first.data["order_code"], second.data["order_code"])
+        self.assertEqual(Order.objects.count(), 1)
+
+    def test_retry_does_not_double_decrement_stock(self):
+        product = self.make_product(stock_quantity=10)
+        body = {**VALID_SHIPPING, "items": [{"product": product.id, "quantity": 3}], "idempotency_key": "attempt-xyz"}
+
+        self.client.post(reverse("order-create"), body, format="json")
+        self.client.post(reverse("order-create"), body, format="json")
+        self.client.post(reverse("order-create"), body, format="json")
+
+        product.refresh_from_db()
+        self.assertEqual(product.stock_quantity, 7)  # decremented exactly once, not three times
+
+    def test_different_keys_create_separate_orders(self):
+        product = self.make_product(stock_quantity=10)
+        first = self.client.post(
+            reverse("order-create"),
+            {**VALID_SHIPPING, "items": [{"product": product.id, "quantity": 1}], "idempotency_key": "key-1"},
+            format="json",
+        )
+        second = self.client.post(
+            reverse("order-create"),
+            {**VALID_SHIPPING, "items": [{"product": product.id, "quantity": 1}], "idempotency_key": "key-2"},
+            format="json",
+        )
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(second.status_code, 201)
+        self.assertNotEqual(first.data["order_code"], second.data["order_code"])
+        self.assertEqual(Order.objects.count(), 2)
+
+    def test_no_key_behaves_exactly_as_before(self):
+        """Idempotency is opt-in — an old/unpatched client that never sends
+        a key must keep working exactly as it always did."""
+        product = self.make_product(stock_quantity=10)
+        resp = self.client.post(
+            reverse("order-create"),
+            {**VALID_SHIPPING, "items": [{"product": product.id, "quantity": 1}]},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201)
+        self.assertIsNone(Order.objects.get(order_code=resp.data["order_code"]).idempotency_key)
+
+    def test_two_guests_can_each_omit_the_key_without_colliding(self):
+        """Multiple NULL idempotency_key rows must coexist under the unique
+        constraint — Postgres treats NULLs as distinct, but worth locking
+        in as a real regression test rather than trusting that blindly."""
+        product = self.make_product(stock_quantity=10)
+        for _ in range(3):
+            resp = self.client.post(
+                reverse("order-create"),
+                {**VALID_SHIPPING, "items": [{"product": product.id, "quantity": 1}]},
+                format="json",
+            )
+            self.assertEqual(resp.status_code, 201, resp.data)
+        self.assertEqual(Order.objects.count(), 3)
+
+
 class OrderTrackingTests(OrdersTestBase):
     def _place_order(self, product, **overrides):
         payload = {**VALID_SHIPPING, "items": [{"product": product.id, "quantity": 1}], **overrides}

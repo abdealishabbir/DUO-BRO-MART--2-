@@ -117,6 +117,7 @@ class OrderCreateSerializer(serializers.Serializer):
     payment_method = serializers.ChoiceField(choices=Order.PaymentMethod.choices)
     wallet_provider = serializers.CharField(max_length=30, required=False, allow_blank=True, default="")
     coupon_code = serializers.CharField(max_length=30, required=False, allow_blank=True, default="")
+    idempotency_key = serializers.CharField(max_length=64, required=False, allow_blank=True, default="")
 
     def validate_items(self, items):
         if not items:
@@ -206,6 +207,7 @@ class OrderCreateSerializer(serializers.Serializer):
             customer=request.user if request.user.is_authenticated else None,
             coupon=coupon,
             discount_amount=discount_amount,
+            idempotency_key=validated_data.get("idempotency_key") or None,
             shipping_full_name=validated_data["shipping_full_name"],
             shipping_phone_number=validated_data["shipping_phone_number"],
             shipping_email=validated_data["shipping_email"],

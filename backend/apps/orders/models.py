@@ -117,6 +117,11 @@ class Order(models.Model):
         CANCELLED = "cancelled", "Cancelled"
 
     order_code = models.CharField(max_length=20, unique=True, editable=False)
+    idempotency_key = models.CharField(
+        max_length=64, unique=True, null=True, blank=True, db_index=True,
+        help_text="Client-generated key (one per checkout attempt, reused across retries of that same attempt). "
+                   "A repeat request with the same key returns the original order instead of creating a duplicate.",
+    )
     customer = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="orders",
         help_text="Null for a guest checkout.",

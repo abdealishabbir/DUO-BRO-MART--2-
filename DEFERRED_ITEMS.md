@@ -89,16 +89,27 @@ alongside the security/market recommendations already discussed.
 - ~~No 404 page, no robots.txt/sitemap/meta tags, no favicon~~ — **partially
   stale**: 404 page, favicon, and robots.txt all already exist. Sitemap
   and meta tags genuinely still don't.
-- Checkout isn't idempotent — a slow network + retry could theoretically
-  create two real orders (no idempotency key yet).
+- ~~Checkout isn't idempotent — a slow network + retry could theoretically
+  create two real orders~~ — **fixed**: `Order.idempotency_key`, generated
+  once per checkout attempt on the frontend (`crypto.randomUUID()`, reused
+  across retries of that same attempt, cleared only after success). A
+  retry with the same key returns the original order (200) instead of
+  creating a duplicate (201). Race-safe: two near-simultaneous requests
+  with the same key are serialized by the existing `select_for_update()`
+  stock lock, and the loser's stock decrement rolls back cleanly via the
+  DB's unique constraint + the transaction that was already wrapping
+  order creation. 5 new tests, including a genuine double-submit
+  simulation and the multi-NULL-key edge case.
 - No admin audit log (who approved/rejected what, and when) — a few
   scattered fields exist (`decided_by`, `resolved_by`) but nothing unified.
 
 ## Feedback page (§7.3, this session)
 - Photo upload on the feedback form is UI-only — the dropzone renders,
   nothing is actually stored.
-- No loyalty points / rewards system exists (the "Earn 50 points" copy in
-  the reference UI wasn't implemented as a real feature).
+- No loyalty points / rewards system exists. (Checked: there's no "Earn
+  points" copy anywhere in the actual frontend or PRD either — that was
+  a reference-mockup idea that never made it into this build. Nothing to
+  clean up; would be a genuine net-new feature if ever wanted.)
 
 ## Real-time inventory sync (§7.1)
 ~~Not started — the one deliberately-postponed piece of Phase 7.~~ **This

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useRef, useState } from "react";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { api } from "../lib/api.js";
 
@@ -9,6 +9,13 @@ export function CheckoutProvider({ children }) {
   const [address, setAddress] = useState(null);
   const [deliveryMethod, setDeliveryMethod] = useState("standard");
   const [paymentMethod, setPaymentMethod] = useState("cod");
+  // §8.4: one key per checkout attempt, generated lazily and reused across
+  // retries of that SAME attempt (network timeout, double-click "Place
+  // Order") so a retry can't create a second real order. Cleared only
+  // after an order actually succeeds, so a genuinely new checkout later
+  // gets a fresh key. useRef (not state) — generating it must never
+  // trigger a re-render, and it must survive re-renders unchanged.
+  const idempotencyKeyRef = useRef(null);
 
   /**
    * Places a real order against the Order backend (apps/orders) —
@@ -26,6 +33,10 @@ export function CheckoutProvider({ children }) {
   const placeOrder = async ({ lines, deliveryMethod: method, billingAddress, wallet, couponCode }) => {
     const isRural = address.area_type ? address.area_type === "rural" : Boolean(address.landmark);
 
+    if (!idempotencyKeyRef.current) {
+      idempotencyKeyRef.current = crypto.randomUUID();
+    }
+
     const body = {
       items: lines.map((l) => ({ product: l.product.id, quantity: l.quantity })),
       shipping_full_name: address.full_name,
@@ -41,6 +52,7 @@ export function CheckoutProvider({ children }) {
       payment_method: paymentMethod,
       wallet_provider: paymentMethod === "wallet" ? wallet ?? "" : "",
       coupon_code: couponCode || "",
+      idempotency_key: idempotencyKeyRef.current,
     };
 
     if (billingAddress && billingAddress !== address) {
@@ -52,7 +64,9 @@ export function CheckoutProvider({ children }) {
       body.billing_address_line = billingAddress.address_line;
     }
 
-    return api.post("/orders/", body);
+    const order = await api.post("/orders/", body);
+    idempotencyKeyRef.current = null; // this attempt is over (success) — a future checkout is a new attempt
+    return order;
   };
 
   const value = { address, setAddress, deliveryMethod, setDeliveryMethod, paymentMethod, setPaymentMethod, placeOrder };

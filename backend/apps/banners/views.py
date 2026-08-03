@@ -32,6 +32,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.permissions import IsAdminRole, IsVendorRole
+from apps.core.audit import log_admin_action
 
 from .models import Banner, BannerApplication, BannerPayment, PlatformSettings
 from .serializers import (
@@ -172,6 +173,7 @@ class AdminApplicationViewSet(viewsets.ReadOnlyModelViewSet):
         application.decided_at = timezone.now()
         application.admin_notes = request.data.get("admin_notes", application.admin_notes)
         application.save(update_fields=["status", "decided_at", "admin_notes"])
+        log_admin_action(request.user, "banner_application.approved", application)
         return Response(BannerApplicationSerializer(application, context={"request": request}).data)
 
     @action(detail=True, methods=["post"])
@@ -183,6 +185,7 @@ class AdminApplicationViewSet(viewsets.ReadOnlyModelViewSet):
         application.decided_at = timezone.now()
         application.admin_notes = request.data.get("admin_notes", application.admin_notes)
         application.save(update_fields=["status", "decided_at", "admin_notes"])
+        log_admin_action(request.user, "banner_application.rejected", application, details=application.admin_notes)
         return Response(BannerApplicationSerializer(application, context={"request": request}).data)
 
 

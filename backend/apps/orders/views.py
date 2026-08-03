@@ -3,6 +3,7 @@ Endpoint map:
 
   Public:   POST /api/orders/                       (create — guest or logged in)
             GET  /api/orders/track/?order_code=&contact=
+            POST /api/orders/cancel/                  (§8.4: self-service, pending-only)
 
   Customer: GET  /api/orders/mine/
 
@@ -21,7 +22,8 @@ Endpoint map:
 from datetime import timedelta
 from decimal import Decimal
 
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
+from django.db.models import F
 from django.utils import timezone
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
@@ -30,6 +32,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.permissions import IsAdminRole, IsVendorRole
+from apps.core.audit import log_admin_action
+from apps.products.models import Product
 
 from .models import Coupon, Order, OrderItem, Payout
 from .payouts import eligible_order_items_for_vendor, generate_payouts, next_eligible_at_for_vendor
@@ -117,6 +121,65 @@ class TrackOrderView(APIView):
         return Response(OrderSerializer(order, context={"request": request}).data)
 
 
+class OrderCancelView(APIView):
+    """
+    §8.4: customer self-service cancellation. Deliberately scoped
+    assumption (flagging it rather than burying it): only allowed while
+    the order is still 'pending' — matches how COD/courier logistics
+    actually work here, once a vendor starts processing/packing an item
+    self-service cancel would leave a real-world mess (packed goods,
+    dispatched courier pickup) that a simple status flip can't undo.
+    Past 'pending', cancellation is an admin/support action instead (see
+    AdminOrderUpdateView). Restocks every item and reverses coupon usage
+    so the platform's numbers stay accurate — same ownership check
+    TrackOrderView uses (logged-in owner, or a guest who can prove the
+    email/phone used at checkout), since guests must be able to cancel too.
+    """
+
+    permission_classes = [permissions.AllowAny]
+    throttle_scope = "order-track"
+
+    @transaction.atomic
+    def post(self, request):
+        order_code = (request.data.get("order_code") or "").strip()
+        if not order_code:
+            return Response({"detail": "order_code is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            order = Order.objects.select_for_update().prefetch_related("items").get(order_code=order_code)
+        except Order.DoesNotExist:
+            return Response({"detail": "No order found with that ID."}, status=status.HTTP_404_NOT_FOUND)
+
+        owns_order = request.user.is_authenticated and order.customer_id == request.user.id
+        if not owns_order:
+            contact = (request.data.get("contact") or "").strip()
+            contact_normalized = contact.lower().replace(" ", "")
+            matches_email = order.shipping_email.lower() == contact_normalized
+            matches_phone = order.shipping_phone_number.replace(" ", "") == contact.replace(" ", "")
+            owns_order = bool(contact) and (matches_email or matches_phone)
+
+        if not owns_order:
+            return Response({"detail": "The email or phone number doesn't match this order."}, status=status.HTTP_404_NOT_FOUND)
+
+        if order.status != Order.Status.PENDING:
+            return Response(
+                {"detail": "This order is already being processed and can no longer be cancelled automatically — contact support for help."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        for item in order.items.all():
+            if item.product_id:
+                Product.objects.filter(pk=item.product_id).update(stock_quantity=F("stock_quantity") + item.quantity)
+        if order.coupon_id:
+            Coupon.objects.filter(pk=order.coupon_id).update(used_count=F("used_count") - 1)
+
+        order.status = Order.Status.CANCELLED
+        order.admin_notes = (order.admin_notes + "\n" if order.admin_notes else "") + "Cancelled by customer."
+        order.save(update_fields=["status", "admin_notes"])
+
+        return Response(OrderSerializer(order, context={"request": request}).data)
+
+
 class VendorOrdersView(ListAPIView):
     """§5.6: orders containing at least one of this vendor's products."""
 
@@ -191,6 +254,7 @@ class AdminOrderUpdateView(APIView):
         if "payment_status" in updates and updates["payment_status"] not in Order.PaymentStatus.values:
             return Response({"payment_status": "Invalid payment status."}, status=status.HTTP_400_BAD_REQUEST)
 
+        old_status = order.status
         for field, value in updates.items():
             setattr(order, field, value)
         if updates.get("status") == Order.Status.DELIVERED and not order.delivered_at:
@@ -198,6 +262,8 @@ class AdminOrderUpdateView(APIView):
             updates["delivered_at"] = order.delivered_at
         if updates:
             order.save(update_fields=list(updates.keys()) + ["updated_at"])
+        if "status" in updates and updates["status"] != old_status:
+            log_admin_action(request.user, "order.status_changed", order, details=f"{old_status} -> {updates['status']}")
         return Response(OrderSerializer(order, context={"request": request}).data)
 
 
@@ -345,4 +411,5 @@ class AdminPayoutViewSet(viewsets.ReadOnlyModelViewSet):
         payout.admin_notes = request.data.get("admin_notes", payout.admin_notes)
         payout.paid_at = timezone.now()
         payout.save(update_fields=["status", "reference", "admin_notes", "paid_at"])
+        log_admin_action(request.user, "payout.marked_paid", payout, details=f"Rs. {payout.total_amount} — ref: {payout.reference}")
         return Response(PayoutSerializer(payout, context={"request": request}).data)

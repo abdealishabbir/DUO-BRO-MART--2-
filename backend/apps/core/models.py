@@ -27,6 +27,7 @@ called out explicitly rather than silently doing nothing:
     belongs with Phase 7's real-time/notification work.
 """
 
+from django.conf import settings
 from django.db import models
 
 
@@ -88,3 +89,37 @@ class PlatformSettings(models.Model):
 
     def __str__(self):
         return "Platform settings"
+
+
+class AuditLogEntry(models.Model):
+    """
+    §8.4: unified admin audit trail. Scope call, flagged rather than
+    assumed: logs approval/rejection/status-change decisions made through
+    the admin panel — the things where "who did this and when" actually
+    matters for accountability (vendor/product/banner approvals and
+    rejections, order status changes, price/stock change-request
+    decisions, marking a payout paid). Deliberately NOT logged: routine
+    CRUD (editing a coupon, tweaking settings) or anything read-only —
+    that's normal admin work, not a decision worth auditing.
+
+    `target_repr` snapshots a human-readable label (e.g. a product name or
+    order code) at the time of the action, since the target row can later
+    be edited or deleted — the log entry should still make sense on its own.
+    """
+
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="audit_log_entries",
+    )
+    action = models.CharField(max_length=50, help_text='e.g. "product.approved", "order.status_changed".')
+    target_type = models.CharField(max_length=50, help_text='e.g. "Product", "Order", "VendorApplication".')
+    target_id = models.PositiveIntegerField()
+    target_repr = models.CharField(max_length=200, blank=True)
+    details = models.TextField(blank=True, help_text="Extra context, e.g. a rejection reason or old->new status.")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["target_type", "target_id"], name="core_auditlog_target_idx")]
+
+    def __str__(self):
+        return f"{self.action} on {self.target_type} #{self.target_id} by {self.actor}"

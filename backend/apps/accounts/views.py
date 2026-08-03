@@ -21,6 +21,7 @@ from django.conf import settings
 
 from .models import Address, AdminMFADevice, EmailVerificationToken, PasswordResetToken, VendorApplication
 from .permissions import IsAdminRole, IsVendorRole
+from apps.core.audit import log_admin_action
 from .utils import provision_vendor_account
 from .serializers import (
     AddressSerializer,
@@ -571,6 +572,7 @@ class AdminVendorApplicationViewSet(viewsets.ReadOnlyModelViewSet):
         application.decided_by = request.user
         application.created_vendor = user
         application.save(update_fields=["status", "decided_at", "decided_by", "created_vendor"])
+        log_admin_action(request.user, "vendor_application.approved", application)
 
         return Response({**VendorApplicationSerializer(application).data, "email_status": email_status})
 
@@ -585,6 +587,7 @@ class AdminVendorApplicationViewSet(viewsets.ReadOnlyModelViewSet):
         application.decided_at = timezone.now()
         application.decided_by = request.user
         application.save(update_fields=["status", "admin_notes", "decided_at", "decided_by"])
+        log_admin_action(request.user, "vendor_application.rejected", application, details=application.admin_notes)
         return Response(VendorApplicationSerializer(application).data)
 
 
@@ -650,4 +653,5 @@ class AdminVendorSuspendView(APIView):
         action_type = request.data.get("action", "suspend")
         vendor.is_active = action_type != "suspend"
         vendor.save(update_fields=["is_active"])
+        log_admin_action(request.user, "vendor.suspended" if action_type == "suspend" else "vendor.reinstated", vendor)
         return Response({"id": vendor.id, "is_active": vendor.is_active})

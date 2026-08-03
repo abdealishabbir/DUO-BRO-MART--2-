@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import PlatformSettings
+from .models import AuditLogEntry, PlatformSettings
 
 
 class PlatformSettingsSerializer(serializers.ModelSerializer):
@@ -29,3 +29,17 @@ class PublicPlatformSettingsSerializer(serializers.ModelSerializer):
             "cod_enabled", "card_enabled", "jazzcash_enabled", "easypaisa_enabled",
         ]
         read_only_fields = fields
+
+
+class AuditLogEntrySerializer(serializers.ModelSerializer):
+    actor_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AuditLogEntry
+        fields = ["id", "actor_name", "action", "target_type", "target_id", "target_repr", "details", "created_at"]
+        read_only_fields = fields
+
+    def get_actor_name(self, obj):
+        if obj.actor is None:
+            return "System"
+        return f"{obj.actor.first_name} {obj.actor.last_name}".strip() or obj.actor.username

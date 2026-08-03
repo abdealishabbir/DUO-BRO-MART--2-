@@ -85,7 +85,17 @@ alongside the security/market recommendations already discussed.
 - ~~Rating stars missing from Home/Shop product cards~~ — **fixed**: added
   using the same data ProductDetail already displayed.
 - Multi-vendor cart/checkout doesn't show a per-vendor cost breakdown.
-- No customer-initiated order cancellation (only admin can change status).
+- ~~No customer-initiated order cancellation~~ — **built**, with a
+  deliberate scope call rather than a silent assumption: self-service
+  cancel only works while the order is still `pending` (matches real
+  COD/courier practice — once a vendor starts processing/packing, a
+  simple status flip can't undo real-world dispatch). Past that point,
+  it's an admin/support action instead. Restocks every item and reverses
+  coupon usage. Works for both guests (order code + email/phone, same
+  verification `TrackOrder` already used) and logged-in customers
+  (one-click from Account → Orders, no re-entering contact info). 10 new
+  tests covering both ownership paths, restocking, coupon reversal, and
+  the pending-only boundary.
 - ~~No 404 page, no robots.txt/sitemap/meta tags, no favicon~~ — **partially
   stale**: 404 page, favicon, and robots.txt all already exist. Sitemap
   and meta tags genuinely still don't.
@@ -100,8 +110,20 @@ alongside the security/market recommendations already discussed.
   DB's unique constraint + the transaction that was already wrapping
   order creation. 5 new tests, including a genuine double-submit
   simulation and the multi-NULL-key edge case.
-- No admin audit log (who approved/rejected what, and when) — a few
-  scattered fields exist (`decided_by`, `resolved_by`) but nothing unified.
+- ~~No admin audit log~~ — **built**, scope flagged rather than assumed:
+  logs approve/reject decisions (products, price/deal change requests,
+  stock-increase requests, vendor applications, banner applications),
+  vendor suspend/reinstate, order status changes (only when the status
+  actually changes — a courier-name-only edit doesn't spam an entry),
+  and payout mark-paid. Deliberately NOT logged: routine CRUD (editing a
+  coupon, tweaking settings) — those are normal admin work, not a
+  decision worth auditing. New `AdminAuditLog` page + nav link, filterable
+  by action/target type. 10 new unit tests + 2 cross-app integration
+  tests (confirming the hooks are actually wired, not just unit-tested
+  in isolation). Caught a real bug during this build: forgot to import
+  the logging helper in `apps/orders/views.py`, causing a `NameError` on
+  every payout mark-paid call — only caught because I ran the actual
+  test suite rather than trusting the compile check.
 
 ## Feedback page (§7.3, this session)
 - Photo upload on the feedback form is UI-only — the dropzone renders,

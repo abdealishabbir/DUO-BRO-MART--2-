@@ -12,6 +12,7 @@ const NAV_LINKS = [
   { to: "/admin/pricing", label: "Pricing & Commission" },
   { to: "/admin/coupons", label: "Coupons" },
   { to: "/admin/settings", label: "Settings" },
+  { to: "/admin/audit-log", label: "Audit Log" },
   { to: "/admin/complaints", label: "Complaints" },
 ];
 

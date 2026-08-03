@@ -205,6 +205,8 @@ function OrdersTab() {
   const [orders, setOrders] = useState([]);
   const [eligibleOrderCodes, setEligibleOrderCodes] = useState(new Set());
   const [loading, setLoading] = useState(true);
+  const [cancellingCode, setCancellingCode] = useState(null);
+  const [cancelError, setCancelError] = useState("");
 
   useEffect(() => {
     Promise.all([api.get("/orders/mine/"), api.get("/feedback/eligible-orders/")]).then(([ordersData, eligibleData]) => {
@@ -213,6 +215,20 @@ function OrdersTab() {
       setLoading(false);
     });
   }, []);
+
+  const handleCancel = async (orderCode) => {
+    if (!window.confirm("Cancel this order? This can't be undone.")) return;
+    setCancellingCode(orderCode);
+    setCancelError("");
+    try {
+      const updated = await api.post("/orders/cancel/", { order_code: orderCode });
+      setOrders((prev) => prev.map((o) => (o.order_code === orderCode ? updated : o)));
+    } catch (err) {
+      setCancelError(err.data?.detail || "Couldn't cancel this order. Please try again.");
+    } finally {
+      setCancellingCode(null);
+    }
+  };
 
   if (loading) return <p className="text-sm text-gray-500">Loading your orders...</p>;
 
@@ -229,6 +245,7 @@ function OrdersTab() {
 
   return (
     <div className="max-w-2xl space-y-3">
+      {cancelError && <p className="text-sm text-red-600">{cancelError}</p>}
       {orders.map((order) => (
         <div key={order.id} className="rounded-md border border-gray-200 p-4">
           <div className="flex items-center justify-between">
@@ -248,6 +265,15 @@ function OrdersTab() {
                 <Link to={`/order-feedback/${order.order_code}`} className="text-sm font-medium text-brand hover:underline">
                   Confirm & Rate Order
                 </Link>
+              )}
+              {order.status === "pending" && (
+                <button
+                  onClick={() => handleCancel(order.order_code)}
+                  disabled={cancellingCode === order.order_code}
+                  className="text-sm font-medium text-red-600 hover:underline disabled:opacity-60"
+                >
+                  {cancellingCode === order.order_code ? "Cancelling..." : "Cancel"}
+                </button>
               )}
               <Link to={`/track-order?order=${order.order_code}`} className="text-sm font-medium text-brand hover:underline">
                 Track Order

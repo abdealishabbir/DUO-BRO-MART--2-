@@ -44,6 +44,23 @@ export default function TrackOrder() {
     }
   };
 
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState("");
+
+  const handleCancel = async () => {
+    if (!window.confirm("Cancel this order? This can't be undone.")) return;
+    setCancelling(true);
+    setCancelError("");
+    try {
+      const updated = await api.post("/orders/cancel/", { order_code: orderCode.trim(), contact: contact.trim() });
+      setOrder(updated);
+    } catch (err) {
+      setCancelError(err.data?.detail || "Couldn't cancel this order. Please try again.");
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   const isCancelled = order?.status === "cancelled";
   const currentStepIndex = STEPS.findIndex((s) => s.id === order?.status);
 
@@ -134,6 +151,22 @@ export default function TrackOrder() {
               <span>{formatPKR(order.total)}</span>
             </div>
           </div>
+
+          {order.status === "pending" && (
+            <div className="mt-5 border-t border-gray-100 pt-4">
+              {cancelError && <p className="mb-2 text-sm text-red-600">{cancelError}</p>}
+              <button
+                onClick={handleCancel}
+                disabled={cancelling}
+                className="w-full rounded-md border border-red-200 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
+              >
+                {cancelling ? "Cancelling..." : "Cancel Order"}
+              </button>
+              <p className="mt-1.5 text-center text-xs text-gray-400">
+                Only available while your order is still Pending — once it starts Processing, contact support to cancel.
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -291,6 +291,98 @@ class OrderTrackingTests(OrdersTestBase):
         self.assertEqual(resp.status_code, 404)
 
 
+class OrderCancelTests(OrdersTestBase):
+    """§8.4: customer self-service cancellation — pending-only, restocks,
+    reverses coupon usage. See views.OrderCancelView docstring for the
+    scope assumption (pending-only, not "any time before shipped")."""
+
+    def _place_order(self, product, quantity=1, **overrides):
+        payload = {**VALID_SHIPPING, "items": [{"product": product.id, "quantity": quantity}], **overrides}
+        return self.client.post(reverse("order-create"), payload, format="json")
+
+    def test_guest_can_cancel_with_matching_email(self):
+        product = self.make_product(stock_quantity=10)
+        create_resp = self._place_order(product, quantity=3)
+        resp = self.client.post(reverse("order-cancel"), {"order_code": create_resp.data["order_code"], "contact": "ayesha@example.com"})
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertEqual(resp.data["status"], "cancelled")
+
+    def test_guest_can_cancel_with_matching_phone(self):
+        product = self.make_product(stock_quantity=10)
+        create_resp = self._place_order(product)
+        resp = self.client.post(reverse("order-cancel"), {"order_code": create_resp.data["order_code"], "contact": "03001234567"})
+        self.assertEqual(resp.status_code, 200, resp.data)
+
+    def test_wrong_contact_cannot_cancel(self):
+        product = self.make_product(stock_quantity=10)
+        create_resp = self._place_order(product)
+        resp = self.client.post(reverse("order-cancel"), {"order_code": create_resp.data["order_code"], "contact": "someone-else@example.com"})
+        self.assertEqual(resp.status_code, 404)
+        self.assertEqual(Order.objects.get(order_code=create_resp.data["order_code"]).status, Order.Status.PENDING)
+
+    def test_logged_in_customer_can_cancel_own_order_without_contact(self):
+        product = self.make_product(stock_quantity=10)
+        self.login_as(self.customer)
+        create_resp = self._place_order(product)
+        resp = self.client.post(reverse("order-cancel"), {"order_code": create_resp.data["order_code"]})
+        self.assertEqual(resp.status_code, 200, resp.data)
+
+    def test_logged_in_customer_cannot_cancel_someone_elses_order(self):
+        product = self.make_product(stock_quantity=10)
+        create_resp = self._place_order(product)  # guest order
+        self.login_as(self.customer)
+        resp = self.client.post(reverse("order-cancel"), {"order_code": create_resp.data["order_code"]})
+        self.assertEqual(resp.status_code, 404)
+
+    def test_cancel_restocks_the_product(self):
+        product = self.make_product(stock_quantity=10)
+        create_resp = self._place_order(product, quantity=4)
+        product.refresh_from_db()
+        self.assertEqual(product.stock_quantity, 6)  # decremented at order time
+
+        self.client.post(reverse("order-cancel"), {"order_code": create_resp.data["order_code"], "contact": "ayesha@example.com"})
+        product.refresh_from_db()
+        self.assertEqual(product.stock_quantity, 10)  # restored on cancel
+
+    def test_cannot_cancel_once_processing(self):
+        product = self.make_product(stock_quantity=10)
+        create_resp = self._place_order(product)
+        order = Order.objects.get(order_code=create_resp.data["order_code"])
+        order.status = Order.Status.PROCESSING
+        order.save(update_fields=["status"])
+
+        resp = self.client.post(reverse("order-cancel"), {"order_code": create_resp.data["order_code"], "contact": "ayesha@example.com"})
+        self.assertEqual(resp.status_code, 400)
+        order.refresh_from_db()
+        self.assertEqual(order.status, Order.Status.PROCESSING)
+
+    def test_cannot_cancel_already_cancelled_order(self):
+        product = self.make_product(stock_quantity=10)
+        create_resp = self._place_order(product)
+        self.client.post(reverse("order-cancel"), {"order_code": create_resp.data["order_code"], "contact": "ayesha@example.com"})
+        second = self.client.post(reverse("order-cancel"), {"order_code": create_resp.data["order_code"], "contact": "ayesha@example.com"})
+        self.assertEqual(second.status_code, 400)
+
+    def test_cancel_reverses_coupon_usage(self):
+        from decimal import Decimal
+
+        from .models import Coupon
+
+        coupon = Coupon.objects.create(code="SAVE10", discount_type=Coupon.DiscountType.PERCENT, discount_value=Decimal("10.00"), used_count=1)
+        product = self.make_product(stock_quantity=10, base_price=Decimal("1000.00"))
+        create_resp = self._place_order(product, coupon_code="SAVE10")
+        coupon.refresh_from_db()
+        self.assertEqual(coupon.used_count, 2)
+
+        self.client.post(reverse("order-cancel"), {"order_code": create_resp.data["order_code"], "contact": "ayesha@example.com"})
+        coupon.refresh_from_db()
+        self.assertEqual(coupon.used_count, 1)
+
+    def test_missing_order_code_rejected(self):
+        resp = self.client.post(reverse("order-cancel"), {"contact": "ayesha@example.com"})
+        self.assertEqual(resp.status_code, 400)
+
+
 class CustomerOrderHistoryTests(OrdersTestBase):
     def test_customer_sees_only_own_orders(self):
         product = self.make_product()

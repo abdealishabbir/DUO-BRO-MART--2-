@@ -11,6 +11,7 @@ import AdminVendors from "../pages/admin/Vendors.jsx";
 import AdminPricing from "../pages/admin/Pricing.jsx";
 import AdminCoupons from "../pages/admin/Coupons.jsx";
 import AdminSettings from "../pages/admin/Settings.jsx";
+import AdminAuditLog from "../pages/admin/AuditLog.jsx";
 import AdminComplaints from "../pages/admin/Complaints.jsx";
 
 /**
@@ -33,6 +34,7 @@ export default function AdminRoutes() {
           <Route path="pricing" element={<AdminPricing />} />
           <Route path="coupons" element={<AdminCoupons />} />
           <Route path="settings" element={<AdminSettings />} />
+          <Route path="audit-log" element={<AdminAuditLog />} />
           <Route path="complaints" element={<AdminComplaints />} />
         </Route>
       </Route>

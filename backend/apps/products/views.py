@@ -42,6 +42,7 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
 from apps.accounts.permissions import IsAdminRole, IsVendorRole, ReadOnlyOrIsAdmin
+from apps.core.audit import log_admin_action
 
 from .models import Category, CommissionRate, PROVISIONAL_COMMISSION_RATE, Product, ProductChangeRequest, ProductImage, ProductView, StockChangeRequest
 from .serializers import (
@@ -398,6 +399,7 @@ class AdminProductViewSet(ModelViewSet):
         product.decided_at = timezone.now()
         product.admin_notes = request.data.get("admin_notes", product.admin_notes)
         product.save(update_fields=["status", "decided_at", "admin_notes", "category", "requested_category_name"])
+        log_admin_action(request.user, "product.approved", product)
         return Response(ProductSerializer(product, context={"request": request}).data)
 
     def _resolve_category(self, product, data):
@@ -469,6 +471,7 @@ class AdminProductViewSet(ModelViewSet):
         product.decided_at = timezone.now()
         product.admin_notes = request.data.get("admin_notes", product.admin_notes)
         product.save(update_fields=["status", "decided_at", "admin_notes"])
+        log_admin_action(request.user, "product.rejected", product, details=product.admin_notes)
         return Response(ProductSerializer(product, context={"request": request}).data)
 
 
@@ -507,6 +510,7 @@ class AdminProductChangeRequestViewSet(ReadOnlyModelViewSet):
         change_request.admin_notes = request.data.get("admin_notes", change_request.admin_notes)
         change_request.save(update_fields=["status", "decided_at", "admin_notes"])
         self._apply_to_product(change_request)
+        log_admin_action(request.user, "product_change_request.approved", change_request)
         return Response(ProductChangeRequestSerializer(change_request, context={"request": request}).data)
 
     @action(detail=True, methods=["post"])
@@ -518,6 +522,7 @@ class AdminProductChangeRequestViewSet(ReadOnlyModelViewSet):
         change_request.decided_at = timezone.now()
         change_request.admin_notes = request.data.get("admin_notes", change_request.admin_notes)
         change_request.save(update_fields=["status", "decided_at", "admin_notes"])
+        log_admin_action(request.user, "product_change_request.rejected", change_request, details=change_request.admin_notes)
         return Response(ProductChangeRequestSerializer(change_request, context={"request": request}).data)
 
 
@@ -546,6 +551,7 @@ class AdminStockChangeRequestViewSet(ReadOnlyModelViewSet):
         product.stock_quantity += stock_request.requested_increase
         product.save(update_fields=["stock_quantity"])
 
+        log_admin_action(request.user, "stock_change_request.approved", stock_request)
         return Response(StockChangeRequestSerializer(stock_request, context={"request": request}).data)
 
     @action(detail=True, methods=["post"])
@@ -557,6 +563,7 @@ class AdminStockChangeRequestViewSet(ReadOnlyModelViewSet):
         stock_request.decided_at = timezone.now()
         stock_request.admin_notes = request.data.get("admin_notes", stock_request.admin_notes)
         stock_request.save(update_fields=["status", "decided_at", "admin_notes"])
+        log_admin_action(request.user, "stock_change_request.rejected", stock_request, details=stock_request.admin_notes)
         return Response(StockChangeRequestSerializer(stock_request, context={"request": request}).data)
 
 

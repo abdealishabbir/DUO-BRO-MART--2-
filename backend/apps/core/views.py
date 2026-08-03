@@ -6,7 +6,7 @@ correctly end to end before any real feature is built on top of it.
 §6.7 adds platform-wide settings on top of that shell.
 """
 
-from rest_framework import permissions
+from rest_framework import generics, permissions
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -14,8 +14,8 @@ from rest_framework.views import APIView
 
 from apps.accounts.permissions import IsAdminRole
 
-from .models import PlatformSettings
-from .serializers import PlatformSettingsSerializer, PublicPlatformSettingsSerializer
+from .models import AuditLogEntry, PlatformSettings
+from .serializers import AuditLogEntrySerializer, PlatformSettingsSerializer, PublicPlatformSettingsSerializer
 
 
 @api_view(["GET"])
@@ -75,3 +75,20 @@ def sitemap_xml(request):
     xml += [f"<url><loc>{u}</loc></url>" for u in urls]
     xml.append("</urlset>")
     return HttpResponse("\n".join(xml), content_type="application/xml")
+
+
+class AdminAuditLogView(generics.ListAPIView):
+    """§8.4: unified admin audit trail — see models.AuditLogEntry for scope."""
+
+    permission_classes = [permissions.IsAuthenticated, IsAdminRole]
+    serializer_class = AuditLogEntrySerializer
+
+    def get_queryset(self):
+        qs = AuditLogEntry.objects.select_related("actor").all()
+        action = self.request.query_params.get("action")
+        if action:
+            qs = qs.filter(action=action)
+        target_type = self.request.query_params.get("target_type")
+        if target_type:
+            qs = qs.filter(target_type=target_type)
+        return qs

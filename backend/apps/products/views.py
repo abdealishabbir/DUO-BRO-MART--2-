@@ -190,6 +190,10 @@ class PublicProductViewSet(ReadOnlyModelViewSet):
             brands = [b for b in brand.split(",") if b]
             qs = qs.filter(brand__in=brands)
 
+        vendor = self.request.query_params.get("vendor")
+        if vendor:
+            qs = qs.filter(vendor_id=vendor)
+
         min_price = self.request.query_params.get("min_price")
         if min_price:
             qs = qs.filter(base_price__gte=min_price)

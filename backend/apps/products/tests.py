@@ -1061,3 +1061,16 @@ class SearchSuggestionsTests(ProductsTestBase):
         resp = self.client.get(reverse("search-suggestions"), {"q": "gel"})
         names = {p["name"] for p in resp.data["products"]}
         self.assertIn("Shower Gel Fresh", names)
+
+
+class VendorFilterTests(ProductsTestBase):
+    """?vendor=<id> on the public catalog — powers the vendor storefront page."""
+
+    def test_vendor_filter_only_returns_that_vendors_products(self):
+        mine = self.make_product(status=Product.Status.APPROVED, is_active=True, name="Mine")
+        self.make_product(vendor=self.other_vendor, status=Product.Status.APPROVED, is_active=True, name="Theirs")
+
+        resp = self.client.get(reverse("product-list") + f"?vendor={self.vendor.id}")
+        names = [p["name"] for p in resp.data["results"]]
+        self.assertEqual(names, ["Mine"])
+        self.assertEqual(resp.data["results"][0]["vendor"], self.vendor.id)

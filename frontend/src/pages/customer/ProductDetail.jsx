@@ -5,6 +5,7 @@ import { api } from "../../lib/api.js";
 import { useCart } from "../../cart/CartContext.jsx";
 import { formatPKR } from "../../lib/currency.js";
 import { useInventorySocket } from "../../lib/useInventorySocket.js";
+import WishlistButton from "../../components/WishlistButton.jsx";
 
 // Feeds the vendor Analytics traffic-source breakdown (§6.7/Phase 6+). No
 // UTM parsing, no session tracking — just a coarse bucket from referrer,
@@ -175,8 +176,13 @@ export default function ProductDetail() {
         <ImageCarousel images={product.images} name={product.name} />
 
         <div>
-          <p className="text-sm font-medium text-brand">{product.category_name}</p>
-          <h1 className="mt-1 text-2xl font-bold text-gray-900">{product.name}</h1>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-brand">{product.category_name}</p>
+              <h1 className="mt-1 text-2xl font-bold text-gray-900">{product.name}</h1>
+            </div>
+            <WishlistButton product={product} size="h-5 w-5" className="mt-1 shrink-0 border border-gray-200" />
+          </div>
           {product.rating_count > 0 ? (
             <p className="mt-1 flex items-center gap-1 text-sm text-gray-600">
               <Star className="h-4 w-4 fill-gold text-gold" /> {product.average_rating}
@@ -195,7 +201,10 @@ export default function ProductDetail() {
 
           <div className="mt-5 rounded-lg border border-gray-200 bg-cream p-4">
             <p className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-              <Store className="h-4 w-4 text-brand" /> Sold by {product.vendor_name}
+              <Store className="h-4 w-4 text-brand" /> Sold by{" "}
+              <Link to={`/store/${product.vendor}`} className="text-brand hover:underline">
+                {product.vendor_name}
+              </Link>
             </p>
           </div>
 

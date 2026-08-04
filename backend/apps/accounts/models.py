@@ -53,6 +53,38 @@ def validate_cnic_image(image_file):
             f"(minimum {CNIC_MIN_WIDTH}x{CNIC_MIN_HEIGHT}px)."
         )
 
+# Same "is it actually a readable, sane-sized image" bar as CNIC/banner/
+# feedback uploads (§8.1 precedent) — a vendor's public storefront logo.
+SHOP_LOGO_MAX_FILE_SIZE_MB = 3
+SHOP_LOGO_MIN_WIDTH = 100
+SHOP_LOGO_MIN_HEIGHT = 100
+ALLOWED_SHOP_LOGO_FORMATS = {"JPEG", "PNG"}
+
+
+def validate_shop_logo(image_file):
+    if image_file.size > SHOP_LOGO_MAX_FILE_SIZE_MB * 1024 * 1024:
+        raise ValidationError(f"Logo is too large — please upload a file under {SHOP_LOGO_MAX_FILE_SIZE_MB}MB.")
+
+    try:
+        img = Image.open(image_file)
+        img.verify()
+        image_file.seek(0)
+        img = Image.open(image_file)
+        width, height = img.size
+        image_format = img.format
+    except Exception as exc:
+        raise ValidationError("Couldn't read that image file — please upload a valid PNG or JPEG.") from exc
+    finally:
+        image_file.seek(0)
+
+    if image_format not in ALLOWED_SHOP_LOGO_FORMATS:
+        raise ValidationError("Only PNG, JPG, or JPEG images are allowed.")
+    if width < SHOP_LOGO_MIN_WIDTH or height < SHOP_LOGO_MIN_HEIGHT:
+        raise ValidationError(
+            f"Image is only {width}x{height}px — please upload a clearer logo "
+            f"(minimum {SHOP_LOGO_MIN_WIDTH}x{SHOP_LOGO_MIN_HEIGHT}px)."
+        )
+
 # PRD §4.2: Pakistani phone format, e.g. +923001234567 or 03001234567
 pk_phone_validator = RegexValidator(
     regex=r"^(\+92|0)3\d{9}$",
@@ -100,6 +132,17 @@ class User(AbstractUser):
     # a social login, so we don't force a password on those accounts.
     google_sub = models.CharField(max_length=255, blank=True, unique=False, db_index=True)
     facebook_id = models.CharField(max_length=255, blank=True, unique=False, db_index=True)
+
+    # Vendor storefront customization — only meaningful when role == VENDOR,
+    # but kept on the shared User table rather than a separate profile
+    # model, matching how phone_number/etc. already work here ("one User
+    # table serves all three channels"). All optional: a vendor who never
+    # sets these still gets a working storefront page, just with their
+    # name standing in for shop_name and no logo/description (see
+    # apps.accounts.serializers for the display fallback).
+    shop_name = models.CharField(max_length=150, blank=True)
+    shop_logo = models.ImageField(upload_to="vendor_shop/logos/", blank=True, null=True, validators=[validate_shop_logo])
+    shop_description = models.TextField(blank=True, max_length=1000)
 
     objects = UserManager()
 

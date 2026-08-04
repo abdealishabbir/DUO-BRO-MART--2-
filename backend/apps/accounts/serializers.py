@@ -123,6 +123,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             "id", "full_name", "first_name", "last_name", "email",
             "phone_number", "role", "email_verified", "must_change_password",
+            "shop_name", "shop_logo", "shop_description",
         ]
         read_only_fields = ["id", "email", "role", "email_verified", "must_change_password"]
 
@@ -133,11 +134,23 @@ class UserSerializer(serializers.ModelSerializer):
 class ProfileUpdateSerializer(serializers.ModelSerializer):
     """PRD §2.5 Account Page: update name/phone (email change is Phase 8 —
     changing it here would need a re-verification flow, deliberately not
-    included yet so we don't ship a half-secured email-change path)."""
+    included yet so we don't ship a half-secured email-change path).
+
+    shop_name/shop_logo/shop_description are vendor-only (storefront
+    customization) — accepted here too rather than a separate endpoint,
+    same one-endpoint-for-profile-fields pattern as phone_number, but
+    guarded in validate() so a customer can't set a "shop" on themselves.
+    """
 
     class Meta:
         model = User
-        fields = ["first_name", "last_name", "phone_number"]
+        fields = ["first_name", "last_name", "phone_number", "shop_name", "shop_logo", "shop_description"]
+
+    def validate(self, attrs):
+        shop_fields_present = {"shop_name", "shop_logo", "shop_description"} & set(attrs.keys())
+        if shop_fields_present and self.instance.role != User.Role.VENDOR:
+            raise serializers.ValidationError("Only vendor accounts have a storefront profile.")
+        return attrs
 
 
 class AddressSerializer(serializers.ModelSerializer):

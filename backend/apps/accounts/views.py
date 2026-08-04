@@ -86,7 +86,7 @@ class SignupView(APIView):
         # Amazon UX) — email_verified is tracked and surfaced in the UI as a
         # "please confirm your email" reminder, but doesn't block login.
         response = Response(
-            {"detail": "Account created. Check your email to verify your address.", "user": UserSerializer(user).data},
+            {"detail": "Account created. Check your email to verify your address.", "user": UserSerializer(user, context={"request": request}).data},
             status=status.HTTP_201_CREATED,
         )
         return issue_jwt_cookies(response, user, keep_logged_in=False)
@@ -139,7 +139,7 @@ class LoginView(APIView):
             return Response({"detail": "Invalid email or password."}, status=status.HTTP_400_BAD_REQUEST)
 
         clear_failed_logins(email)
-        response = Response({"user": UserSerializer(user).data})
+        response = Response({"user": UserSerializer(user, context={"request": request}).data})
         return issue_jwt_cookies(response, user, keep_logged_in=keep_logged_in)
 
 
@@ -179,7 +179,7 @@ class RefreshView(APIView):
         except Exception:
             pass
 
-        response = Response({"user": UserSerializer(user).data})
+        response = Response({"user": UserSerializer(user, context={"request": request}).data})
         return issue_jwt_cookies(response, user, keep_logged_in=False)
 
 
@@ -230,7 +230,7 @@ class GoogleLoginView(APIView):
             return Response({"detail": "This Google account is linked to a non-customer role."}, status=status.HTTP_400_BAD_REQUEST)
 
         response = Response({
-            "user": UserSerializer(user).data,
+            "user": UserSerializer(user, context={"request": request}).data,
             "needs_phone_number": not bool(user.phone_number),  # §2.2: prompt for phone if missing
             "created": created,
         })
@@ -340,7 +340,7 @@ class VendorLoginView(APIView):
             return Response({"detail": "Invalid email or password."}, status=status.HTTP_400_BAD_REQUEST)
 
         clear_failed_logins(email)
-        response = Response({"user": UserSerializer(user).data})
+        response = Response({"user": UserSerializer(user, context={"request": request}).data})
         return issue_jwt_cookies(response, user, keep_logged_in=False)
 
 
@@ -377,7 +377,7 @@ class AdminLoginView(APIView):
         if device is not None and device.is_enabled:
             return Response({"mfa_required": True, "mfa_token": issue_mfa_pending_token(user)})
 
-        response = Response({"user": UserSerializer(user).data})
+        response = Response({"user": UserSerializer(user, context={"request": request}).data})
         return issue_jwt_cookies(response, user, keep_logged_in=False)
 
 
@@ -414,7 +414,7 @@ class MFALoginVerifyView(APIView):
 
         clear_failed_logins(lockout_key)
         consume_mfa_pending_token(token)
-        response = Response({"user": UserSerializer(user).data})
+        response = Response({"user": UserSerializer(user, context={"request": request}).data})
         return issue_jwt_cookies(response, user, keep_logged_in=False)
 
 
@@ -513,13 +513,13 @@ class MeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        return Response(UserSerializer(request.user).data)
+        return Response(UserSerializer(request.user, context={"request": request}).data)
 
     def patch(self, request):
         serializer = ProfileUpdateSerializer(request.user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(UserSerializer(request.user).data)
+        return Response(UserSerializer(request.user, context={"request": request}).data)
 
 
 class AddressViewSet(viewsets.ModelViewSet):
@@ -655,3 +655,49 @@ class AdminVendorSuspendView(APIView):
         vendor.save(update_fields=["is_active"])
         log_admin_action(request.user, "vendor.suspended" if action_type == "suspend" else "vendor.reinstated", vendor)
         return Response({"id": vendor.id, "is_active": vendor.is_active})
+
+
+# ---------------------------------------------------------------------------
+# Public vendor storefront page (UX-survey gap)
+# ---------------------------------------------------------------------------
+
+class VendorStorefrontView(APIView):
+    """
+    GET /api/accounts/vendors/<id>/store/ — public "shop page" for a
+    vendor. 404s for anyone who isn't an active vendor (wrong id,
+    customer/admin id, or a suspended vendor — AdminVendorSuspendView
+    above is what flips is_active) so this can't be used to probe
+    account existence/role/status for arbitrary ids.
+
+    Rating mirrors AdminVendorListView's calculation (overall_rating
+    averaged across the vendor's own order feedback) rather than
+    averaging each product's rating, so the two vendor-rating numbers
+    that exist in this codebase stay consistent with each other.
+    """
+
+    permission_classes = [permissions.AllowAny]
+    throttle_scope = "public-catalog"
+
+    def get(self, request, pk):
+        from django.db.models import Avg
+
+        from apps.feedback.models import Feedback
+        from apps.products.models import Product
+
+        User = get_user_model()
+        try:
+            vendor = User.objects.get(pk=pk, role=User.Role.VENDOR, is_active=True)
+        except User.DoesNotExist:
+            return Response({"detail": "Vendor not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        rating = Feedback.objects.filter(order__items__vendor=vendor).aggregate(avg=Avg("overall_rating"))["avg"]
+
+        return Response({
+            "id": vendor.id,
+            "shop_name": vendor.shop_name or (f"{vendor.first_name} {vendor.last_name}".strip() or vendor.username),
+            "shop_logo": request.build_absolute_uri(vendor.shop_logo.url) if vendor.shop_logo else None,
+            "shop_description": vendor.shop_description,
+            "product_count": Product.objects.filter(vendor=vendor, status=Product.Status.APPROVED, is_active=True).count(),
+            "rating": round(rating, 1) if rating is not None else None,
+            "member_since": vendor.date_joined,
+        })

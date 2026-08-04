@@ -44,5 +44,6 @@ urlpatterns = [
     path("auth/", include(auth_patterns)),
     path("account/", include(account_patterns)),
     path("vendor-applications/", views.VendorApplicationCreateView.as_view(), name="vendor-application-create"),
+    path("vendors/<int:pk>/store/", views.VendorStorefrontView.as_view(), name="vendor-storefront"),
     path("admin/", include(admin_patterns)),
 ]

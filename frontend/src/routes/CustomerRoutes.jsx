@@ -3,7 +3,9 @@ import CustomerLayout from "../layouts/CustomerLayout.jsx";
 import Home from "../pages/customer/Home.jsx";
 import Shop from "../pages/customer/Shop.jsx";
 import ProductDetail from "../pages/customer/ProductDetail.jsx";
+import VendorStorefront from "../pages/customer/VendorStorefront.jsx";
 import Cart from "../pages/customer/Cart.jsx";
+import Wishlist from "../pages/customer/Wishlist.jsx";
 import CheckoutShipping from "../pages/customer/CheckoutShipping.jsx";
 import CheckoutPayment from "../pages/customer/CheckoutPayment.jsx";
 import CheckoutConfirmation from "../pages/customer/CheckoutConfirmation.jsx";
@@ -32,7 +34,9 @@ export default function CustomerRoutes() {
       <Route index element={<Home />} />
       <Route path="shop" element={<Shop />} />
       <Route path="product/:slug" element={<ProductDetail />} />
+      <Route path="store/:vendorId" element={<VendorStorefront />} />
       <Route path="cart" element={<Cart />} />
+      <Route path="wishlist" element={<Wishlist />} />
       <Route path="checkout/shipping" element={<CheckoutShipping />} />
       <Route path="checkout/payment" element={<CheckoutPayment />} />
       <Route path="checkout/confirmation" element={<CheckoutConfirmation />} />

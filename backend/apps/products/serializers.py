@@ -1,7 +1,7 @@
 from django.utils import timezone
 from rest_framework import serializers
 
-from .models import Category, CommissionRate, Product, ProductChangeRequest, ProductImage, StockChangeRequest
+from .models import Category, CommissionRate, Product, ProductChangeRequest, ProductImage, StockChangeRequest, Wishlist
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -52,7 +52,7 @@ class PublicProductListSerializer(serializers.ModelSerializer):
         model = Product
         fields = [
             "id", "slug", "name", "brand", "category_name", "category_slug",
-            "vendor_name", "price", "original_price", "is_deal_active", "is_low_stock",
+            "vendor", "vendor_name", "price", "original_price", "is_deal_active", "is_low_stock",
             "average_rating", "rating_count", "stock_quantity", "images",
         ]
         read_only_fields = fields
@@ -72,11 +72,29 @@ class PublicProductListSerializer(serializers.ModelSerializer):
 
 
 class PublicProductDetailSerializer(PublicProductListSerializer):
-    """Adds description/attributes/vendor_id for the Product Detail page."""
+    """Adds description/attributes for the Product Detail page (vendor id
+    is already on the base list serializer above, for storefront links)."""
 
     class Meta(PublicProductListSerializer.Meta):
-        fields = PublicProductListSerializer.Meta.fields + ["description", "attributes", "vendor"]
+        fields = PublicProductListSerializer.Meta.fields + ["description", "attributes"]
         read_only_fields = fields
+
+
+class WishlistSerializer(serializers.ModelSerializer):
+    product = PublicProductListSerializer(read_only=True)
+    # A saved product can later be unapproved/deactivated/deleted by its
+    # vendor or an admin — the wishlist row survives (only a hard delete
+    # of the Product itself cascades), so the Wishlist page can tell the
+    # customer "no longer available" instead of just silently 404ing.
+    is_available = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Wishlist
+        fields = ["id", "product", "is_available", "created_at"]
+        read_only_fields = fields
+
+    def get_is_available(self, obj):
+        return obj.product.status == Product.Status.APPROVED and obj.product.is_active
 
 
 class AdminPricingSerializer(serializers.ModelSerializer):

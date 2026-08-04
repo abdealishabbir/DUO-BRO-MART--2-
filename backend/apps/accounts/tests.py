@@ -328,6 +328,100 @@ class GoogleLoginTests(_ClearsCacheMixin, APITestCase):
         self.assertIn("isn't configured", resp.data["detail"])
 
 
+class VendorShopProfileTests(_ClearsCacheMixin, APITestCase):
+    """Vendor storefront customization fields on /account/me/ (PATCH)."""
+
+    def setUp(self):
+        self.vendor = make_customer(email="shopvendor@example.com", role=User.Role.VENDOR)
+        self.client.force_authenticate(user=self.vendor)
+
+    def test_vendor_can_update_shop_profile(self):
+        resp = self.client.patch(
+            reverse("account-me"),
+            {"shop_name": "Ali's Electronics", "shop_description": "Best gadgets in town."},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertEqual(resp.data["shop_name"], "Ali's Electronics")
+        self.assertEqual(resp.data["shop_description"], "Best gadgets in town.")
+
+    def test_vendor_can_upload_shop_logo(self):
+        resp = self.client.patch(
+            reverse("account-me"),
+            {"shop_logo": make_image("logo.png")},
+            format="multipart",
+        )
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertTrue(resp.data["shop_logo"].startswith("http"))
+
+    def test_customer_cannot_set_shop_fields(self):
+        self.client.force_authenticate(user=make_customer(email="justcustomer@example.com"))
+        resp = self.client.patch(reverse("account-me"), {"shop_name": "Not Allowed"}, format="json")
+        self.assertEqual(resp.status_code, 400)
+
+    def test_invalid_shop_logo_rejected(self):
+        resp = self.client.patch(
+            reverse("account-me"),
+            {"shop_logo": make_non_image_file()},
+            format="multipart",
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("shop_logo", resp.data)
+
+
+class VendorStorefrontViewTests(_ClearsCacheMixin, APITestCase):
+    def setUp(self):
+        self.vendor = make_customer(email="storevendor@example.com", role=User.Role.VENDOR, first_name="Sana", last_name="Khan")
+
+    def test_404_for_nonexistent_id(self):
+        resp = self.client.get(reverse("vendor-storefront", args=[999999]))
+        self.assertEqual(resp.status_code, 404)
+
+    def test_404_for_non_vendor_id(self):
+        customer = make_customer(email="notavendor@example.com")
+        resp = self.client.get(reverse("vendor-storefront", args=[customer.id]))
+        self.assertEqual(resp.status_code, 404)
+
+    def test_404_for_suspended_vendor(self):
+        self.vendor.is_active = False
+        self.vendor.save(update_fields=["is_active"])
+        resp = self.client.get(reverse("vendor-storefront", args=[self.vendor.id]))
+        self.assertEqual(resp.status_code, 404)
+
+    def test_no_auth_required(self):
+        resp = self.client.get(reverse("vendor-storefront", args=[self.vendor.id]))
+        self.assertEqual(resp.status_code, 200)
+
+    def test_falls_back_to_name_when_shop_name_blank(self):
+        resp = self.client.get(reverse("vendor-storefront", args=[self.vendor.id]))
+        self.assertEqual(resp.data["shop_name"], "Sana Khan")
+
+    def test_uses_shop_name_when_set(self):
+        self.vendor.shop_name = "Sana's Boutique"
+        self.vendor.save(update_fields=["shop_name"])
+        resp = self.client.get(reverse("vendor-storefront", args=[self.vendor.id]))
+        self.assertEqual(resp.data["shop_name"], "Sana's Boutique")
+
+    def test_rating_none_with_no_feedback(self):
+        resp = self.client.get(reverse("vendor-storefront", args=[self.vendor.id]))
+        self.assertIsNone(resp.data["rating"])
+
+    def test_product_count_only_counts_approved_active(self):
+        from apps.products.models import Category, Product
+
+        category = Category.objects.create(name="Storefront Test Category")
+        Product.objects.create(
+            vendor=self.vendor, category=category, name="Live Product", brand="B",
+            base_price=100, stock_quantity=5, status=Product.Status.APPROVED, is_active=True,
+        )
+        Product.objects.create(
+            vendor=self.vendor, category=category, name="Draft Product", brand="B",
+            base_price=100, stock_quantity=5, status=Product.Status.DRAFT,
+        )
+        resp = self.client.get(reverse("vendor-storefront", args=[self.vendor.id]))
+        self.assertEqual(resp.data["product_count"], 1)
+
+
 class CreateVendorAccountCommandTests(TestCase):
     def test_command_creates_vendor_with_must_change_password(self):
         from django.core.management import call_command

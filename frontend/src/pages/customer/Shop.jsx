@@ -181,7 +181,7 @@ function ActiveFilterChips({ filters, setFilters, categories }) {
   );
 }
 
-function ProductCard({ product, view }) {
+export function ProductCard({ product, view }) {
   const { addItem } = useCart();
   const [added, setAdded] = useState(false);
   const isList = view === "list";
@@ -235,7 +235,7 @@ function ProductCard({ product, view }) {
   );
 }
 
-function Pagination({ page, totalPages, onChange }) {
+export function Pagination({ page, totalPages, onChange }) {
   const pages = [];
   for (let i = 1; i <= totalPages; i++) {
     if (i === 1 || i === totalPages || Math.abs(i - page) <= 1) pages.push(i);

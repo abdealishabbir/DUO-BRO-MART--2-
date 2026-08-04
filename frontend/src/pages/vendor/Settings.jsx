@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { KeyRound, FileText } from "lucide-react";
+import { KeyRound, FileText, Store, Camera, ExternalLink } from "lucide-react";
 import { api } from "../../lib/api.js";
+import { useAuth } from "../../auth/AuthContext.jsx";
 import FormField, { inputClass } from "../../components/FormField.jsx";
 
 const NOTIFICATION_DEFAULTS = [
@@ -11,15 +12,25 @@ const NOTIFICATION_DEFAULTS = [
 ];
 
 export default function VendorSettings() {
+  const { user } = useAuth();
   const [form, setForm] = useState({ first_name: "", last_name: "", phone_number: "", email: "" });
+  const [shopForm, setShopForm] = useState({ shop_name: "", shop_description: "" });
+  const [shopLogoPreview, setShopLogoPreview] = useState(null);
+  const [shopLogoFile, setShopLogoFile] = useState(null);
+  const shopLogoInputRef = useRef(null);
   const [notifications, setNotifications] = useState(NOTIFICATION_DEFAULTS);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [shopSaved, setShopSaved] = useState(false);
+  const [shopError, setShopError] = useState("");
+  const [shopSaving, setShopSaving] = useState(false);
 
   useEffect(() => {
-    api.get("/account/me/").then((user) => {
-      setForm({ first_name: user.first_name ?? "", last_name: user.last_name ?? "", phone_number: user.phone_number ?? "", email: user.email });
+    api.get("/account/me/").then((data) => {
+      setForm({ first_name: data.first_name ?? "", last_name: data.last_name ?? "", phone_number: data.phone_number ?? "", email: data.email });
+      setShopForm({ shop_name: data.shop_name ?? "", shop_description: data.shop_description ?? "" });
+      setShopLogoPreview(data.shop_logo ?? null);
     }).catch(() => setError("Couldn't load your account details."));
   }, []);
 
@@ -38,8 +49,107 @@ export default function VendorSettings() {
     }
   };
 
+  const handleLogoChange = (file) => {
+    if (!file) return;
+    setShopLogoFile(file);
+    setShopLogoPreview(URL.createObjectURL(file));
+  };
+
+  const saveShopProfile = async (e) => {
+    e.preventDefault();
+    setShopError("");
+    setShopSaved(false);
+    setShopSaving(true);
+    try {
+      const formData = new FormData();
+      formData.append("shop_name", shopForm.shop_name);
+      formData.append("shop_description", shopForm.shop_description);
+      if (shopLogoFile) formData.append("shop_logo", shopLogoFile);
+      const data = await api.patchForm("/account/me/", formData);
+      setShopLogoPreview(data.shop_logo ?? null);
+      setShopLogoFile(null);
+      setShopSaved(true);
+    } catch (err) {
+      const firstError = err.data && Object.values(err.data).flat()[0];
+      setShopError(firstError || err.data?.detail || "Couldn't save your storefront. Please check your details and try again.");
+    } finally {
+      setShopSaving(false);
+    }
+  };
+
   return (
     <div className="max-w-2xl space-y-5">
+      <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+        <div className="flex items-center justify-between">
+          <h3 className="flex items-center gap-2 font-bold text-ink">
+            <Store className="h-4 w-4 text-brand" /> Storefront Profile
+          </h3>
+          {user?.id && (
+            <Link to={`/store/${user.id}`} target="_blank" className="flex items-center gap-1 text-xs font-medium text-brand hover:underline">
+              View my storefront <ExternalLink className="h-3 w-3" />
+            </Link>
+          )}
+        </div>
+        <p className="mt-1 text-xs text-gray-400">
+          This is how customers see your shop on your public storefront page and next to your products.
+        </p>
+        <form onSubmit={saveShopProfile} className="mt-4 space-y-4">
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => shopLogoInputRef.current?.click()}
+              className="group relative h-16 w-16 shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-50"
+            >
+              {shopLogoPreview ? (
+                <img src={shopLogoPreview} alt="Shop logo" className="h-full w-full object-cover" />
+              ) : (
+                <Store className="absolute inset-0 m-auto h-6 w-6 text-gray-300" />
+              )}
+              <span className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                <Camera className="h-5 w-5 text-white" />
+              </span>
+            </button>
+            <input
+              ref={shopLogoInputRef}
+              type="file"
+              accept="image/jpeg,image/png"
+              className="hidden"
+              onChange={(e) => handleLogoChange(e.target.files?.[0] ?? null)}
+            />
+            <div>
+              <p className="text-sm font-medium text-ink">Shop Logo</p>
+              <p className="text-xs text-gray-400">JPG or PNG, up to 3MB.</p>
+            </div>
+          </div>
+
+          <FormField label="Shop Name">
+            <input
+              className={inputClass}
+              placeholder={`${form.first_name} ${form.last_name}`.trim() || "Your shop name"}
+              value={shopForm.shop_name}
+              onChange={(e) => setShopForm({ ...shopForm, shop_name: e.target.value })}
+            />
+          </FormField>
+          <FormField label="About Your Shop">
+            <textarea
+              className={inputClass}
+              rows={3}
+              maxLength={1000}
+              placeholder="Tell customers what you sell and what makes your shop worth buying from..."
+              value={shopForm.shop_description}
+              onChange={(e) => setShopForm({ ...shopForm, shop_description: e.target.value })}
+            />
+          </FormField>
+
+          {shopError && <p className="text-sm text-red-600">{shopError}</p>}
+          {shopSaved && <p className="text-sm text-green-700">Storefront updated.</p>}
+
+          <button type="submit" disabled={shopSaving} className="rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-dark disabled:opacity-60">
+            {shopSaving ? "Saving..." : "Save Storefront"}
+          </button>
+        </form>
+      </div>
+
       <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
         <h3 className="font-bold text-ink">Contact Information</h3>
         <form onSubmit={saveProfile} className="mt-4 space-y-4">

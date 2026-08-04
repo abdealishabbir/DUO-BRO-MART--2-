@@ -342,3 +342,26 @@ class ProductView(models.Model):
 
     def __str__(self):
         return f"View of {self.product.name} ({self.source}) at {self.viewed_at}"
+
+
+class Wishlist(models.Model):
+    """
+    UX-survey gap: "save for later" — one row per (customer, product).
+    Deliberately its own lightweight model rather than a field on Product
+    or User: it's a many-to-many relationship with its own timestamp
+    (when saved), and needs the same cascade-on-delete safety already
+    used elsewhere (removing a product or a user cleans this up for free).
+    """
+
+    customer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="wishlist_items")
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="wishlisted_by")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["customer", "product"], name="unique_wishlist_customer_product"),
+        ]
+
+    def __str__(self):
+        return f"{self.customer} saved {self.product.name}"

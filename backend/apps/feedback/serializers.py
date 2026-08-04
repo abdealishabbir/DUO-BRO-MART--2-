@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from apps.orders.models import Order
 
-from .models import Feedback
+from .models import Feedback, FeedbackImage
 
 
 def _rating_field():
@@ -35,13 +35,21 @@ class FeedbackCreateSerializer(serializers.ModelSerializer):
         return Feedback.objects.create(**validated_data)
 
 
+class FeedbackImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FeedbackImage
+        fields = ["id", "image"]
+        read_only_fields = fields
+
+
 class FeedbackSerializer(serializers.ModelSerializer):
     order_code = serializers.CharField(source="order.order_code", read_only=True)
+    images = FeedbackImageSerializer(many=True, read_only=True)
 
     class Meta:
         model = Feedback
         fields = [
             "id", "order", "order_code", "delivery_rating", "packaging_rating", "quality_rating",
-            "service_rating", "overall_rating", "review_text", "would_recommend", "created_at",
+            "service_rating", "overall_rating", "review_text", "would_recommend", "created_at", "images",
         ]
         read_only_fields = fields

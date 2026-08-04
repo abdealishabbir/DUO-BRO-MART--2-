@@ -1,11 +1,75 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Package, Clock, RotateCcw, ThumbsUp, ThumbsDown, Star, Camera, CheckCircle2, XCircle } from "lucide-react";
+import { Package, Clock, RotateCcw, ThumbsUp, ThumbsDown, Star, Camera, CheckCircle2, XCircle, X } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
 import { inputClass } from "../../components/FormField.jsx";
 
 const RETURN_WINDOW_DAYS = 7;
+
+// Mirrors apps/feedback/models.py — client-side checks are a fast first
+// pass so the customer doesn't wait for a round-trip to find out a photo
+// was rejected; the backend re-validates the same rules regardless.
+const MAX_FEEDBACK_IMAGES = 5;
+const MAX_IMAGE_SIZE_MB = 5;
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png"];
+
+function PhotoDropzone({ files, onAdd, onRemove, error }) {
+  const inputRef = useRef(null);
+  const [dragging, setDragging] = useState(false);
+
+  const handleFiles = (fileList) => {
+    onAdd(Array.from(fileList || []));
+  };
+
+  return (
+    <div>
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragging(false);
+          handleFiles(e.dataTransfer.files);
+        }}
+        onClick={() => inputRef.current?.click()}
+        className={`mt-2 flex cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed p-6 text-center text-xs transition-colors ${
+          dragging ? "border-brand bg-brand/5 text-brand" : "border-gray-300 text-gray-400 hover:border-brand hover:text-brand"
+        }`}
+      >
+        <Camera className="mb-1 h-5 w-5" />
+        {files.length >= MAX_FEEDBACK_IMAGES
+          ? `Maximum ${MAX_FEEDBACK_IMAGES} photos reached`
+          : "Click or drag photos here (JPG/PNG, up to 5MB each)"}
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/jpeg,image/png"
+          multiple
+          className="hidden"
+          onChange={(e) => { handleFiles(e.target.files); e.target.value = ""; }}
+        />
+      </div>
+      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {files.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {files.map((f, i) => (
+            <div key={i} className="group relative h-16 w-16 overflow-hidden rounded-md border border-gray-200">
+              <img src={f.preview} alt="" className="h-full w-full object-cover" />
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onRemove(i); }}
+                className="absolute right-0.5 top-0.5 rounded-full bg-black/60 p-0.5 text-white opacity-0 transition-opacity group-hover:opacity-100"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const COMPLAINT_REASONS = [
   ["wrong_product", "Wrong item received"],
@@ -137,9 +201,44 @@ export default function OrderFeedback() {
   const [ratings, setRatings] = useState({});
   const [reviewText, setReviewText] = useState("");
   const [wouldRecommend, setWouldRecommend] = useState(null);
+  const [photos, setPhotos] = useState([]); // [{ file, preview }]
+  const [photoError, setPhotoError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    // Revoke object URLs on unmount so we don't leak memory across the session.
+    return () => photos.forEach((p) => URL.revokeObjectURL(p.preview));
+  }, [photos]);
+
+  const addPhotos = (newFiles) => {
+    setPhotoError("");
+    const accepted = [];
+    for (const file of newFiles) {
+      if (photos.length + accepted.length >= MAX_FEEDBACK_IMAGES) {
+        setPhotoError(`You can add up to ${MAX_FEEDBACK_IMAGES} photos.`);
+        break;
+      }
+      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+        setPhotoError("Only JPG or PNG images are allowed.");
+        continue;
+      }
+      if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
+        setPhotoError(`Each photo must be under ${MAX_IMAGE_SIZE_MB}MB.`);
+        continue;
+      }
+      accepted.push({ file, preview: URL.createObjectURL(file) });
+    }
+    if (accepted.length) setPhotos((p) => [...p, ...accepted]);
+  };
+
+  const removePhoto = (index) => {
+    setPhotos((p) => {
+      URL.revokeObjectURL(p[index].preview);
+      return p.filter((_, i) => i !== index);
+    });
+  };
 
   useEffect(() => {
     api.get("/feedback/eligible-orders/").then((orders) => {
@@ -183,10 +282,16 @@ export default function OrderFeedback() {
     setSubmitting(true);
     setError("");
     try {
-      await api.post("/feedback/", { order: order.id, ...ratings, review_text: reviewText, would_recommend: wouldRecommend });
+      const formData = new FormData();
+      formData.append("order", order.id);
+      Object.entries(ratings).forEach(([key, value]) => formData.append(key, value));
+      formData.append("review_text", reviewText);
+      if (wouldRecommend !== null) formData.append("would_recommend", wouldRecommend);
+      photos.forEach((p) => formData.append("images", p.file));
+      await api.postForm("/feedback/", formData);
       setSubmitted(true);
     } catch (err) {
-      setError(err.data?.detail || "Could not submit feedback.");
+      setError(err.data?.detail || Object.values(err.data || {}).flat().join(" ") || "Could not submit feedback.");
     } finally {
       setSubmitting(false);
     }
@@ -291,10 +396,7 @@ export default function OrderFeedback() {
 
           <div>
             <h2 className="flex items-center gap-1 font-semibold text-gray-900"><Camera className="h-4 w-4" /> Add Photos <span className="font-normal text-gray-400">(optional)</span></h2>
-            <div className="mt-2 flex flex-col items-center justify-center rounded-md border-2 border-dashed border-gray-300 p-6 text-center text-xs text-gray-400">
-              <Camera className="mb-1 h-5 w-5" />
-              Photo upload isn't wired up yet — coming soon.
-            </div>
+            <PhotoDropzone files={photos} onAdd={addPhotos} onRemove={removePhoto} error={photoError} />
           </div>
 
           <div>

@@ -1,15 +1,26 @@
+import io
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
+from PIL import Image
 from rest_framework.test import APITestCase
 
 from apps.orders.models import Order, OrderItem
 from apps.products.models import Category, Product
 
-from .models import Feedback
+from .models import Feedback, FeedbackImage
 
 User = get_user_model()
+
+
+def make_test_image(name="photo.jpg", size=(400, 400), image_format="JPEG"):
+    buf = io.BytesIO()
+    Image.new("RGB", size, color=(120, 140, 160)).save(buf, format=image_format)
+    buf.seek(0)
+    content_type = "image/jpeg" if image_format == "JPEG" else "image/png"
+    return SimpleUploadedFile(name, buf.read(), content_type=content_type)
 
 
 def make_user(role, email):
@@ -94,6 +105,71 @@ class FeedbackCreateTests(FeedbackTestBase):
         order = self.make_order()
         resp = self.client.post(reverse("feedback-create"), self.valid_payload(order), format="json")
         self.assertEqual(resp.status_code, 401)
+
+
+class FeedbackPhotoUploadTests(FeedbackTestBase):
+    def test_can_submit_feedback_with_photos(self):
+        order = self.make_order()
+        self.login_as_customer()
+        payload = {**self.valid_payload(order), "images": [make_test_image("a.jpg"), make_test_image("b.png", image_format="PNG")]}
+        resp = self.client.post(reverse("feedback-create"), payload, format="multipart")
+        self.assertEqual(resp.status_code, 201, resp.data)
+        feedback = Feedback.objects.get()
+        self.assertEqual(feedback.images.count(), 2)
+
+    def test_feedback_without_photos_still_works_as_multipart(self):
+        order = self.make_order()
+        self.login_as_customer()
+        resp = self.client.post(reverse("feedback-create"), self.valid_payload(order), format="multipart")
+        self.assertEqual(resp.status_code, 201, resp.data)
+        self.assertEqual(Feedback.objects.get().images.count(), 0)
+
+    def test_too_many_photos_rejected(self):
+        order = self.make_order()
+        self.login_as_customer()
+        images = [make_test_image(f"{i}.jpg") for i in range(6)]
+        payload = {**self.valid_payload(order), "images": images}
+        resp = self.client.post(reverse("feedback-create"), payload, format="multipart")
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(Feedback.objects.count(), 0)
+        self.assertEqual(FeedbackImage.objects.count(), 0)
+
+    def test_oversized_photo_rejected_and_rolls_back_feedback(self):
+        order = self.make_order()
+        self.login_as_customer()
+        oversized = SimpleUploadedFile("huge.jpg", b"\xff\xd8\xff" + (b"0" * (6 * 1024 * 1024)), content_type="image/jpeg")
+        payload = {**self.valid_payload(order), "images": [oversized]}
+        resp = self.client.post(reverse("feedback-create"), payload, format="multipart")
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(Feedback.objects.count(), 0)
+
+    def test_non_image_file_rejected(self):
+        order = self.make_order()
+        self.login_as_customer()
+        not_image = SimpleUploadedFile("notes.txt", b"just some text", content_type="text/plain")
+        payload = {**self.valid_payload(order), "images": [not_image]}
+        resp = self.client.post(reverse("feedback-create"), payload, format="multipart")
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(Feedback.objects.count(), 0)
+
+    def test_too_small_photo_rejected(self):
+        order = self.make_order()
+        self.login_as_customer()
+        tiny = make_test_image("tiny.jpg", size=(50, 50))
+        payload = {**self.valid_payload(order), "images": [tiny]}
+        resp = self.client.post(reverse("feedback-create"), payload, format="multipart")
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(Feedback.objects.count(), 0)
+
+    def test_my_feedback_includes_image_urls(self):
+        order = self.make_order()
+        self.login_as_customer()
+        payload = {**self.valid_payload(order), "images": [make_test_image()]}
+        self.client.post(reverse("feedback-create"), payload, format="multipart")
+        resp = self.client.get(reverse("feedback-mine"))
+        results = resp.data["results"]
+        self.assertEqual(len(results[0]["images"]), 1)
+        self.assertIn("image", results[0]["images"][0])
 
 
 class FeedbackEligibilityAndAggregateTests(FeedbackTestBase):

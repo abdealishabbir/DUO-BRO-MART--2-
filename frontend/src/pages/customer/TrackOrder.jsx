@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { Search, CheckCircle2, Circle, Truck, PackageCheck, Clock, MapPin, XCircle } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
+import { groupLinesByVendor } from "../../lib/vendorGrouping.js";
 import { inputClass } from "../../components/FormField.jsx";
 
 // PRD §5.4: Pending -> Processing -> Shipped -> Delivered (or Cancelled).
@@ -130,6 +131,53 @@ export default function TrackOrder() {
               </span>
             </div>
           )}
+
+          {order.items && order.items.length > 0 && (() => {
+            const vendorGroups = groupLinesByVendor(
+              order.items.map((item) => ({
+                key: item.id,
+                vendorName: item.vendor_name,
+                name: item.product_name,
+                image: item.image,
+                quantity: item.quantity,
+                unitPrice: item.unit_price,
+              }))
+            );
+            const showVendorGroups = vendorGroups.length > 1;
+            return (
+              <div className="mt-6 space-y-4 border-t border-gray-100 pt-4">
+                {vendorGroups.map((group) => (
+                  <div key={group.vendorName}>
+                    {showVendorGroups && (
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                        Sold by {group.vendorName}
+                      </p>
+                    )}
+                    <div className="space-y-3">
+                      {group.items.map((item) => (
+                        <div key={item.key} className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-3">
+                            {item.image && <img src={item.image} alt="" className="h-10 w-10 rounded-md object-cover" />}
+                            <div>
+                              <p className="font-medium text-gray-900">{item.name}</p>
+                              <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
+                            </div>
+                          </div>
+                          <p className="font-semibold text-gray-900">{formatPKR(item.unitPrice * item.quantity)}</p>
+                        </div>
+                      ))}
+                    </div>
+                    {showVendorGroups && (
+                      <div className="mt-2 flex justify-between text-xs text-gray-500">
+                        <span>Subtotal from {group.vendorName}</span>
+                        <span>{formatPKR(group.vendorSubtotal)}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
 
           <div className="mt-6 space-y-2 border-t border-gray-100 pt-4 text-sm">
             <div className="flex justify-between text-gray-600">

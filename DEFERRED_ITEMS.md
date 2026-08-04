@@ -72,9 +72,23 @@ alongside the security/market recommendations already discussed.
   mirroring the existing banner-image validator.
 
 ## Feature gaps flagged during the marketplace-UX survey
-- No vendor storefront page (click a vendor name → see everything they sell).
-- No wishlist / save-for-later.
-- No search autocomplete.
+- ~~No vendor storefront page~~ — **built**: public `/store/:vendorId` page
+  (shop name/logo/description, aggregate rating, product count, "selling
+  since" year, full paginated + sortable product grid). Vendor Settings
+  gets a real "Storefront Profile" editor (logo upload, name, about text).
+  `shop_name`/`shop_logo`/`shop_description` added to `User` — no separate
+  profile table, matching how `phone_number` etc. already work there.
+- ~~No wishlist / save-for-later~~ — **built**: heart-icon toggle on every
+  product card site-wide (Home's 3 sections, Shop, Product Detail),
+  backed by a real `Wishlist` model, not localStorage — ties to the
+  account so it's the same list on any device. Dedicated `/wishlist` page
+  + header nav badge.
+- ~~No search autocomplete~~ — **built**: the header search box was
+  actually just a static, non-functional `<input>` before this — no
+  onChange, no submit, nothing. Now a real debounced dropdown (product
+  thumbnails + price, matching categories, recent searches via
+  localStorage), full keyboard nav, and Shop.jsx now actually reads/writes
+  the `?search=` URL param it was silently ignoring.
 - ~~Shop lost its rating filter when the mock catalog was ripped out~~ —
   **fixed**: `min_rating` filter + `sort=rating` re-added to the catalog
   endpoint (DB-level annotation matching `Product.average_rating` exactly),
@@ -84,7 +98,8 @@ alongside the security/market recommendations already discussed.
   `UnorderedObjectListWarning` flags — fixed by making it explicit.
 - ~~Rating stars missing from Home/Shop product cards~~ — **fixed**: added
   using the same data ProductDetail already displayed.
-- Multi-vendor cart/checkout doesn't show a per-vendor cost breakdown.
+- **Multi-vendor cart/checkout doesn't show a per-vendor cost breakdown** —
+  still open, no external resources needed to build this.
 - ~~No customer-initiated order cancellation~~ — **built**, with a
   deliberate scope call rather than a silent assumption: self-service
   cancel only works while the order is still `pending` (matches real
@@ -96,9 +111,9 @@ alongside the security/market recommendations already discussed.
   (one-click from Account → Orders, no re-entering contact info). 10 new
   tests covering both ownership paths, restocking, coupon reversal, and
   the pending-only boundary.
-- ~~No 404 page, no robots.txt/sitemap/meta tags, no favicon~~ — **partially
-  stale**: 404 page, favicon, and robots.txt all already exist. Sitemap
-  and meta tags genuinely still don't.
+- **No sitemap.xml or per-page meta tags** — 404 page, favicon, and
+  robots.txt all already exist; sitemap and meta tags genuinely still
+  don't. No external resources needed.
 - ~~Checkout isn't idempotent — a slow network + retry could theoretically
   create two real orders~~ — **fixed**: `Order.idempotency_key`, generated
   once per checkout attempt on the frontend (`crypto.randomUUID()`, reused
@@ -125,9 +140,12 @@ alongside the security/market recommendations already discussed.
   every payout mark-paid call — only caught because I ran the actual
   test suite rather than trusting the compile check.
 
-## Feedback page (§7.3, this session)
-- Photo upload on the feedback form is UI-only — the dropzone renders,
-  nothing is actually stored.
+## Feedback page
+- ~~Photo upload on the feedback form is UI-only~~ — **built**: real
+  `FeedbackImage` model, up to 5 photos, validated (format/size/min
+  dimensions), whole submission rolls back atomically if any photo fails
+  validation. Dropzone now actually uploads — drag/drop or click, thumbnail
+  previews, remove button.
 - No loyalty points / rewards system exists. (Checked: there's no "Earn
   points" copy anywhere in the actual frontend or PRD either — that was
   a reference-mockup idea that never made it into this build. Nothing to

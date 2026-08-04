@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { CheckCircle2, Truck, MapPin } from "lucide-react";
 import CheckoutSteps from "../../components/CheckoutSteps.jsx";
 import { formatPKR } from "../../lib/currency.js";
+import { groupLinesByVendor } from "../../lib/vendorGrouping.js";
 
 function formatDateRange(isoDate, daysFrom, daysTo) {
   const base = new Date(isoDate);
@@ -30,6 +31,17 @@ export default function CheckoutConfirmation() {
   if (!order) return null;
 
   const firstName = order.shipping_full_name?.split(" ")[0] || "there";
+  const vendorGroups = groupLinesByVendor(
+    order.items.map((item) => ({
+      key: item.id,
+      vendorName: item.vendor_name,
+      name: item.product_name,
+      image: item.image,
+      quantity: item.quantity,
+      unitPrice: item.unit_price,
+    }))
+  );
+  const showVendorGroups = vendorGroups.length > 1;
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
@@ -54,17 +66,34 @@ export default function CheckoutConfirmation() {
 
       <div className="mt-8 rounded-lg border border-gray-200 bg-white p-5">
         <h2 className="font-bold text-gray-900">Order Summary</h2>
-        <div className="mt-4 space-y-3 border-b border-gray-100 pb-4">
-          {order.items.map((item) => (
-            <div key={item.id} className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                {item.image && <img src={item.image} alt="" className="h-12 w-12 rounded-md object-cover" />}
-                <div className="text-sm">
-                  <p className="font-medium text-gray-900">{item.product_name}</p>
-                  <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
-                </div>
+        <div className="mt-4 space-y-4 border-b border-gray-100 pb-4">
+          {vendorGroups.map((group) => (
+            <div key={group.vendorName}>
+              {showVendorGroups && (
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  Sold by {group.vendorName}
+                </p>
+              )}
+              <div className="space-y-3">
+                {group.items.map((item) => (
+                  <div key={item.key} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {item.image && <img src={item.image} alt="" className="h-12 w-12 rounded-md object-cover" />}
+                      <div className="text-sm">
+                        <p className="font-medium text-gray-900">{item.name}</p>
+                        <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
+                      </div>
+                    </div>
+                    <p className="text-sm font-semibold text-gray-900">{formatPKR(item.unitPrice * item.quantity)}</p>
+                  </div>
+                ))}
               </div>
-              <p className="text-sm font-semibold text-gray-900">{formatPKR(item.line_total)}</p>
+              {showVendorGroups && (
+                <div className="mt-2 flex justify-between text-xs text-gray-500">
+                  <span>Subtotal from {group.vendorName}</span>
+                  <span>{formatPKR(group.vendorSubtotal)}</span>
+                </div>
+              )}
             </div>
           ))}
         </div>

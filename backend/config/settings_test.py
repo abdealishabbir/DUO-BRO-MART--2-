@@ -20,6 +20,17 @@ CACHES = {
 
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 
+# This file's whole point is "no live Redis needed" — but CHANNEL_LAYERS
+# in settings.py still points at channels_redis.core.RedisChannelLayer,
+# so anything that decrements stock (order create/cancel, stock change
+# requests) was hitting a real Redis connection anyway and failing in any
+# sandbox without one. InMemoryChannelLayer round-trips group_send/receive
+# within the test process itself — same signal-broadcast code path is
+# still exercised, just without a network hop.
+CHANNEL_LAYERS = {
+    "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"},
+}
+
 import tempfile  # noqa: E402
 MEDIA_ROOT = tempfile.mkdtemp(prefix="dbm_test_media_")
 

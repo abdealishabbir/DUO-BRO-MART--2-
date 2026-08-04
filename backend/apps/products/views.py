@@ -33,6 +33,7 @@ implements. Endpoint map:
 from decimal import Decimal, InvalidOperation
 
 from django.db.models import Q
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
@@ -44,7 +45,7 @@ from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 from apps.accounts.permissions import IsAdminRole, IsVendorRole, ReadOnlyOrIsAdmin
 from apps.core.audit import log_admin_action
 
-from .models import Category, CommissionRate, PROVISIONAL_COMMISSION_RATE, Product, ProductChangeRequest, ProductImage, ProductView, StockChangeRequest
+from .models import Category, CommissionRate, PROVISIONAL_COMMISSION_RATE, Product, ProductChangeRequest, ProductImage, ProductView, StockChangeRequest, Wishlist
 from .serializers import (
     AdminPricingSerializer,
     AdminProductUpdateSerializer,
@@ -59,6 +60,7 @@ from .serializers import (
     PublicProductListSerializer,
     StockChangeRequestCreateSerializer,
     StockChangeRequestSerializer,
+    WishlistSerializer,
 )
 
 
@@ -72,6 +74,70 @@ class CategoryViewSet(viewsets.ModelViewSet):
     permission_classes = [ReadOnlyOrIsAdmin]
     serializer_class = CategorySerializer
     queryset = Category.objects.all()
+
+
+class SearchSuggestionsView(APIView):
+    """
+    GET /api/products/search-suggestions/?q=...
+    Powers the header search-box dropdown. Deliberately its own lean
+    endpoint rather than reusing PublicProductViewSet's ?search= filter:
+    that one returns full paginated ProductSerializer payloads (images,
+    ratings, attributes...) meant for a results grid; this fires on every
+    keystroke (debounced client-side) and only needs enough to render a
+    handful of clickable rows, so it trims the response and the query
+    itself (name/brand startswith first, since that's what a half-typed
+    word usually means, falling back to icontains for the rest).
+    """
+
+    permission_classes = [permissions.AllowAny]
+    throttle_scope = "public-catalog"
+
+    MAX_PRODUCTS = 6
+    MAX_CATEGORIES = 4
+
+    def get(self, request):
+        query = (request.query_params.get("q") or "").strip()
+        if len(query) < 2:
+            return Response({"products": [], "categories": []})
+
+        base_qs = Product.objects.filter(status=Product.Status.APPROVED, is_active=True)
+
+        # Prefix matches ("shampo" -> "Shampoo...") feel more relevant for
+        # an autocomplete than substring matches, so rank them first, then
+        # fill any remaining slots with substring matches.
+        prefix_matches = list(
+            base_qs.filter(Q(name__istartswith=query) | Q(brand__istartswith=query))
+            .select_related("category")
+            .prefetch_related("images")[: self.MAX_PRODUCTS]
+        )
+        remaining = self.MAX_PRODUCTS - len(prefix_matches)
+        substring_matches = []
+        if remaining > 0:
+            exclude_ids = [p.id for p in prefix_matches]
+            substring_matches = list(
+                base_qs.filter(Q(name__icontains=query) | Q(brand__icontains=query))
+                .exclude(id__in=exclude_ids)
+                .select_related("category")
+                .prefetch_related("images")[:remaining]
+            )
+
+        products = [
+            {
+                "id": p.id,
+                "name": p.name,
+                "slug": p.slug,
+                "image": (request.build_absolute_uri(p.images.first().image.url) if p.images.exists() else None),
+                "price": p.discounted_price,
+                "category_name": p.category.name,
+            }
+            for p in prefix_matches + substring_matches
+        ]
+
+        categories = list(
+            Category.objects.filter(name__icontains=query).values("name", "slug")[: self.MAX_CATEGORIES]
+        )
+
+        return Response({"products": products, "categories": categories})
 
 
 class PublicProductViewSet(ReadOnlyModelViewSet):
@@ -173,6 +239,62 @@ class PublicProductViewSet(ReadOnlyModelViewSet):
             .distinct()
         )
         return Response(list(names))
+
+
+# ---------------------------------------------------------------------------
+# Wishlist / save-for-later (customer-only)
+# ---------------------------------------------------------------------------
+
+class WishlistListView(generics.ListAPIView):
+    """GET /api/products/wishlist/ — full saved-items list for the Wishlist page."""
+
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = WishlistSerializer
+
+    def get_queryset(self):
+        return (
+            Wishlist.objects.filter(customer=self.request.user)
+            .select_related("product__category", "product__vendor")
+            .prefetch_related("product__images")
+        )
+
+
+class WishlistIdsView(APIView):
+    """GET /api/products/wishlist/ids/ — cheap product-id list so any
+    listing page (Home, Shop) can fill in heart icons without pulling
+    full nested product data for every saved item."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        ids = Wishlist.objects.filter(customer=request.user).values_list("product_id", flat=True)
+        return Response(list(ids))
+
+
+class WishlistToggleView(APIView):
+    """POST /api/products/wishlist/toggle/ {"product": <id>} — add if not
+    saved, remove if already saved. One endpoint instead of separate
+    create/destroy since the frontend only ever knows the product id, not
+    the wishlist row's own id, at the point a heart icon is clicked."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        product_id = request.data.get("product")
+        if not product_id:
+            return Response({"product": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
+        product = get_object_or_404(Product, pk=product_id)
+
+        existing = Wishlist.objects.filter(customer=request.user, product=product).first()
+        if existing:
+            existing.delete()
+            wishlisted = False
+        else:
+            Wishlist.objects.create(customer=request.user, product=product)
+            wishlisted = True
+
+        count = Wishlist.objects.filter(customer=request.user).count()
+        return Response({"wishlisted": wishlisted, "count": count})
 
 
 # ---------------------------------------------------------------------------

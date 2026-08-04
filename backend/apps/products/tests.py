@@ -5,7 +5,7 @@ from django.core.cache import cache
 from django.urls import reverse
 from rest_framework.test import APITestCase
 
-from .models import Category, CommissionRate, Product, ProductChangeRequest, ProductView, StockChangeRequest
+from .models import Category, CommissionRate, Product, ProductChangeRequest, ProductView, StockChangeRequest, Wishlist
 
 User = get_user_model()
 
@@ -903,3 +903,161 @@ class CatalogRatingFilterSortTests(ProductsTestBase):
         self.make_rated_product("B")
         resp = self.client.get(reverse("product-list"))
         self.assertEqual(len(resp.data["results"]), 2)
+
+
+class WishlistTests(ProductsTestBase):
+    def setUp(self):
+        super().setUp()
+        self.other_customer = make_user(User.Role.CUSTOMER, "other-customer@example.com")
+        self.product = self.make_product(status=Product.Status.APPROVED, is_active=True)
+        self.other_product = self.make_product(name="Other Product", status=Product.Status.APPROVED, is_active=True)
+
+    def test_anonymous_cannot_toggle(self):
+        resp = self.client.post(reverse("wishlist-toggle"), {"product": self.product.id})
+        self.assertEqual(resp.status_code, 401)
+
+    def test_toggle_adds_then_removes(self):
+        self.login_as(self.customer)
+        resp = self.client.post(reverse("wishlist-toggle"), {"product": self.product.id})
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.data["wishlisted"])
+        self.assertEqual(resp.data["count"], 1)
+        self.assertEqual(Wishlist.objects.filter(customer=self.customer, product=self.product).count(), 1)
+
+        resp2 = self.client.post(reverse("wishlist-toggle"), {"product": self.product.id})
+        self.assertEqual(resp2.status_code, 200)
+        self.assertFalse(resp2.data["wishlisted"])
+        self.assertEqual(resp2.data["count"], 0)
+        self.assertEqual(Wishlist.objects.filter(customer=self.customer, product=self.product).count(), 0)
+
+    def test_toggle_missing_product_id_rejected(self):
+        self.login_as(self.customer)
+        resp = self.client.post(reverse("wishlist-toggle"), {})
+        self.assertEqual(resp.status_code, 400)
+
+    def test_toggle_nonexistent_product_404s(self):
+        self.login_as(self.customer)
+        resp = self.client.post(reverse("wishlist-toggle"), {"product": 999999})
+        self.assertEqual(resp.status_code, 404)
+
+    def test_ids_endpoint_lists_only_this_customers_saved_products(self):
+        self.login_as(self.customer)
+        self.client.post(reverse("wishlist-toggle"), {"product": self.product.id})
+        self.login_as(self.other_customer)
+        self.client.post(reverse("wishlist-toggle"), {"product": self.other_product.id})
+
+        self.login_as(self.customer)
+        resp = self.client.get(reverse("wishlist-ids"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data, [self.product.id])
+
+    def test_list_returns_nested_product_data(self):
+        self.login_as(self.customer)
+        self.client.post(reverse("wishlist-toggle"), {"product": self.product.id})
+        resp = self.client.get(reverse("wishlist-list"))
+        self.assertEqual(resp.status_code, 200)
+        item = resp.data["results"][0]
+        self.assertEqual(item["product"]["id"], self.product.id)
+        self.assertTrue(item["is_available"])
+
+    def test_list_flags_unavailable_product(self):
+        self.login_as(self.customer)
+        self.client.post(reverse("wishlist-toggle"), {"product": self.product.id})
+        self.product.is_active = False
+        self.product.save(update_fields=["is_active"])
+
+        resp = self.client.get(reverse("wishlist-list"))
+        self.assertFalse(resp.data["results"][0]["is_available"])
+
+    def test_list_only_shows_own_items(self):
+        self.login_as(self.customer)
+        self.client.post(reverse("wishlist-toggle"), {"product": self.product.id})
+        self.login_as(self.other_customer)
+        resp = self.client.get(reverse("wishlist-list"))
+        self.assertEqual(len(resp.data["results"]), 0)
+
+    def test_anonymous_cannot_list(self):
+        resp = self.client.get(reverse("wishlist-list"))
+        self.assertEqual(resp.status_code, 401)
+
+    def test_double_toggle_add_does_not_violate_unique_constraint(self):
+        # Two rapid "add" clicks shouldn't be possible via the toggle
+        # endpoint itself (each call flips state), but this guards the
+        # DB-level uniqueness guarantee directly in case of a race.
+        self.login_as(self.customer)
+        Wishlist.objects.create(customer=self.customer, product=self.product)
+        with self.assertRaises(Exception):
+            Wishlist.objects.create(customer=self.customer, product=self.product)
+
+
+class SearchSuggestionsTests(ProductsTestBase):
+    def setUp(self):
+        super().setUp()
+        # "Electronics" is already seeded by products/migrations/0003_seed_categories.py
+        self.electronics = Category.objects.get(name="Electronics")
+        self.shampoo = self.make_product(
+            name="Herbal Shampoo 200ml", brand="CleanCo", category=self.category,
+            status=Product.Status.APPROVED, is_active=True,
+        )
+        self.shower_gel = self.make_product(
+            name="Shower Gel Fresh", brand="CleanCo", category=self.category,
+            status=Product.Status.APPROVED, is_active=True,
+        )
+        self.unrelated = self.make_product(
+            name="Bluetooth Speaker", brand="SoundMax", category=self.electronics,
+            status=Product.Status.APPROVED, is_active=True,
+        )
+
+    def test_anyone_can_search_no_auth_required(self):
+        resp = self.client.get(reverse("search-suggestions"), {"q": "sham"})
+        self.assertEqual(resp.status_code, 200)
+
+    def test_short_query_returns_empty(self):
+        resp = self.client.get(reverse("search-suggestions"), {"q": "s"})
+        self.assertEqual(resp.data, {"products": [], "categories": []})
+
+    def test_missing_query_returns_empty(self):
+        resp = self.client.get(reverse("search-suggestions"))
+        self.assertEqual(resp.data, {"products": [], "categories": []})
+
+    def test_prefix_match_ranks_first(self):
+        resp = self.client.get(reverse("search-suggestions"), {"q": "sham"})
+        names = [p["name"] for p in resp.data["products"]]
+        self.assertEqual(names[0], "Herbal Shampoo 200ml")
+
+    def test_brand_match(self):
+        resp = self.client.get(reverse("search-suggestions"), {"q": "cleanco"})
+        names = {p["name"] for p in resp.data["products"]}
+        self.assertIn("Herbal Shampoo 200ml", names)
+        self.assertIn("Shower Gel Fresh", names)
+
+    def test_unrelated_product_not_returned(self):
+        resp = self.client.get(reverse("search-suggestions"), {"q": "sham"})
+        names = {p["name"] for p in resp.data["products"]}
+        self.assertNotIn("Bluetooth Speaker", names)
+
+    def test_excludes_unapproved_and_inactive_products(self):
+        self.make_product(name="Shampoo Pending", status=Product.Status.PENDING)
+        self.make_product(name="Shampoo Inactive", status=Product.Status.APPROVED, is_active=False)
+        resp = self.client.get(reverse("search-suggestions"), {"q": "sham"})
+        names = {p["name"] for p in resp.data["products"]}
+        self.assertNotIn("Shampoo Pending", names)
+        self.assertNotIn("Shampoo Inactive", names)
+
+    def test_category_suggestions_included(self):
+        resp = self.client.get(reverse("search-suggestions"), {"q": "electro"})
+        cat_names = [c["name"] for c in resp.data["categories"]]
+        self.assertIn("Electronics", cat_names)
+
+    def test_response_shape(self):
+        resp = self.client.get(reverse("search-suggestions"), {"q": "sham"})
+        product = resp.data["products"][0]
+        self.assertEqual(set(product.keys()), {"id", "name", "slug", "image", "price", "category_name"})
+
+    def test_no_prefix_matches_falls_back_to_substring(self):
+        # "gel" isn't a prefix of any product name/brand here, but it is a
+        # substring of "Shower Gel Fresh" — confirms the substring fallback
+        # actually runs, not just the prefix pass.
+        resp = self.client.get(reverse("search-suggestions"), {"q": "gel"})
+        names = {p["name"] for p in resp.data["products"]}
+        self.assertIn("Shower Gel Fresh", names)

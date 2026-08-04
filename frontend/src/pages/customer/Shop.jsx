@@ -4,8 +4,9 @@ import { ChevronLeft, ChevronRight, SlidersHorizontal, Grid2x2, List, X, Star } 
 import { api } from "../../lib/api.js";
 import { useCart } from "../../cart/CartContext.jsx";
 import { formatPKR } from "../../lib/currency.js";
+import WishlistButton from "../../components/WishlistButton.jsx";
 
-const DEFAULT_FILTERS = { categories: [], brands: [], minPrice: "", maxPrice: "", dealsOnly: false, minRating: "" };
+const DEFAULT_FILTERS = { categories: [], brands: [], minPrice: "", maxPrice: "", dealsOnly: false, minRating: "", search: "" };
 
 // PRD §14.9.C: pagination (and filters) must appear in the URL, and
 // active filters must render as removable chips. These helpers keep
@@ -20,6 +21,7 @@ function filtersFromParams(params) {
     maxPrice: params.get("maxPrice") ?? "",
     dealsOnly: params.get("deals") === "1",
     minRating: params.get("minRating") ?? "",
+    search: params.get("search") ?? "",
   };
 }
 
@@ -31,6 +33,7 @@ function paramsFromState({ filters, sort, view, page }) {
   if (filters.maxPrice) params.maxPrice = filters.maxPrice;
   if (filters.dealsOnly) params.deals = "1";
   if (filters.minRating) params.minRating = filters.minRating;
+  if (filters.search) params.search = filters.search;
   if (sort !== "newest") params.sort = sort;
   if (view !== "grid") params.view = view;
   if (page !== 1) params.page = String(page);
@@ -200,6 +203,9 @@ function ProductCard({ product, view }) {
         {product.is_deal_active && (
           <span className="absolute left-0 top-0 rounded-br-md rounded-tl-md bg-ink px-2 py-0.5 text-xs font-bold text-white">Sale</span>
         )}
+        <div className="absolute right-1.5 top-1.5 z-10">
+          <WishlistButton product={product} />
+        </div>
         <img
           src={product.images[0] || "https://placehold.co/300x300?text=No+Image"}
           alt={product.name}
@@ -296,6 +302,7 @@ export default function Shop() {
     if (filters.maxPrice) params.set("max_price", filters.maxPrice);
     if (filters.dealsOnly) params.set("deals", "1");
     if (filters.minRating) params.set("min_rating", filters.minRating);
+    if (filters.search) params.set("search", filters.search);
     if (sort !== "newest") params.set("sort", sort);
 
     api.get(`/products/?${params.toString()}`).then((data) => {
@@ -322,6 +329,20 @@ export default function Shop() {
       <div className="mx-auto max-w-7xl px-4 pt-4 text-sm text-gray-500 lg:px-8">
         <Link to="/" className="hover:text-brand">Home</Link> <span className="mx-1">/</span> <span className="text-gray-900">Shop</span>
       </div>
+
+      {filters.search && (
+        <div className="mx-auto flex max-w-7xl items-center gap-2 px-4 pt-3 lg:px-8">
+          <p className="text-sm text-gray-600">
+            Search results for <strong className="text-gray-900">"{filters.search}"</strong>
+          </p>
+          <button
+            onClick={() => updateFilters((f) => ({ ...f, search: "" }))}
+            className="flex items-center gap-0.5 text-xs text-gray-400 hover:text-red-500"
+          >
+            <X className="h-3 w-3" /> Clear
+          </button>
+        </div>
+      )}
 
       <section className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
         <div className="flex flex-col gap-6 lg:flex-row">

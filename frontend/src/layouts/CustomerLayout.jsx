@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
-import { Store, Search, User, ShoppingCart, Menu, X } from "lucide-react";
+import { Store, User, ShoppingCart, Heart, Menu, X } from "lucide-react";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { useCart } from "../cart/CartContext.jsx";
+import { useWishlist } from "../wishlist/WishlistContext.jsx";
+import SearchAutocomplete from "../components/SearchAutocomplete.jsx";
 
 // Matched to the ShopNest reference (see UI_BUILD_TRACKER.md for the
 // nav/footer -> route mapping). "Vendors" here plays the role our PRD
@@ -35,6 +37,7 @@ export default function CustomerLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { isAuthenticated } = useAuth();
   const { itemCount: cartCount } = useCart();
+  const { count: wishlistCount } = useWishlist();
 
   return (
     <div className="flex min-h-screen flex-col bg-cream">
@@ -53,13 +56,7 @@ export default function CustomerLayout() {
 
           <div className="hidden flex-1 items-center lg:flex">
             <div className="relative w-full max-w-xl">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                type="search"
-                placeholder="Search for products, brands and more..."
-                aria-label="Search products"
-                className="w-full rounded-full border border-gray-300 bg-white py-2 pl-9 pr-4 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-              />
+              <SearchAutocomplete />
             </div>
           </div>
 
@@ -70,6 +67,15 @@ export default function CustomerLayout() {
             >
               <User className="h-4 w-4" />
               {isAuthenticated ? "Account" : "Sign in"}
+            </Link>
+            <Link to="/wishlist" className="relative flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-brand">
+              <Heart className="h-4 w-4" />
+              Wishlist
+              {wishlistCount > 0 && (
+                <span className="absolute -right-3 -top-2 rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-bold text-white">
+                  {wishlistCount}
+                </span>
+              )}
             </Link>
             <Link to="/cart" className="relative flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-brand">
               <ShoppingCart className="h-4 w-4" />
@@ -95,20 +101,13 @@ export default function CustomerLayout() {
 
         {menuOpen && (
           <nav className="space-y-3 border-t border-gray-200 bg-cream px-4 py-3 lg:hidden">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                type="search"
-                placeholder="Search..."
-                aria-label="Search products"
-                className="w-full rounded-full border border-gray-300 bg-white py-2 pl-9 pr-4 text-sm focus:border-brand focus:outline-none"
-              />
-            </div>
+            <SearchAutocomplete placeholder="Search..." onNavigate={() => setMenuOpen(false)} />
             <div className="flex flex-col gap-3">
               {NAV_LINKS.map((link) => (
                 <NavItem key={link.label} {...link} />
               ))}
               <NavItem to={isAuthenticated ? "/account" : "/login"} label={isAuthenticated ? "Account" : "Sign in"} />
+              <NavItem to="/wishlist" label={`Wishlist${wishlistCount > 0 ? ` (${wishlistCount})` : ""}`} />
               <NavItem to="/cart" label={`Cart${cartCount > 0 ? ` (${cartCount})` : ""}`} />
             </div>
           </nav>

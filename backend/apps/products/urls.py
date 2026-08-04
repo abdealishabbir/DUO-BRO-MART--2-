@@ -18,6 +18,13 @@ admin_router.register("change-requests", views.AdminProductChangeRequestViewSet,
 admin_router.register("stock-requests", views.AdminStockChangeRequestViewSet, basename="admin-stock-request")
 
 urlpatterns = [
+    # Must come before the root router include below — PublicProductViewSet's
+    # slug-based detail route ("<slug>/") is registered at the empty prefix
+    # and would otherwise swallow "wishlist/..." as if it were a product slug.
+    path("wishlist/ids/", views.WishlistIdsView.as_view(), name="wishlist-ids"),
+    path("wishlist/toggle/", views.WishlistToggleView.as_view(), name="wishlist-toggle"),
+    path("wishlist/", views.WishlistListView.as_view(), name="wishlist-list"),
+    path("search-suggestions/", views.SearchSuggestionsView.as_view(), name="search-suggestions"),
     path("", include(router.urls)),
     path("vendor/analytics/", views.VendorAnalyticsView.as_view(), name="vendor-analytics"),
     path("vendor/", include(vendor_router.urls)),

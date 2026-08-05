@@ -58,43 +58,66 @@ class PublicSettingsView(APIView):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def sitemap_xml(request):
-    """§8.2: dynamic sitemap — static routes + every approved/active product + category."""
+    """§8.2: dynamic sitemap — static routes + every approved/active product,
+    category with at least one visible product, and active vendor storefronts.
+
+    This makes the site properly crawlable/indexable by Google (which does
+    render JS and reads this sitemap to prioritise what to crawl). It does NOT
+    fix link-preview cards on WhatsApp/Facebook/Twitter — those crawlers fetch
+    raw HTML without running JS, so they always see the single static index.html.
+    Fixing that needs server-side rendering or prerendering — tracked in
+    DEFERRED_ITEMS.md as a separate, larger piece of work.
+    """
     from django.conf import settings
     from django.http import HttpResponse
 
-    from apps.products.models import Category, Product
     from django.contrib.auth import get_user_model
+    from apps.products.models import Category, Product
 
     base = settings.FRONTEND_URL.rstrip("/")
     entries = []
+
     # static routes
-    entries.append({"loc": base})
-    entries.append({"loc": f"{base}/shop"})
+    entries.append({"loc": base, "priority": "1.0"})
+    entries.append({"loc": f"{base}/shop", "priority": "0.9"})
 
-    # categories (no lastmod)
-    for c in Category.objects.all():
-        entries.append({"loc": f"{base}/shop?category={c.slug}"})
+    # Only categories that actually have visible products — an empty
+    # category page wastes crawl budget and misleads search engines.
+    categories_with_products = Category.objects.filter(
+        products__status=Product.Status.APPROVED, products__is_active=True
+    ).distinct()
+    # "categories" (plural) matches what Shop.jsx's filtersFromParams reads.
+    # ?category= (singular) is silently ignored by the Shop page.
+    for c in categories_with_products:
+        entries.append({"loc": f"{base}/shop?categories={c.slug}", "priority": "0.5"})
 
-    # products (include lastmod if available)
+    # products with lastmod for freshness signals
     for p in Product.objects.filter(status=Product.Status.APPROVED, is_active=True).only("slug", "updated_at"):
-        loc = f"{base}/product/{p.slug}"
-        entry = {"loc": loc}
+        entry = {"loc": f"{base}/product/{p.slug}", "priority": "0.7"}
         if getattr(p, "updated_at", None):
             entry["lastmod"] = p.updated_at.date().isoformat()
         entries.append(entry)
 
-    # vendor storefronts
+    # Only vendors who have at least one live product — a storefront page
+    # with zero products is not a useful index entry.
     User = get_user_model()
-    vendors = User.objects.filter(role=User.Role.VENDOR, is_active=True).only("id")
+    active_vendor_ids = (
+        Product.objects.filter(status=Product.Status.APPROVED, is_active=True)
+        .values_list("vendor_id", flat=True)
+        .distinct()
+    )
+    vendors = User.objects.filter(id__in=active_vendor_ids, role=User.Role.VENDOR, is_active=True)
     for v in vendors:
-        entries.append({"loc": f"{base}/store/{v.id}"})
+        entries.append({"loc": f"{base}/store/{v.id}", "priority": "0.6"})
 
     xml = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
     for e in entries:
+        parts = [f"<loc>{e['loc']}</loc>"]
         if "lastmod" in e:
-            xml.append(f"<url><loc>{e['loc']}</loc><lastmod>{e['lastmod']}</lastmod></url>")
-        else:
-            xml.append(f"<url><loc>{e['loc']}</loc></url>")
+            parts.append(f"<lastmod>{e['lastmod']}</lastmod>")
+        if "priority" in e:
+            parts.append(f"<priority>{e['priority']}</priority>")
+        xml.append(f"<url>{''.join(parts)}</url>")
     xml.append("</urlset>")
     return HttpResponse("\n".join(xml), content_type="application/xml")
 

@@ -489,7 +489,7 @@ export default function Home() {
 
   return (
     <div>
-      <Meta title="Duo Bro Mart — Shop Pakistan's Marketplace" description="Duo Bro Mart is a Pakistani multi-vendor marketplace — shop electronics, fashion, home goods and more with Cash on Delivery and local payment options." url={`${process.env.REACT_APP_FRONTEND_URL || ""}`} />
+      <Meta title="Duo Bro Mart — Shop Pakistan's Marketplace" description="Duo Bro Mart is a Pakistani multi-vendor marketplace — shop electronics, fashion, home goods and more with Cash on Delivery and local payment options." url={window.location.origin} />
       <Hero />
       <PromoTiles />
       <FlashDeals items={deals} />

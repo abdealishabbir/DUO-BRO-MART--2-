@@ -42,7 +42,7 @@ export default function CheckoutPayment() {
   const meta = {
     title: "Payment",
     description: "Choose how to pay for your Duo Bro Mart order and complete checkout.",
-    url: `${process.env.REACT_APP_FRONTEND_URL || ""}/checkout/payment`,
+    url: `${window.location.origin}/checkout/payment`,
   };
   const navigate = useNavigate();
   const [placing, setPlacing] = useState(false);

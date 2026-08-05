@@ -39,7 +39,7 @@ export default function CheckoutShipping() {
   const meta = {
     title: "Shipping Details",
     description: "Enter shipping information and choose a delivery method for your Duo Bro Mart order.",
-    url: `${process.env.REACT_APP_FRONTEND_URL || ""}/checkout/shipping`,
+    url: `${window.location.origin}/checkout/shipping`,
   };
   const navigate = useNavigate();
 

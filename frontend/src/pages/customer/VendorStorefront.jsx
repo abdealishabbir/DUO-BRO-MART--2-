@@ -81,7 +81,7 @@ export default function VendorStorefront() {
 
   const memberSinceYear = new Date(store.member_since).getFullYear();
 
-  const storeUrl = `${process.env.REACT_APP_FRONTEND_URL || ""}/store/${store.id}`;
+  const storeUrl = `${window.location.origin}/store/${store.id}`;
 
   return (
     <div className="bg-gray-50">

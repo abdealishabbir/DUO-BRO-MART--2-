@@ -327,7 +327,7 @@ export default function Shop() {
 
   return (
     <div>
-      <Meta title="Shop — Duo Bro Mart" description="Browse products across categories on Duo Bro Mart — filter, sort, and find best deals." url={`${process.env.REACT_APP_FRONTEND_URL || ""}/shop`} />
+      <Meta title="Shop — Duo Bro Mart" description="Browse products across categories on Duo Bro Mart — filter, sort, and find best deals." url={`${window.location.origin}/shop`} />
       <div className="mx-auto max-w-7xl px-4 pt-4 text-sm text-gray-500 lg:px-8">
         <Link to="/" className="hover:text-brand">Home</Link> <span className="mx-1">/</span> <span className="text-gray-900">Shop</span>
       </div>

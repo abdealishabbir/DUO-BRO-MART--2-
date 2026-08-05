@@ -8,7 +8,7 @@ export default function Wishlist() {
       <Meta
         title="Wishlist"
         description="View the products you saved for later on Duo Bro Mart."
-        url={`${process.env.REACT_APP_FRONTEND_URL || ""}/wishlist`}
+        url={`${window.location.origin}/wishlist`}
       />
     <div className="mx-auto max-w-6xl px-4 py-12">
       <div className="mx-auto max-w-md text-center">

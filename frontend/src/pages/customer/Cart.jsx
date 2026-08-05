@@ -93,7 +93,7 @@ export default function Cart() {
       <Meta
         title="Cart"
         description="Review items in your Duo Bro Mart cart before checkout."
-        url={`${process.env.REACT_APP_FRONTEND_URL || ""}/cart`}
+        url={`${window.location.origin}/cart`}
       />
 
       <div className="mx-auto max-w-6xl px-4 py-8">

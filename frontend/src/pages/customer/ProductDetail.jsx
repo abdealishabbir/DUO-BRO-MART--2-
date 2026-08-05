@@ -165,7 +165,7 @@ export default function ProductDetail() {
     addItem(product, quantity);
   };
 
-  const pageUrl = `${process.env.REACT_APP_FRONTEND_URL || ""}/product/${product.slug}`;
+  const pageUrl = `${window.location.origin}/product/${product.slug}`;
 
   return (
     <div>

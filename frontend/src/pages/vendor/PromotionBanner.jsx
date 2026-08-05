@@ -165,7 +165,7 @@ function ApplicationForm({ platformSettings, availability, onSubmitted }) {
           <input type="file" accept="image/png,image/jpeg" className="hidden" onChange={handleImageChange} />
         </label>
         <p className="mt-1.5 text-xs text-gray-400">
-          Must be exactly <strong>{REQUIRED_WIDTH}×{REQUIRED_HEIGHT}px</strong>, PNG/JPG/JPEG — any other size gets rejected so it doesn't blur or crop on the homepage.
+          Must be exactly <strong>{REQUIRED_WIDTH}×{REQUIRED_HEIGHT}px</strong>, PNG/JPG/JPEG — any other size gets rejected so it doesn&apos;t blur or crop on the homepage.
         </p>
         {imageError && <p className="mt-1 text-sm text-red-600">{imageError}</p>}
       </FormField>

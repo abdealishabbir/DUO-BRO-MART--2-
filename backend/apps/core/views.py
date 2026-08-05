@@ -63,16 +63,38 @@ def sitemap_xml(request):
     from django.http import HttpResponse
 
     from apps.products.models import Category, Product
+    from django.contrib.auth import get_user_model
 
     base = settings.FRONTEND_URL.rstrip("/")
-    urls = [base, f"{base}/shop"]
-    urls += [f"{base}/shop?category={c.slug}" for c in Category.objects.all()]
-    urls += [
-        f"{base}/product/{p.slug}"
-        for p in Product.objects.filter(status=Product.Status.APPROVED, is_active=True).only("slug")
-    ]
+    entries = []
+    # static routes
+    entries.append({"loc": base})
+    entries.append({"loc": f"{base}/shop"})
+
+    # categories (no lastmod)
+    for c in Category.objects.all():
+        entries.append({"loc": f"{base}/shop?category={c.slug}"})
+
+    # products (include lastmod if available)
+    for p in Product.objects.filter(status=Product.Status.APPROVED, is_active=True).only("slug", "updated_at"):
+        loc = f"{base}/product/{p.slug}"
+        entry = {"loc": loc}
+        if getattr(p, "updated_at", None):
+            entry["lastmod"] = p.updated_at.date().isoformat()
+        entries.append(entry)
+
+    # vendor storefronts
+    User = get_user_model()
+    vendors = User.objects.filter(role=User.Role.VENDOR, is_active=True).only("id")
+    for v in vendors:
+        entries.append({"loc": f"{base}/store/{v.id}"})
+
     xml = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
-    xml += [f"<url><loc>{u}</loc></url>" for u in urls]
+    for e in entries:
+        if "lastmod" in e:
+            xml.append(f"<url><loc>{e['loc']}</loc><lastmod>{e['lastmod']}</lastmod></url>")
+        else:
+            xml.append(f"<url><loc>{e['loc']}</loc></url>")
     xml.append("</urlset>")
     return HttpResponse("\n".join(xml), content_type="application/xml")
 

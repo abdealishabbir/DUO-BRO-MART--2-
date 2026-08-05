@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { Store, Star, PackageSearch, CalendarDays } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { ProductCard, Pagination } from "./Shop.jsx";
+import Meta from "../../components/Meta.jsx";
 
 const PAGE_SIZE = 20; // matches DEFAULT_PAGINATION_CLASS PAGE_SIZE (config/settings.py)
 
@@ -26,7 +27,7 @@ function NotFound() {
       <Store className="mx-auto h-12 w-12 text-gray-300" />
       <h1 className="mt-4 text-xl font-bold text-gray-900">Shop not found</h1>
       <p className="mt-2 text-sm text-gray-500">
-        This vendor doesn't exist, or their storefront isn't currently available.
+        This vendor doesn&apos;t exist, or their storefront isn&apos;t currently available.
       </p>
       <Link to="/shop" className="mt-5 inline-block rounded-md bg-brand px-6 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark">
         Browse All Products
@@ -80,8 +81,11 @@ export default function VendorStorefront() {
 
   const memberSinceYear = new Date(store.member_since).getFullYear();
 
+  const storeUrl = `${process.env.REACT_APP_FRONTEND_URL || ""}/store/${store.id}`;
+
   return (
     <div className="bg-gray-50">
+      <Meta title={store.shop_name} description={store.shop_description} url={storeUrl} image={store.shop_logo} />
       <div className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-6 sm:flex-row sm:items-center lg:px-8">
           {store.shop_logo ? (
@@ -129,7 +133,7 @@ export default function VendorStorefront() {
         {productsLoading ? (
           <p className="mt-10 text-center text-sm text-gray-400">Loading products...</p>
         ) : products.length === 0 ? (
-          <p className="mt-10 text-center text-sm text-gray-400">This shop hasn't listed any products yet.</p>
+          <p className="mt-10 text-center text-sm text-gray-400">This shop hasn&apos;t listed any products yet.</p>
         ) : (
           <>
             <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">

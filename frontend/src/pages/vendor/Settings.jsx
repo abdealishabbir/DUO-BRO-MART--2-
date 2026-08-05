@@ -194,7 +194,7 @@ export default function VendorSettings() {
 
       <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
         <h3 className="font-bold text-ink">Notifications</h3>
-        <p className="mt-1 text-xs text-gray-400">Preferences shown here aren't saved to your account yet — this is a preview of the upcoming settings.</p>
+        <p className="mt-1 text-xs text-gray-400">Preferences shown here aren&apos;t saved to your account yet — this is a preview of the upcoming settings.</p>
         <div className="mt-3 space-y-3">
           {notifications.map((n) => (
             <div key={n.key} className="flex items-center justify-between gap-4">

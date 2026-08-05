@@ -10,7 +10,7 @@ const STATUS_BADGE = {
   rejected: "bg-red-100 text-red-700",
 };
 
-function NewStockRequestForm({ products, initialProductId, onDone, onCancel }) {
+function NewStockRequestForm({ products, initialProductId, onDone }) {
   const [productId, setProductId] = useState(initialProductId ?? "");
   const [increase, setIncrease] = useState("");
   const [note, setNote] = useState("");

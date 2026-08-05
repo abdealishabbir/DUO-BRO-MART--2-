@@ -6,6 +6,7 @@ import { useCart } from "../../cart/CartContext.jsx";
 import { formatPKR } from "../../lib/currency.js";
 import { useInventorySocket } from "../../lib/useInventorySocket.js";
 import WishlistButton from "../../components/WishlistButton.jsx";
+import Meta from "../../components/Meta.jsx";
 
 // Feeds the vendor Analytics traffic-source breakdown (§6.7/Phase 6+). No
 // UTM parsing, no session tracking — just a coarse bucket from referrer,
@@ -164,8 +165,11 @@ export default function ProductDetail() {
     addItem(product, quantity);
   };
 
+  const pageUrl = `${process.env.REACT_APP_FRONTEND_URL || ""}/product/${product.slug}`;
+
   return (
     <div>
+      <Meta title={product.name} description={product.description} url={pageUrl} image={product.images?.[0]} />
       <div className="mx-auto max-w-7xl px-4 pt-4 text-sm text-gray-500 lg:px-8">
         <Link to="/" className="hover:text-brand">Home</Link> <span className="mx-1">/</span>
         <Link to="/shop" className="hover:text-brand">Shop</Link> <span className="mx-1">/</span>

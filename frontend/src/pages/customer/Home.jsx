@@ -5,6 +5,7 @@ import {
   Laptop, Shirt, Home as HomeIcon, Dumbbell, BookOpen, Sparkles, Gamepad2, Coffee, Star,
 } from "lucide-react";
 import CountdownTimer from "../../components/CountdownTimer.jsx";
+import Meta from "../../components/Meta.jsx";
 import { api } from "../../lib/api.js";
 import { useCart } from "../../cart/CartContext.jsx";
 import { heroSlides as fallbackHeroSlides, promoTiles } from "../../data/homeMockData.js";
@@ -488,6 +489,7 @@ export default function Home() {
 
   return (
     <div>
+      <Meta title="Duo Bro Mart — Shop Pakistan's Marketplace" description="Duo Bro Mart is a Pakistani multi-vendor marketplace — shop electronics, fashion, home goods and more with Cash on Delivery and local payment options." url={`${process.env.REACT_APP_FRONTEND_URL || ""}`} />
       <Hero />
       <PromoTiles />
       <FlashDeals items={deals} />

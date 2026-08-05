@@ -6,8 +6,8 @@ export default {
       colors: {
         // Matched to the ShopNest reference screenshots (see UI_BUILD_TRACKER.md)
         brand: {
-          DEFAULT: "#C2703C",
-          dark: "#A35A2C",
+          DEFAULT: "#9A4A1D",
+          dark: "#703511",
           light: "#E8C9AC",
         },
         gold: {

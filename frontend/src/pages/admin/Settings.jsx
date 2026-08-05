@@ -17,13 +17,13 @@ function Toggle({ checked, onChange }) {
 function RecoveryCodesDisplay({ codes, onDone }) {
   return (
     <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3">
-      <p className="text-xs font-semibold text-amber-800">Save these recovery codes now — they won't be shown again.</p>
+      <p className="text-xs font-semibold text-amber-800">Save these recovery codes now — they won&apos;t be shown again.</p>
       <p className="mt-0.5 text-[10px] text-amber-700">Each works once, if you ever lose access to your authenticator app.</p>
       <div className="mt-2 grid grid-cols-2 gap-1.5 font-mono text-xs text-ink">
         {codes.map((c) => <div key={c} className="rounded bg-white px-2 py-1 text-center">{c}</div>)}
       </div>
       <button onClick={onDone} className="mt-3 rounded-md bg-ink px-3 py-1.5 text-xs font-semibold text-white hover:bg-black">
-        I've saved these
+        I&apos;ve saved these
       </button>
     </div>
   );
@@ -153,7 +153,7 @@ function MFASettingsCard() {
         <div className="mt-1 space-y-3">
           <p className="text-xs text-gray-600">Scan this with Google Authenticator, Authy, or similar:</p>
           {qrDataUri && <img src={qrDataUri} alt="MFA QR code" className="h-40 w-40 rounded-md border border-gray-200" />}
-          <p className="text-[10px] text-gray-400">Can't scan? Enter this key manually: <span className="font-mono">{secret}</span></p>
+          <p className="text-xs text-gray-400">Can&apos;t scan? Enter this key manually: <span className="font-mono">{secret}</span></p>
           <input placeholder="Enter the 6-digit code" className={`${inputClass} text-xs`} value={code} onChange={(e) => setCode(e.target.value)} />
           <div className="flex gap-2">
             <button disabled={busy} onClick={confirmSetup} className="rounded-md bg-ink px-3 py-1.5 text-xs font-semibold text-white hover:bg-black disabled:opacity-60">
@@ -267,7 +267,7 @@ export default function AdminSettings() {
             <label className="block text-xs">
               <span className="mb-1 block font-medium text-gray-700">Hold Period (days after delivery)</span>
               <input type="number" min="0" className={inputClass} value={form.payout_hold_days} onChange={(e) => set("payout_hold_days")(e.target.value)} />
-              <span className="mt-1 block text-[10px] text-gray-400">Covers the return/complaint window before a delivered order's earnings become payout-eligible.</span>
+              <span className="mt-1 block text-[10px] text-gray-400">Covers the return/complaint window before a delivered order&apos;s earnings become payout-eligible.</span>
             </label>
             <label className="block text-xs">
               <span className="mb-1 block font-medium text-gray-700">Payout Cycle (days)</span>

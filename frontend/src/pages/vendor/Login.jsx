@@ -49,7 +49,7 @@ export default function VendorLogin() {
               <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-cream/60 px-3 py-2.5 focus-within:border-brand focus-within:ring-1 focus-within:ring-brand">
                 <Mail className="h-4 w-4 shrink-0 text-gray-400" />
                 <input
-                  type="email" required autoFocus
+                  type="email" required
                   className="w-full bg-transparent text-sm text-ink outline-none placeholder:text-gray-400"
                   placeholder="you@yourstore.pk"
                   value={email} onChange={(e) => setEmail(e.target.value)}

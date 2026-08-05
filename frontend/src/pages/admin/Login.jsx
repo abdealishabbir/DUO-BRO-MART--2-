@@ -75,7 +75,7 @@ export default function AdminLogin() {
                   <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2.5 focus-within:border-brand focus-within:ring-1 focus-within:ring-brand">
                     <Mail className="h-4 w-4 shrink-0 text-gray-500" />
                     <input
-                      type="email" required autoFocus
+                      type="email" required
                       className="w-full bg-transparent text-sm text-white outline-none placeholder:text-gray-500"
                       placeholder="you@duobromart.pk"
                       value={email} onChange={(e) => setEmail(e.target.value)}
@@ -118,7 +118,7 @@ export default function AdminLogin() {
                   <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2.5 focus-within:border-brand focus-within:ring-1 focus-within:ring-brand">
                     <KeyRound className="h-4 w-4 shrink-0 text-gray-500" />
                     <input
-                      required autoFocus
+                      required
                       className="w-full bg-transparent text-sm tracking-widest text-white outline-none placeholder:text-gray-500 placeholder:tracking-normal"
                       placeholder="123456 or xxxx-xxxx"
                       value={code} onChange={(e) => setCode(e.target.value)}

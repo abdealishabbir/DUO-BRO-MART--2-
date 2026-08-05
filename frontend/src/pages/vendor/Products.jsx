@@ -37,7 +37,7 @@ function ToggleSwitch({ checked, onChange, disabled }) {
   );
 }
 
-function ProductForm({ categories, editingProduct, onDone, onCancel }) {
+function ProductForm({ categories, editingProduct, onDone }) {
   const [form, setForm] = useState(
     editingProduct
       ? {
@@ -114,7 +114,7 @@ function ProductForm({ categories, editingProduct, onDone, onCancel }) {
       {!editingProduct && (
         <div className="mt-3 flex items-start gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-800">
           <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          <span>Enter <strong>your</strong> price — Duo Bro Mart's commission is added on top for the customer, you always keep what you set.</span>
+          <span>Enter <strong>your</strong> price — Duo Bro Mart&apos;s commission is added on top for the customer, you always keep what you set.</span>
         </div>
       )}
 
@@ -144,7 +144,7 @@ function ProductForm({ categories, editingProduct, onDone, onCancel }) {
         <FormField label="Custom Category Name *">
           <input
             className={inputClass}
-            placeholder={'e.g. "Electric Vehicles" — used if your product doesn\'t fit any category above'}
+            placeholder="e.g. &quot;Electric Vehicles&quot; — used if your product doesn't fit any category above"
             value={form.customCategory}
             disabled={form.category !== OTHER_CATEGORY}
             onChange={(e) => setForm({ ...form, customCategory: e.target.value })}
@@ -170,23 +170,25 @@ function ProductForm({ categories, editingProduct, onDone, onCancel }) {
 
         <label className="block">
           <span className="mb-1 block text-sm font-medium text-gray-700">Product Images</span>
-          <div
+          <button
+            type="button"
             onClick={() => fileInputRef.current?.click()}
             onDrop={(e) => { e.preventDefault(); addFiles(e.dataTransfer.files); }}
             onDragOver={(e) => e.preventDefault()}
-            className="cursor-pointer rounded-lg border-2 border-dashed border-gray-300 px-4 py-8 text-center hover:border-brand"
+            className="w-full cursor-pointer rounded-lg border-2 border-dashed border-gray-300 px-4 py-8 text-center hover:border-brand"
+            aria-label="Upload product images"
           >
             <Upload className="mx-auto h-5 w-5 text-gray-400" />
             <p className="mt-2 text-sm font-medium text-gray-600">Drop images here or click to upload</p>
             <p className="text-xs text-gray-400">JPG, PNG · Max 5 images · Up to 5MB each</p>
             <input ref={fileInputRef} type="file" accept="image/jpeg,image/png" multiple className="hidden" onChange={(e) => addFiles(e.target.files)} />
-          </div>
+          </button>
           {files.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-2">
               {files.map((f, i) => (
                 <span key={i} className="flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600">
                   {f.name}
-                  <button type="button" onClick={() => setFiles((fs) => fs.filter((_, idx) => idx !== i))}>
+                  <button type="button" onClick={() => setFiles((fs) => fs.filter((_, idx) => idx !== i))} aria-label={`Remove file ${f.name}`}>
                     <X className="h-3 w-3" />
                   </button>
                 </span>
@@ -287,7 +289,7 @@ export default function VendorProducts() {
         <button onClick={closeForm} className="mb-4 flex items-center gap-1 text-sm font-medium text-gray-500 hover:text-ink">
           <ArrowLeft className="h-4 w-4" /> Back to My Products
         </button>
-        <ProductForm categories={categories} editingProduct={editingProduct} onDone={closeForm} onCancel={closeForm} />
+        <ProductForm categories={categories} editingProduct={editingProduct} onDone={closeForm} />
       </div>
     );
   }
@@ -388,7 +390,7 @@ export default function VendorProducts() {
                             <p className="truncate text-xs text-red-500">{p.admin_notes}</p>
                           )}
                           {p.has_category_mismatch && (
-                            <p className="truncate text-xs text-amber-600">Custom category "{p.requested_category_name}" — awaiting admin review</p>
+                            <p className="truncate text-xs text-amber-600">Custom category &quot;{p.requested_category_name}&quot; — awaiting admin review</p>
                           )}
                         </div>
                       </div>

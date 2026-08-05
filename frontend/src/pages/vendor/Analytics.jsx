@@ -122,7 +122,7 @@ export default function VendorAnalytics() {
           </div>
 
           <p className="mt-4 text-xs text-gray-400">
-            Views are logged from real product-detail page visits; traffic source is a best-effort guess from the visitor's referrer, not full UTM tracking.
+            Views are logged from real product-detail page visits; traffic source is a best-effort guess from the visitor&apos;s referrer, not full UTM tracking.
           </p>
         </>
       )}

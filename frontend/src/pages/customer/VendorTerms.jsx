@@ -23,7 +23,7 @@ export default function VendorTerms() {
       <Section number={1} title="Eligibility & Onboarding">
         <p>
           To sell on Duo Bro Mart, you must submit a vendor application with accurate business and
-          contact information. Approval is at Duo Bro Mart's sole discretion. Approved vendors are
+          contact information. Approval is at Duo Bro Mart&apos;s sole discretion. Approved vendors are
           issued account credentials and must change their temporary password on first login.
         </p>
       </Section>
@@ -74,9 +74,9 @@ export default function VendorTerms() {
 
       <Section number={7} title="Returns, Refunds & Disputes">
         <p>
-          You agree to honor Duo Bro Mart's platform-wide returns policy for eligible items sold
+          You agree to honor Duo Bro Mart&apos;s platform-wide returns policy for eligible items sold
           through your store, and to cooperate in good faith with customer disputes escalated by Duo
-          Bro Mart's support team.
+          Bro Mart&apos;s support team.
         </p>
       </Section>
 
@@ -101,7 +101,7 @@ export default function VendorTerms() {
         <p>
           To the maximum extent permitted by law, Duo Bro Mart is not liable for indirect or
           consequential losses arising from platform downtime, payment processing delays, or customer
-          disputes beyond Duo Bro Mart's reasonable control.
+          disputes beyond Duo Bro Mart&apos;s reasonable control.
         </p>
       </Section>
 

@@ -235,7 +235,7 @@ function OrdersTab() {
   if (orders.length === 0) {
     return (
       <div className="max-w-lg">
-        <p className="text-sm text-gray-500">You haven't placed any orders yet.</p>
+        <p className="text-sm text-gray-500">You haven&apos;t placed any orders yet.</p>
         <Link to="/shop" className="mt-2 inline-block text-sm font-medium text-brand hover:underline">
           Start shopping
         </Link>

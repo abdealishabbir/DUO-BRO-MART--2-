@@ -80,14 +80,15 @@ function NewRequestForm({ products, initialProductId, onDone, onCancel }) {
     <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-bold text-ink">New Pricing Request</h3>
-        <button onClick={onCancel} className="text-gray-400 hover:text-ink"><X className="h-5 w-5" /></button>
+        <button type="button" onClick={onCancel} aria-label="Close pricing request form" className="text-gray-400 hover:text-ink">
+          <X className="h-5 w-5" />
+        </button>
       </div>
 
       <div className="mt-3 flex items-start gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-800">
         <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-        <span>Changes only go live once an admin approves them (§6.3) — your product's current price stays as-is until then.</span>
-      </div>
-
+          <span>Changes only go live once an admin approves them (§6.3) — your product&apos;s current price stays as-is until then.</span>
+        </div>
       <form onSubmit={submit} className="mt-5 space-y-4">
         <FormField label="Product *">
           <select className={inputClass} value={form.product} onChange={(e) => setForm({ ...form, product: e.target.value })}>

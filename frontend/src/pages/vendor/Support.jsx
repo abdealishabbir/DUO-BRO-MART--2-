@@ -19,13 +19,13 @@ export default function VendorSupport() {
             </span>
             <p className="mt-3 font-semibold text-ink">{card.title}</p>
             <p className="text-sm text-gray-500">{card.desc}</p>
-            <button disabled className="mt-2 text-sm font-medium text-gray-300" title="Support channels aren't live yet">
+            <button disabled className="mt-2 text-sm font-medium text-gray-300" title="Support channels aren&apos;t live yet">
               {card.cta} →
             </button>
           </div>
         ))}
       </div>
-      <p className="mt-4 text-xs text-gray-400">These channels aren't connected to a real support system yet — for now, reach out through the contact details on your vendor approval email.</p>
+      <p className="mt-4 text-xs text-gray-400">These channels aren&apos;t connected to a real support system yet — for now, reach out through the contact details on your vendor approval email.</p>
     </div>
   );
 }

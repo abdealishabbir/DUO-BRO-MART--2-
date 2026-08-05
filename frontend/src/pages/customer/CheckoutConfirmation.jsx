@@ -131,8 +131,8 @@ export default function CheckoutConfirmation() {
         <div className="mt-3 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
           <span>
-            Collect from nearest courier branch: your area doesn't have door-to-door coverage, so the courier will hold your
-            order at its nearest branch near <strong>{order.shipping_landmark}</strong>. You'll be notified once it arrives there.
+            Collect from nearest courier branch: your area doesn&apos;t have door-to-door coverage, so the courier will hold your
+            order at its nearest branch near <strong>{order.shipping_landmark}</strong>. You&apos;ll be notified once it arrives there.
           </span>
         </div>
       )}

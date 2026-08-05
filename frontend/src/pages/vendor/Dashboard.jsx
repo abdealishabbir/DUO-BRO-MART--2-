@@ -59,7 +59,7 @@ export default function VendorDashboard() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-ink">Welcome back, {user?.name?.split(" ")[0] ?? "there"} 👋</h2>
-          <p className="text-sm text-gray-500">Here's how your store is doing today.</p>
+          <p className="text-sm text-gray-500">Here&apos;s how your store is doing today.</p>
         </div>
         <Link
           to="/vendor/products?new=1"
@@ -72,7 +72,7 @@ export default function VendorDashboard() {
       <div className="mt-4 flex items-start gap-2 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
         <Info className="mt-0.5 h-4 w-4 shrink-0" />
         <p>
-          <strong>Platform fee (10%, provisional):</strong> your product's list price already includes Duo Bro Mart's commission on top of what you set —
+          <strong>Platform fee (10%, provisional):</strong> your product&apos;s list price already includes Duo Bro Mart&apos;s commission on top of what you set —
           you always receive your own base price in full. The exact admin-configurable rate lands with platform Settings.
         </p>
       </div>

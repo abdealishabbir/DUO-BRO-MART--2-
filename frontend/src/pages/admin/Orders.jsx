@@ -201,7 +201,7 @@ export default function AdminOrders() {
 
       <div className="flex items-start gap-2 rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-800">
         <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-        <span>Each row shows Sale Price (what the customer paid) → Commission (platform's cut) → Net to Vendor (transferred to vendor).</span>
+        <span>Each row shows Sale Price (what the customer paid) → Commission (platform&apos;s cut) → Net to Vendor (transferred to vendor).</span>
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">

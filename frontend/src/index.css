@@ -5,3 +5,26 @@
 body {
   @apply bg-gray-50 text-gray-900;
 }
+
+/* Accessibility: skip link styles */
+.skip-to-content {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.skip-to-content:focus,
+.skip-to-content:active {
+  position: fixed;
+  left: 1rem;
+  top: 1rem;
+  width: auto;
+  height: auto;
+  padding: 0.5rem 1rem;
+  background: #111827; /* bg-ink */
+  color: #fff;
+  z-index: 9999;
+  border-radius: 0.375rem;
+}

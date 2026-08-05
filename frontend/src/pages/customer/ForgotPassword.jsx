@@ -26,7 +26,7 @@ export default function ForgotPassword() {
       <div className="mx-auto max-w-sm px-4 py-16 text-center">
         <h1 className="text-2xl font-bold text-gray-900">Check your email</h1>
         <p className="mt-2 text-sm text-gray-500">
-          If an account exists for {email}, we've sent a password reset link. It expires in 30 minutes.
+          If an account exists for {email}, we&apos;ve sent a password reset link. It expires in 30 minutes.
         </p>
         <Link to="/login" className="mt-6 inline-block text-sm text-brand hover:underline">
           Back to sign in
@@ -38,7 +38,7 @@ export default function ForgotPassword() {
   return (
     <div className="mx-auto max-w-sm px-4 py-16">
       <h1 className="text-2xl font-bold text-gray-900">Forgot your password?</h1>
-      <p className="mt-1 text-sm text-gray-500">Enter your email and we'll send you a reset link.</p>
+      <p className="mt-1 text-sm text-gray-500">Enter your email and we&apos;ll send you a reset link.</p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <FormField label="Email">

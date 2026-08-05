@@ -211,7 +211,7 @@ export default function AdminPricing() {
           </table>
         </div>
         <p className="mt-2 text-xs text-gray-400">
-          To change a product's price directly, use the Products page — this table is read-only and reflects the category
+          To change a product&apos;s price directly, use the Products page — this table is read-only and reflects the category
           commission rates above.
         </p>
       </div>

@@ -24,7 +24,8 @@ function PhotoDropzone({ files, onAdd, onRemove, error }) {
 
   return (
     <div>
-      <div
+      <button
+        type="button"
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
         onDragLeave={() => setDragging(false)}
         onDrop={(e) => {
@@ -33,7 +34,7 @@ function PhotoDropzone({ files, onAdd, onRemove, error }) {
           handleFiles(e.dataTransfer.files);
         }}
         onClick={() => inputRef.current?.click()}
-        className={`mt-2 flex cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed p-6 text-center text-xs transition-colors ${
+        className={`mt-2 flex w-full cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed p-6 text-center text-xs transition-colors ${
           dragging ? "border-brand bg-brand/5 text-brand" : "border-gray-300 text-gray-400 hover:border-brand hover:text-brand"
         }`}
       >
@@ -49,7 +50,7 @@ function PhotoDropzone({ files, onAdd, onRemove, error }) {
           className="hidden"
           onChange={(e) => { handleFiles(e.target.files); e.target.value = ""; }}
         />
-      </div>
+      </button>
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
       {files.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">
@@ -155,7 +156,7 @@ function ItemCard({ item, state, onConfirm, onReport }) {
               onClick={() => onConfirm(item.id)}
               className="flex flex-1 items-center justify-center gap-2 rounded-md bg-green-600 py-2 text-sm font-semibold text-white hover:bg-green-700"
             >
-              <ThumbsUp className="h-4 w-4" /> Yes, it's correct
+              <ThumbsUp className="h-4 w-4" /> Yes, it&apos;s correct
             </button>
             <button
               onClick={() => onReport(`show-form-${item.id}`)}
@@ -169,7 +170,7 @@ function ItemCard({ item, state, onConfirm, onReport }) {
 
       {state === "reporting" && (
         <div className="mt-3 border-t border-red-200 pt-3">
-          <p className="flex items-center gap-1 text-sm font-medium text-red-700">We're sorry! Let's file a return request.</p>
+          <p className="flex items-center gap-1 text-sm font-medium text-red-700">We&apos;re sorry! Let&apos;s file a return request.</p>
           <select className={`${inputClass} mt-2`} value={reason} onChange={(e) => setReason(e.target.value)}>
             {COMPLAINT_REASONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
@@ -256,7 +257,7 @@ export default function OrderFeedback() {
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center">
         <p className="text-gray-600">
-          This order isn't awaiting feedback right now — it may not be delivered yet, or you've already submitted feedback for it.
+          This order isn&apos;t awaiting feedback right now — it may not be delivered yet, or you&apos;ve already submitted feedback for it.
         </p>
         <Link to="/account" className="mt-3 inline-block text-sm font-medium text-brand hover:underline">Go to My Orders</Link>
       </div>

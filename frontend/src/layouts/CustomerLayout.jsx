@@ -41,6 +41,9 @@ export default function CustomerLayout() {
 
   return (
     <div className="flex min-h-screen flex-col bg-cream">
+      <a href="#maincontent" className="sr-only focus:not-sr-only inline-block rounded bg-white px-3 py-2 text-sm font-medium text-brand">
+        Skip to main content
+      </a>
       <header className="sticky top-0 z-30 border-b border-gray-200 bg-cream">
         <div className="mx-auto flex max-w-7xl items-center gap-6 px-4 py-3 lg:px-8">
           <Link to="/" className="flex shrink-0 items-center gap-2">
@@ -114,7 +117,7 @@ export default function CustomerLayout() {
         )}
       </header>
 
-      <main className="flex-1">
+      <main id="maincontent" className="flex-1">
         <Outlet />
       </main>
 
@@ -126,7 +129,7 @@ export default function CustomerLayout() {
               <span className="text-lg font-bold text-white">Duo Bro Mart</span>
             </div>
             <p className="mt-3 text-sm text-gray-400">
-              Pakistan's neighborhood marketplace, online. Handpicked everyday items and unique finds from local sellers.
+              Pakistan&apos;s neighborhood marketplace, online. Handpicked everyday items and unique finds from local sellers.
             </p>
           </div>
           <div>

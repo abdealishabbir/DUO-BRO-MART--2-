@@ -33,7 +33,7 @@ export default function Terms() {
         <p>
           You must provide accurate, current information (including a valid Pakistani mobile number)
           when creating an account, and you are responsible for keeping your login credentials
-          confidential. You must be at least 18 years old, or have a parent/guardian's consent, to
+          confidential. You must be at least 18 years old, or have a parent/guardian&apos;s consent, to
           register.
         </p>
       </Section>
@@ -66,7 +66,7 @@ export default function Terms() {
         <p>
           Eligible items may be returned within 7 days of delivery in original, unused condition with
           packaging intact, unless the product listing states otherwise. Refunds are processed to the
-          original payment method or as store credit, at the customer's choice, within a reasonable
+          original payment method or as store credit, at the customer&apos;s choice, within a reasonable
           processing period. Perishable items, personal care products, and custom orders may not be
           eligible for return.
         </p>

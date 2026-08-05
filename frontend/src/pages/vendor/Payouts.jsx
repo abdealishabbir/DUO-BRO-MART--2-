@@ -66,7 +66,7 @@ export default function VendorPayouts() {
             {data.payouts.length === 0 ? (
               <div className="p-10 text-center">
                 <Wallet className="mx-auto h-8 w-8 text-gray-300" />
-                <p className="mt-2 text-sm text-gray-500">No payout batches yet — they'll appear here once your delivered earnings are batched.</p>
+                <p className="mt-2 text-sm text-gray-500">No payout batches yet — they&apos;ll appear here once your delivered earnings are batched.</p>
               </div>
             ) : (
               <table className="w-full text-sm">

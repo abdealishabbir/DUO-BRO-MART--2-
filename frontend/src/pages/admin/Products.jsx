@@ -150,9 +150,9 @@ function CategoryResolutionModal({ product, categories, onResolved, onCancel }) 
       <td colSpan={8} className="p-3">
         <div className="rounded-md border border-amber-200 bg-white p-3">
           <p className="text-xs font-semibold text-amber-800">
-            "{product.name}" doesn't match any existing category — the vendor requested "{product.requested_category_name}".
+            &quot;{product.name}&quot; doesn&apos;t match any existing category — the vendor requested &quot;{product.requested_category_name}&quot;.
           </p>
-          <p className="mt-0.5 text-xs text-gray-500">Resolve this before approving: assign it to an existing category, or add "{product.requested_category_name}" as a new one.</p>
+          <p className="mt-0.5 text-xs text-gray-500">Resolve this before approving: assign it to an existing category, or add &quot;{product.requested_category_name}&quot; as a new one.</p>
 
           <div className="mt-3 flex gap-4 text-xs">
             <label className="flex items-center gap-1.5">

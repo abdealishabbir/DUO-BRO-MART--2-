@@ -1,3 +1,4 @@
+import Meta from "../../components/Meta.jsx";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Truck, Zap, Clock, Plus, ArrowRight } from "lucide-react";
@@ -35,6 +36,11 @@ export default function CheckoutShipping() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const { lines, subtotal } = useCart();
   const { address, setAddress, deliveryMethod, setDeliveryMethod } = useCheckout();
+  const meta = {
+    title: "Shipping Details",
+    description: "Enter shipping information and choose a delivery method for your Duo Bro Mart order.",
+    url: `${process.env.REACT_APP_FRONTEND_URL || ""}/checkout/shipping`,
+  };
   const navigate = useNavigate();
 
   const [savedAddresses, setSavedAddresses] = useState([]);
@@ -115,7 +121,9 @@ export default function CheckoutShipping() {
   };
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
+    <>
+      <Meta {...meta} />
+      <div className="mx-auto max-w-6xl px-4 py-8">
       <CheckoutSteps current={2} />
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
@@ -205,7 +213,7 @@ export default function CheckoutShipping() {
 
                 {form.area_type === "rural" && (
                   <p className="-mt-2 text-xs text-gray-500">
-                    No door-to-door courier coverage here? The courier will deliver to its nearest branch and you'll collect from there — tell us the nearest landmark below.
+                    No door-to-door courier coverage here? The courier will deliver to its nearest branch and you&apos;ll collect from there — tell us the nearest landmark below.
                   </p>
                 )}
 
@@ -270,5 +278,6 @@ export default function CheckoutShipping() {
         <OrderSummarySidebar lines={lines} subtotal={subtotal} shipping={selectedMethod.price} />
       </div>
     </div>
+    </>
   );
 }

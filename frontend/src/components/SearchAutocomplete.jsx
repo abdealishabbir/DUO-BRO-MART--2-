@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Clock, X } from "lucide-react";
+import { Search, Clock } from "lucide-react";
 import { api } from "../lib/api.js";
 import { formatPKR } from "../lib/currency.js";
 
@@ -61,6 +61,7 @@ export default function SearchAutocomplete({ placeholder = "Search for products,
     ? [
         ...results.categories.map((c) => ({ type: "category", ...c })),
         ...results.products.map((p) => ({ type: "product", ...p })),
+        ...(results.categories.length > 0 || results.products.length > 0 ? [{ type: "all", term: query.trim() }] : []),
       ]
     : recent.map((term) => ({ type: "recent", term }));
 
@@ -150,6 +151,7 @@ export default function SearchAutocomplete({ placeholder = "Search for products,
   };
 
   const showDropdown = open && (query.trim().length >= MIN_QUERY_LENGTH || recent.length > 0);
+  const activeDescendant = highlightIndex >= 0 ? `search-autocomplete-option-${highlightIndex}` : undefined;
 
   return (
     <div ref={containerRef} className={`relative w-full ${className}`}>
@@ -164,17 +166,20 @@ export default function SearchAutocomplete({ placeholder = "Search for products,
         aria-label="Search products"
         role="combobox"
         aria-expanded={showDropdown}
+        aria-controls="search-autocomplete-list"
         aria-autocomplete="list"
+        aria-haspopup="listbox"
+        aria-activedescendant={activeDescendant}
         className="w-full rounded-full border border-gray-300 bg-white py-2 pl-9 pr-4 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
       />
 
       {showDropdown && (
-        <div className="absolute left-0 right-0 top-full z-40 mt-2 max-h-96 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
+        <div id="search-autocomplete-list" role="listbox" aria-label="Search suggestions" className="absolute left-0 right-0 top-full z-40 mt-2 max-h-96 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
           {query.trim().length >= MIN_QUERY_LENGTH ? (
             loading ? (
               <p className="px-4 py-3 text-sm text-gray-400">Searching...</p>
             ) : flatItems.length === 0 ? (
-              <p className="px-4 py-3 text-sm text-gray-400">No matches for "{query}"</p>
+              <p className="px-4 py-3 text-sm text-gray-400">No matches for &quot;{query}&quot;</p>
             ) : (
               <>
                 {results.categories.length > 0 && (
@@ -182,6 +187,9 @@ export default function SearchAutocomplete({ placeholder = "Search for products,
                     {results.categories.map((c, i) => (
                       <button
                         key={c.slug}
+                        id={`search-autocomplete-option-${i}`}
+                        role="option"
+                        aria-selected={highlightIndex === i}
                         onMouseDown={() => goToCategory(c)}
                         className={`flex w-full items-center gap-2 px-4 py-2 text-left text-sm ${
                           highlightIndex === i ? "bg-brand/5 text-brand" : "text-gray-700 hover:bg-gray-50"
@@ -200,6 +208,9 @@ export default function SearchAutocomplete({ placeholder = "Search for products,
                       return (
                         <button
                           key={p.id}
+                          id={`search-autocomplete-option-${idx}`}
+                          role="option"
+                          aria-selected={highlightIndex === idx}
                           onMouseDown={() => goToProduct(p)}
                           className={`flex w-full items-center gap-3 px-4 py-2 text-left ${
                             highlightIndex === idx ? "bg-brand/5" : "hover:bg-gray-50"
@@ -221,10 +232,13 @@ export default function SearchAutocomplete({ placeholder = "Search for products,
                   </div>
                 )}
                 <button
+                  id={`search-autocomplete-option-${results.categories.length + results.products.length}`}
+                  role="option"
+                  aria-selected={highlightIndex === results.categories.length + results.products.length}
                   onMouseDown={() => goToShop(query.trim())}
                   className="block w-full border-t border-gray-100 px-4 py-2.5 text-left text-sm font-medium text-brand hover:bg-gray-50"
                 >
-                  See all results for "{query.trim()}"
+                  See all results for &quot;{query.trim()}&quot;
                 </button>
               </>
             )
@@ -239,6 +253,9 @@ export default function SearchAutocomplete({ placeholder = "Search for products,
               {recent.map((term, i) => (
                 <button
                   key={term}
+                  id={`search-autocomplete-option-${i}`}
+                  role="option"
+                  aria-selected={highlightIndex === i}
                   onMouseDown={() => goToShop(term)}
                   className={`flex w-full items-center gap-2 px-4 py-2 text-left text-sm ${
                     highlightIndex === i ? "bg-brand/5 text-brand" : "text-gray-700 hover:bg-gray-50"

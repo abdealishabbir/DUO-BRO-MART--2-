@@ -21,6 +21,9 @@ export default function AdminLayout() {
 
   return (
     <div className="flex min-h-screen">
+      <a href="#maincontent" className="sr-only focus:not-sr-only inline-block rounded bg-white px-3 py-2 text-sm font-medium text-brand">
+        Skip to main content
+      </a>
       <aside className="w-56 shrink-0 border-r border-gray-800 bg-ink">
         <div className="border-b border-white/10 px-4 py-4">
           <p className="text-sm font-bold text-brand">Duo Bro Mart</p>
@@ -49,7 +52,7 @@ export default function AdminLayout() {
           </button>
         </nav>
       </aside>
-      <main className="flex-1 bg-cream">
+      <main id="maincontent" className="flex-1 bg-cream">
         <Outlet />
       </main>
     </div>

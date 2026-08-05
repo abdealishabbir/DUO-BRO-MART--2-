@@ -1,3 +1,4 @@
+import Meta from "../../components/Meta.jsx";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CreditCard, Wallet, Truck, ShieldCheck } from "lucide-react";
@@ -38,6 +39,11 @@ const EMPTY_BILLING = { full_name: "", phone_number: "", province: "sindh", city
 export default function CheckoutPayment() {
   const { lines, subtotal, clearCart } = useCart();
   const { address, deliveryMethod, paymentMethod, setPaymentMethod, placeOrder } = useCheckout();
+  const meta = {
+    title: "Payment",
+    description: "Choose how to pay for your Duo Bro Mart order and complete checkout.",
+    url: `${process.env.REACT_APP_FRONTEND_URL || ""}/checkout/payment`,
+  };
   const navigate = useNavigate();
   const [placing, setPlacing] = useState(false);
   const [couponCode, setCouponCode] = useState("");
@@ -64,6 +70,7 @@ export default function CheckoutPayment() {
   if (lines.length === 0 || !address) return null;
 
   const shipping = DELIVERY_PRICE[deliveryMethod] ?? 0;
+  // meta object already declared above; reuse `meta` variable from module scope
 
   const handlePlaceOrder = async () => {
     setPlacing(true);
@@ -86,6 +93,7 @@ export default function CheckoutPayment() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
+      <Meta {...meta} />
       <CheckoutSteps current={3} />
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
@@ -115,7 +123,7 @@ export default function CheckoutPayment() {
                 <Truck className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
                 <div>
                   <p className="font-medium text-gray-900">Pay when you receive</p>
-                  <p className="text-gray-500">You'll pay in cash to the courier when your order arrives at your address.</p>
+                  <p className="text-gray-500">You&apos;ll pay in cash to the courier when your order arrives at your address.</p>
                 </div>
               </div>
             )}
@@ -146,7 +154,7 @@ export default function CheckoutPayment() {
                   <input type="checkbox" checked={saveCard} onChange={(e) => setSaveCard(e.target.checked)} />
                   Save this card for future purchases
                 </label>
-                <p className="text-xs text-gray-400">Card payments aren't live yet — this is a preview of the upcoming flow.</p>
+                <p className="text-xs text-gray-400">Card payments aren&apos;t live yet — this is a preview of the upcoming flow.</p>
               </div>
             )}
 
@@ -170,7 +178,7 @@ export default function CheckoutPayment() {
                   <button disabled className="rounded-full bg-gray-300 px-6 py-2.5 text-sm font-semibold text-white">
                     Continue with {selectedWallet}
                   </button>
-                  <p className="mt-2 text-xs text-gray-400">{selectedWallet} redirect/OTP integration isn't live yet — this is a preview.</p>
+                  <p className="mt-2 text-xs text-gray-400">{selectedWallet} redirect/OTP integration isn&apos;t live yet — this is a preview.</p>
                 </div>
               </div>
             )}

@@ -111,7 +111,7 @@ export default function AdminPayouts() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-ink">Payouts</h2>
-          <p className="text-sm text-gray-500">Vendor earnings ledger — no live bank transfer is wired up, so batches are marked paid manually once you've actually sent the money.</p>
+          <p className="text-sm text-gray-500">Vendor earnings ledger — no live bank transfer is wired up, so batches are marked paid manually once you&apos;ve actually sent the money.</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={load} className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:border-brand hover:text-brand">
@@ -155,7 +155,7 @@ export default function AdminPayouts() {
           <p className="p-6 text-sm text-gray-400">Loading...</p>
         ) : payouts.length === 0 ? (
           <p className="p-10 text-center text-sm text-gray-500">
-            No payout batches yet. Click "Generate Payouts" once vendors have delivered orders past the hold period.
+            No payout batches yet. Click &quot;Generate Payouts&quot; once vendors have delivered orders past the hold period.
           </p>
         ) : (
           <table className="w-full text-sm">

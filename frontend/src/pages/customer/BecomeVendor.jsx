@@ -146,7 +146,7 @@ export default function BecomeVendor() {
         <CheckCircle2 className="mx-auto h-12 w-12 text-green-600" />
         <h1 className="mt-4 text-2xl font-bold text-gray-900">Application received</h1>
         <p className="mt-2 text-sm text-gray-600">
-          You'll be verified — including confirming your bank account matches your CNIC — and receive vendor panel login access within <strong>4-5 business days</strong>. We'll email {form.email} once your account is approved.
+          You&apos;ll be verified — including confirming your bank account matches your CNIC — and receive vendor panel login access within <strong>4-5 business days</strong>. We&apos;ll email {form.email} once your account is approved.
         </p>
         <Link to="/" className="mt-6 inline-block rounded-md bg-brand px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark">
           Back to Home
@@ -257,7 +257,7 @@ export default function BecomeVendor() {
               </FormField>
               {cnicMismatch && (
                 <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
-                  This doesn't match the CNIC number you entered above. Your application will be rejected if this isn't fixed before submitting.
+                  This doesn&apos;t match the CNIC number you entered above. Your application will be rejected if this isn&apos;t fixed before submitting.
                 </p>
               )}
             </div>

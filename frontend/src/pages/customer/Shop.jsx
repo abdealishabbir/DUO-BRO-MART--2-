@@ -5,6 +5,7 @@ import { api } from "../../lib/api.js";
 import { useCart } from "../../cart/CartContext.jsx";
 import { formatPKR } from "../../lib/currency.js";
 import WishlistButton from "../../components/WishlistButton.jsx";
+import Meta from "../../components/Meta.jsx";
 
 const DEFAULT_FILTERS = { categories: [], brands: [], minPrice: "", maxPrice: "", dealsOnly: false, minRating: "", search: "" };
 
@@ -326,6 +327,7 @@ export default function Shop() {
 
   return (
     <div>
+      <Meta title="Shop — Duo Bro Mart" description="Browse products across categories on Duo Bro Mart — filter, sort, and find best deals." url={`${process.env.REACT_APP_FRONTEND_URL || ""}/shop`} />
       <div className="mx-auto max-w-7xl px-4 pt-4 text-sm text-gray-500 lg:px-8">
         <Link to="/" className="hover:text-brand">Home</Link> <span className="mx-1">/</span> <span className="text-gray-900">Shop</span>
       </div>
@@ -333,7 +335,7 @@ export default function Shop() {
       {filters.search && (
         <div className="mx-auto flex max-w-7xl items-center gap-2 px-4 pt-3 lg:px-8">
           <p className="text-sm text-gray-600">
-            Search results for <strong className="text-gray-900">"{filters.search}"</strong>
+            Search results for <strong className="text-gray-900">&quot;{filters.search}&quot;</strong>
           </p>
           <button
             onClick={() => updateFilters((f) => ({ ...f, search: "" }))}

@@ -205,7 +205,7 @@ function RecordPaymentForm({ bannerId, onRecorded }) {
   return (
     <form onSubmit={submit} className="flex items-center gap-1">
       <input
-        type="number" min={1} required autoFocus
+        type="number" min={1} required
         className="w-20 rounded border border-gray-300 px-1.5 py-0.5 text-xs"
         value={amount} onChange={(e) => setAmount(e.target.value)}
       />

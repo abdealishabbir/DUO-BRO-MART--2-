@@ -9,6 +9,7 @@ Endpoint map:
 
   Vendor:   GET  /api/orders/vendor/                (orders containing this vendor's products)
             GET  /api/orders/vendor/payouts/         (§6.7/Phase 6+ payout ledger: balance + history)
+            GET  /api/orders/vendor/payouts/export/  (CSV download of vendor payout history)
 
   Admin:    GET   /api/orders/admin/
             PATCH /api/orders/admin/<id>/            (status/courier/admin_notes)
@@ -17,13 +18,17 @@ Endpoint map:
             GET   /api/orders/admin/payouts/           (list every payout batch)
             POST  /api/orders/admin/payouts/generate/  (batch-generate eligible payouts)
             POST  /api/orders/admin/payouts/<id>/mark-paid/
+            GET   /api/orders/admin/export/orders/    (CSV of all orders)
+            GET   /api/orders/admin/export/payouts/   (CSV of all payout batches)
 """
 
 from datetime import timedelta
 from decimal import Decimal
+import csv
 
 from django.db import IntegrityError, transaction
 from django.db.models import F
+from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
@@ -413,3 +418,166 @@ class AdminPayoutViewSet(viewsets.ReadOnlyModelViewSet):
         payout.save(update_fields=["status", "reference", "admin_notes", "paid_at"])
         log_admin_action(request.user, "payout.marked_paid", payout, details=f"Rs. {payout.total_amount} — ref: {payout.reference}")
         return Response(PayoutSerializer(payout, context={"request": request}).data)
+
+
+# ---------------------------------------------------------------------------
+# CSV export views
+# ---------------------------------------------------------------------------
+
+def _csv_response(filename):
+    """Returns an HttpResponse pre-configured for CSV download."""
+    resp = HttpResponse(content_type="text/csv; charset=utf-8")
+    resp["Content-Disposition"] = f'attachment; filename="{filename}"'
+    # BOM so Excel on Windows opens UTF-8 CSVs correctly without
+    # needing an import wizard — harmless for every other consumer.
+    resp.write("\ufeff")
+    return resp
+
+
+class AdminOrdersExportView(APIView):
+    """
+    GET /api/orders/admin/export/orders/
+    Download every order (optionally filtered by ?status=, ?from=YYYY-MM-DD,
+    ?to=YYYY-MM-DD) as a CSV — one row per order, tab-separated product list
+    in the Items column rather than one row per item, so the spreadsheet is
+    readable without a pivot table.
+    """
+
+    permission_classes = [permissions.IsAuthenticated, IsAdminRole]
+
+    def get(self, request):
+        qs = Order.objects.prefetch_related("items").order_by("-created_at")
+
+        status_filter = request.query_params.get("status")
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+
+        from_date = request.query_params.get("from")
+        to_date = request.query_params.get("to")
+        if from_date:
+            qs = qs.filter(created_at__date__gte=from_date)
+        if to_date:
+            qs = qs.filter(created_at__date__lte=to_date)
+
+        resp = _csv_response(f"orders_{timezone.now().strftime('%Y%m%d')}.csv")
+        writer = csv.writer(resp)
+        writer.writerow([
+            "Order Code", "Date", "Status", "Payment Method",
+            "Customer Name", "Customer Email", "Customer Phone",
+            "Province", "City", "Address", "Rural",
+            "Items", "Subtotal (PKR)", "Discount (PKR)", "Shipping (PKR)", "Total (PKR)",
+            "Coupon Code",
+        ])
+
+        for order in qs:
+            items_summary = " | ".join(
+                f"{i.product_name} x{i.quantity} @ Rs.{i.unit_price}"
+                for i in order.items.all()
+            )
+            writer.writerow([
+                order.order_code,
+                order.created_at.strftime("%Y-%m-%d %H:%M"),
+                order.status,
+                order.payment_method,
+                order.shipping_full_name,
+                order.shipping_email,
+                order.shipping_phone_number,
+                order.shipping_province,
+                order.shipping_city,
+                order.shipping_address_line,
+                "Yes" if order.shipping_is_rural else "No",
+                items_summary,
+                order.subtotal,
+                order.discount_amount,
+                order.shipping_fee,
+                order.total,
+                order.coupon.code if order.coupon else "",
+            ])
+        return resp
+
+
+class AdminPayoutsExportView(APIView):
+    """
+    GET /api/orders/admin/export/payouts/
+    Download every payout batch as CSV — one row per batch, line items
+    as a summary count/total rather than expanding every order (the
+    admin can drill into individual batches in the UI if needed).
+    """
+
+    permission_classes = [permissions.IsAuthenticated, IsAdminRole]
+
+    def get(self, request):
+        qs = (
+            Payout.objects.select_related("vendor")
+            .prefetch_related("items__order_item__order")
+            .order_by("-created_at")
+        )
+
+        status_filter = request.query_params.get("status")
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+
+        resp = _csv_response(f"payouts_{timezone.now().strftime('%Y%m%d')}.csv")
+        writer = csv.writer(resp)
+        writer.writerow([
+            "Payout ID", "Vendor", "Vendor Email",
+            "Period Start", "Period End",
+            "Status", "Total Amount (PKR)", "Order Count",
+            "Reference", "Paid At", "Admin Notes", "Created At",
+        ])
+
+        for payout in qs:
+            writer.writerow([
+                payout.id,
+                f"{payout.vendor.first_name} {payout.vendor.last_name}".strip() or payout.vendor.username,
+                payout.vendor.email,
+                payout.period_start,
+                payout.period_end,
+                payout.status,
+                payout.total_amount,
+                payout.items.count(),
+                payout.reference or "",
+                payout.paid_at.strftime("%Y-%m-%d %H:%M") if payout.paid_at else "",
+                payout.admin_notes or "",
+                payout.created_at.strftime("%Y-%m-%d %H:%M"),
+            ])
+        return resp
+
+
+class VendorPayoutsExportView(APIView):
+    """
+    GET /api/orders/vendor/payouts/export/
+    A vendor downloads their own payout history as CSV — same data
+    VendorPayoutsView returns, formatted for a spreadsheet.
+    """
+
+    permission_classes = [permissions.IsAuthenticated, IsVendorRole]
+
+    def get(self, request):
+        qs = (
+            Payout.objects.filter(vendor=request.user)
+            .prefetch_related("items")
+            .order_by("-created_at")
+        )
+
+        resp = _csv_response(f"my_payouts_{timezone.now().strftime('%Y%m%d')}.csv")
+        writer = csv.writer(resp)
+        writer.writerow([
+            "Payout ID", "Period Start", "Period End",
+            "Status", "Total Amount (PKR)", "Order Count",
+            "Reference", "Paid At", "Created At",
+        ])
+
+        for payout in qs:
+            writer.writerow([
+                payout.id,
+                payout.period_start,
+                payout.period_end,
+                payout.status,
+                payout.total_amount,
+                payout.items.count(),
+                payout.reference or "",
+                payout.paid_at.strftime("%Y-%m-%d %H:%M") if payout.paid_at else "",
+                payout.created_at.strftime("%Y-%m-%d %H:%M"),
+            ])
+        return resp

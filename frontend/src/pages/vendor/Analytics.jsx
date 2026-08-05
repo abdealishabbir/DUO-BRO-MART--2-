@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { RefreshCw, Eye, ShoppingBag, TrendingUp, Percent } from "lucide-react";
+import { RefreshCw, Eye, ShoppingBag, TrendingUp, Percent, Download } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
 const RANGES = [
   { value: "7d", label: "7 Days" },
@@ -58,6 +60,13 @@ export default function VendorAnalytics() {
           <button onClick={load} className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:border-brand hover:text-brand">
             <RefreshCw className="h-4 w-4" />
           </button>
+          <a
+            href={`${API_BASE}/products/vendor/analytics/export/?range=${range}`}
+            download
+            className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:border-brand hover:text-brand"
+          >
+            <Download className="h-4 w-4" /> Export CSV
+          </a>
         </div>
       </div>
 

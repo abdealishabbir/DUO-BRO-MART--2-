@@ -1,8 +1,10 @@
 import { useEffect, Fragment, useState } from "react";
-import { RefreshCw, Wallet } from "lucide-react";
+import { RefreshCw, Wallet, Download } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
 import { inputClass } from "../../components/FormField.jsx";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
 const STATUS_STYLES = {
   pending: "bg-amber-100 text-amber-700",
@@ -114,6 +116,13 @@ export default function AdminPayouts() {
           <p className="text-sm text-gray-500">Vendor earnings ledger — no live bank transfer is wired up, so batches are marked paid manually once you&apos;ve actually sent the money.</p>
         </div>
         <div className="flex items-center gap-2">
+          <a
+            href={`${API_BASE}/orders/admin/export/payouts/`}
+            download
+            className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:border-brand hover:text-brand"
+          >
+            <Download className="h-4 w-4" /> Export CSV
+          </a>
           <button onClick={load} className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:border-brand hover:text-brand">
             <RefreshCw className="h-4 w-4" /> Refresh
           </button>

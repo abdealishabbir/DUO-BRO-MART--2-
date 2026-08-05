@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { RefreshCw, Wallet, Clock } from "lucide-react";
+import { RefreshCw, Wallet, Clock, Download } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
 const STATUS_STYLES = {
   pending: "bg-amber-100 text-amber-700",
@@ -29,9 +31,18 @@ export default function VendorPayouts() {
           <h2 className="text-xl font-bold text-ink">Payouts</h2>
           <p className="text-sm text-gray-500">Your earnings from delivered orders, and every payout batch sent to you.</p>
         </div>
-        <button onClick={load} className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:border-brand hover:text-brand">
-          <RefreshCw className="h-4 w-4" /> Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <a
+            href={`${API_BASE}/orders/vendor/payouts/export/`}
+            download
+            className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:border-brand hover:text-brand"
+          >
+            <Download className="h-4 w-4" /> Export CSV
+          </a>
+          <button onClick={load} className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:border-brand hover:text-brand">
+            <RefreshCw className="h-4 w-4" /> Refresh
+          </button>
+        </div>
       </div>
 
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}

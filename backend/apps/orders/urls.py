@@ -14,8 +14,11 @@ urlpatterns = [
     path("cancel/", views.OrderCancelView.as_view(), name="order-cancel"),
     path("vendor/", views.VendorOrdersView.as_view(), name="vendor-orders"),
     path("vendor/payouts/", views.VendorPayoutsView.as_view(), name="vendor-payouts"),
+    path("vendor/payouts/export/", views.VendorPayoutsExportView.as_view(), name="vendor-payouts-export"),
     path("admin/", views.AdminOrdersView.as_view(), name="admin-orders"),
     path("admin/dashboard/", views.AdminDashboardView.as_view(), name="admin-dashboard"),
     path("admin/<int:pk>/", views.AdminOrderUpdateView.as_view(), name="admin-order-update"),
+    path("admin/export/orders/", views.AdminOrdersExportView.as_view(), name="admin-orders-export"),
+    path("admin/export/payouts/", views.AdminPayoutsExportView.as_view(), name="admin-payouts-export"),
     path("", include(router.urls)),
 ]

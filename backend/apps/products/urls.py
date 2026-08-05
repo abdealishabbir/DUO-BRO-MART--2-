@@ -27,6 +27,7 @@ urlpatterns = [
     path("search-suggestions/", views.SearchSuggestionsView.as_view(), name="search-suggestions"),
     path("", include(router.urls)),
     path("vendor/analytics/", views.VendorAnalyticsView.as_view(), name="vendor-analytics"),
+    path("vendor/analytics/export/", views.VendorAnalyticsExportView.as_view(), name="vendor-analytics-export"),
     path("vendor/", include(vendor_router.urls)),
     path("admin/commission-rates/", views.AdminCommissionRateView.as_view(), name="admin-commission-rates"),
     path("admin/pricing/", views.AdminPricingView.as_view(), name="admin-pricing"),

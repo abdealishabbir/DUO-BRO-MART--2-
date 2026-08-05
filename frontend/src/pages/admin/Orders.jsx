@@ -1,8 +1,10 @@
 import { useEffect, Fragment, useState } from "react";
-import { RefreshCw, Search, Info } from "lucide-react";
+import { RefreshCw, Search, Info, Download } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
 import { inputClass } from "../../components/FormField.jsx";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
 const STATUS_TABS = [
   { value: "", label: "All" },
@@ -166,9 +168,18 @@ export default function AdminOrders() {
     <div className="space-y-5 p-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-900">Orders</h1>
-        <button onClick={load} className="flex items-center gap-1 text-sm text-gray-500 hover:text-brand">
-          <RefreshCw className="h-4 w-4" /> Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <a
+            href={`${API_BASE}/orders/admin/export/orders/${statusFilter ? `?status=${statusFilter}` : ""}`}
+            download
+            className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:border-brand hover:text-brand"
+          >
+            <Download className="h-4 w-4" /> Export CSV
+          </a>
+          <button onClick={load} className="flex items-center gap-1 text-sm text-gray-500 hover:text-brand">
+            <RefreshCw className="h-4 w-4" /> Refresh
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">

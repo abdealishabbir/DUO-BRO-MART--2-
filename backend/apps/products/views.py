@@ -367,6 +367,83 @@ class VendorAnalyticsView(APIView):
         })
 
 
+class VendorAnalyticsExportView(APIView):
+    """
+    GET /api/products/vendor/analytics/export/?range=30d
+    Downloads the vendor's top-product analytics as CSV for the selected
+    date range — same data the Analytics page already shows, just in a
+    spreadsheet-friendly format.
+    """
+
+    permission_classes = [permissions.IsAuthenticated, IsVendorRole]
+
+    RANGE_DAYS = {"7d": 7, "30d": 30, "90d": 90}
+
+    def get(self, request):
+        import csv
+        from django.http import HttpResponse
+        from django.utils import timezone as tz
+        from apps.orders.models import Order, OrderItem
+
+        days = self.RANGE_DAYS.get(request.query_params.get("range"), 30)
+        since = tz.now() - timedelta(days=days)
+        vendor = request.user
+
+        items = (
+            OrderItem.objects.filter(vendor=vendor, order__created_at__gte=since)
+            .exclude(order__status=Order.Status.CANCELLED)
+            .select_related("order")
+        )
+
+        # Aggregate per product
+        product_rows = {}
+        for item in items:
+            row = product_rows.setdefault(item.product_name, {
+                "product": item.product_name,
+                "units_sold": 0,
+                "gross_revenue_pkr": Decimal("0.00"),
+                "net_to_vendor_pkr": Decimal("0.00"),
+                "orders": set(),
+            })
+            row["units_sold"] += item.quantity
+            row["gross_revenue_pkr"] += item.line_total
+            row["net_to_vendor_pkr"] += item.net_to_vendor
+            row["orders"].add(item.order_id)
+
+        resp = HttpResponse(content_type="text/csv; charset=utf-8")
+        resp["Content-Disposition"] = f'attachment; filename="analytics_{days}d_{tz.now().strftime("%Y%m%d")}.csv"'
+        resp.write("\ufeff")
+
+        writer = csv.writer(resp)
+        writer.writerow([
+            f"Analytics: last {days} days",
+            f"Vendor: {vendor.first_name} {vendor.last_name}".strip() or vendor.username,
+            f"Exported: {tz.now().strftime('%Y-%m-%d %H:%M')}",
+        ])
+        writer.writerow([])
+        writer.writerow(["Product", "Units Sold", "Orders", "Gross Revenue (PKR)", "Net to Vendor (PKR)"])
+
+        for row in sorted(product_rows.values(), key=lambda r: r["net_to_vendor_pkr"], reverse=True):
+            writer.writerow([
+                row["product"],
+                row["units_sold"],
+                len(row["orders"]),
+                row["gross_revenue_pkr"],
+                row["net_to_vendor_pkr"],
+            ])
+
+        # Summary row
+        writer.writerow([])
+        writer.writerow([
+            "TOTAL",
+            sum(r["units_sold"] for r in product_rows.values()),
+            len({oid for r in product_rows.values() for oid in r["orders"]}),
+            sum(r["gross_revenue_pkr"] for r in product_rows.values()),
+            sum(r["net_to_vendor_pkr"] for r in product_rows.values()),
+        ])
+        return resp
+
+
 class VendorProductViewSet(ModelViewSet):
     """A vendor's own product catalog — create, edit, submit for review,
     upload images. No delete once submitted (see destroy() below)."""

@@ -548,6 +548,128 @@ class AdminDashboardTests(OrdersTestBase):
         self.assertEqual(resp.data["pending_vendors"], 1)
 
 
+class AdminAnalyticsTests(OrdersTestBase):
+    """Platform-wide analytics (§Phase 8 date-range work) — preset ranges,
+    custom ranges, top products/vendors, and the CSV export."""
+
+    def _place_order(self, product, quantity=1):
+        return self.client.post(
+            reverse("order-create"),
+            {**VALID_SHIPPING, "items": [{"product": product.id, "quantity": quantity}]},
+            format="json",
+        )
+
+    def test_non_admin_cannot_access_analytics(self):
+        self.login_as(self.vendor)
+        resp = self.client.get(reverse("admin-analytics"))
+        self.assertEqual(resp.status_code, 403)
+
+    def test_default_range_reports_revenue_and_commission(self):
+        product = self.make_product(base_price=Decimal("1000.00"))
+        self._place_order(product, quantity=2)
+
+        self.login_as(self.admin)
+        resp = self.client.get(reverse("admin-analytics"))
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertEqual(resp.data["range_days"], 30)
+        self.assertEqual(Decimal(resp.data["platform_revenue"]), Decimal("2200.00"))
+        self.assertEqual(Decimal(resp.data["platform_commission"]), Decimal("200.00"))
+        self.assertEqual(resp.data["units_sold"], 2)
+        self.assertEqual(resp.data["order_count"], 1)
+
+    def test_cancelled_orders_excluded(self):
+        product = self.make_product(base_price=Decimal("1000.00"))
+        create_resp = self._place_order(product)
+        order_id = create_resp.data["id"]
+
+        self.login_as(self.admin)
+        self.client.patch(reverse("admin-order-update", args=[order_id]), {"status": "cancelled"}, format="json")
+
+        resp = self.client.get(reverse("admin-analytics"))
+        self.assertEqual(Decimal(resp.data["platform_revenue"]), Decimal("0.00"))
+
+    def test_custom_range_filters_correctly(self):
+        from django.utils import timezone
+
+        product = self.make_product(base_price=Decimal("1000.00"))
+        self._place_order(product)
+        order = Order.objects.first()
+        order.created_at = timezone.now() - timedelta(days=60)
+        order.save(update_fields=["created_at"])
+
+        self.login_as(self.admin)
+        # 30d preset should miss it (order is 60 days old)
+        resp = self.client.get(reverse("admin-analytics"), {"range": "30d"})
+        self.assertEqual(Decimal(resp.data["platform_revenue"]), Decimal("0.00"))
+
+        # A custom range spanning the order's actual date should catch it
+        from_date = (timezone.now() - timedelta(days=65)).date().isoformat()
+        to_date = (timezone.now() - timedelta(days=55)).date().isoformat()
+        resp = self.client.get(reverse("admin-analytics"), {"from": from_date, "to": to_date})
+        self.assertEqual(Decimal(resp.data["platform_revenue"]), Decimal("1100.00"))
+
+    def test_invalid_custom_range_rejected(self):
+        self.login_as(self.admin)
+        resp = self.client.get(reverse("admin-analytics"), {"from": "2026-05-01", "to": "2026-04-01"})
+        self.assertEqual(resp.status_code, 400)
+
+    def test_top_vendors_and_top_products(self):
+        product_a = self.make_product(vendor=self.vendor, name="Vendor A Item", base_price=Decimal("1000.00"))
+        product_b = self.make_product(vendor=self.other_vendor, name="Vendor B Item", base_price=Decimal("500.00"))
+        self._place_order(product_a, quantity=3)
+        self._place_order(product_b, quantity=1)
+
+        self.login_as(self.admin)
+        resp = self.client.get(reverse("admin-analytics"))
+        self.assertEqual(resp.data["top_products"][0]["name"], "Vendor A Item")
+        vendor_names = [v["name"] for v in resp.data["top_vendors"]]
+        self.assertEqual(len(vendor_names), 2)
+
+    def test_export_csv_downloads_with_preset_range(self):
+        product = self.make_product(base_price=Decimal("1000.00"))
+        self._place_order(product, quantity=2)
+
+        self.login_as(self.admin)
+        resp = self.client.get(reverse("admin-analytics-export"), {"range": "30d"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp["Content-Type"], "text/csv; charset=utf-8")
+        body = resp.content.decode("utf-8-sig")
+        self.assertIn("Vendor", body)
+        self.assertIn("Test Product", body)
+
+    def test_export_csv_downloads_with_custom_range(self):
+        from django.utils import timezone
+
+        product = self.make_product(base_price=Decimal("1000.00"))
+        self._place_order(product, quantity=1)
+
+        self.login_as(self.admin)
+        # Use localdate() (Asia/Karachi), matching what make_aware() in the
+        # view assumes for a bare from/to date — timezone.now().date() would
+        # give the UTC date instead, which can be a different calendar day
+        # near the Karachi midnight boundary and wrongly exclude the order.
+        today = timezone.localdate()
+        from_date = (today - timedelta(days=1)).isoformat()
+        to_date = today.isoformat()
+        resp = self.client.get(reverse("admin-analytics-export"), {"from": from_date, "to": to_date})
+        self.assertEqual(resp.status_code, 200)
+        body = resp.content.decode("utf-8-sig")
+        self.assertIn("Test Product", body)
+
+    def test_conversion_rate_uses_product_views(self):
+        from apps.products.models import ProductView
+
+        product = self.make_product(base_price=Decimal("1000.00"))
+        ProductView.objects.create(product=product, source=ProductView.Source.DIRECT)
+        ProductView.objects.create(product=product, source=ProductView.Source.SEARCH)
+        self._place_order(product)
+
+        self.login_as(self.admin)
+        resp = self.client.get(reverse("admin-analytics"))
+        self.assertEqual(resp.data["total_views"], 2)
+        self.assertEqual(resp.data["conversion_rate"], 50.0)
+
+
 class PlatformSettingsIntegrationTests(OrdersTestBase):
     """§6.7: free-shipping threshold and payment gateway toggles actually affect checkout."""
 

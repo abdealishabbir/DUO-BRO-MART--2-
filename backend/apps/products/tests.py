@@ -846,6 +846,82 @@ class VendorAnalyticsTests(ProductsTestBase):
         self.assertEqual(resp.data["total_views"], 1)
 
 
+class VendorAnalyticsExportTests(ProductsTestBase):
+    """CSV export for vendor analytics — no coverage existed before, which
+    is exactly how a NameError (missing `timedelta` import on the preset-
+    range path) shipped undetected. Covers both the preset-range and
+    custom-range branches so a regression like that can't slip through
+    silently again."""
+
+    def _make_order(self, product, quantity=1):
+        from decimal import Decimal
+        from apps.orders.models import Order, OrderItem
+
+        order = Order.objects.create(
+            order_code=f"DBM-EXPORT-{product.id}",
+            shipping_full_name="Buyer", shipping_phone_number="03001234567", shipping_email="b@example.com",
+            shipping_province="sindh", shipping_city="Karachi", shipping_address_line="Street 1",
+            subtotal=product.selling_price * quantity, shipping_fee=Decimal("0.00"),
+            total=product.selling_price * quantity, status=Order.Status.DELIVERED,
+        )
+        OrderItem.objects.create(
+            order=order, product=product, vendor=product.vendor,
+            product_name=product.name, product_slug=product.slug,
+            quantity=quantity, unit_price=product.selling_price, unit_base_price=product.base_price,
+        )
+        return order
+
+    def test_export_with_preset_range_does_not_crash(self):
+        # This is the exact path that raised NameError: timedelta not
+        # imported — ?range=30d (or the default, no params at all).
+        product = self.make_product(status=Product.Status.APPROVED, is_active=True)
+        self._make_order(product, quantity=2)
+
+        self.login_as(self.vendor)
+        resp = self.client.get(reverse("vendor-analytics-export"), {"range": "30d"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp["Content-Type"], "text/csv; charset=utf-8")
+        body = resp.content.decode("utf-8-sig")
+        self.assertIn("Test Product", body)
+
+    def test_export_with_no_params_uses_default_range(self):
+        product = self.make_product(status=Product.Status.APPROVED, is_active=True)
+        self._make_order(product)
+
+        self.login_as(self.vendor)
+        resp = self.client.get(reverse("vendor-analytics-export"))
+        self.assertEqual(resp.status_code, 200)
+
+    def test_export_with_custom_range(self):
+        from django.utils import timezone
+        from datetime import timedelta
+
+        product = self.make_product(status=Product.Status.APPROVED, is_active=True)
+        self._make_order(product)
+
+        self.login_as(self.vendor)
+        today = timezone.localdate()
+        resp = self.client.get(reverse("vendor-analytics-export"), {
+            "from": (today - timedelta(days=1)).isoformat(),
+            "to": today.isoformat(),
+        })
+        self.assertEqual(resp.status_code, 200)
+        body = resp.content.decode("utf-8-sig")
+        self.assertIn("Test Product", body)
+
+    def test_other_vendors_data_not_included(self):
+        my_product = self.make_product(vendor=self.vendor, status=Product.Status.APPROVED, is_active=True, name="Mine")
+        other_product = self.make_product(vendor=self.other_vendor, status=Product.Status.APPROVED, is_active=True, name="Theirs", sku="OTHER-SKU")
+        self._make_order(my_product)
+        self._make_order(other_product)
+
+        self.login_as(self.vendor)
+        resp = self.client.get(reverse("vendor-analytics-export"), {"range": "30d"})
+        body = resp.content.decode("utf-8-sig")
+        self.assertIn("Mine", body)
+        self.assertNotIn("Theirs", body)
+
+
 class CatalogRatingFilterSortTests(ProductsTestBase):
     """Shop's rating filter/sort — real average_rating/rating_count data
     now exists (§7.3 Feedback), this was just never wired into the

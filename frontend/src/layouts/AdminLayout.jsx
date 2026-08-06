@@ -4,6 +4,7 @@ import { useAuth } from "../auth/AuthContext.jsx";
 // Full 7-section admin nav (§6.1-§6.7), all built out as of Phase 6.
 const NAV_LINKS = [
   { to: "/admin/dashboard", label: "Dashboard" },
+  { to: "/admin/analytics", label: "Analytics" },
   { to: "/admin/products", label: "Products" },
   { to: "/admin/banners", label: "Banners & Promotion" },
   { to: "/admin/orders", label: "Orders" },

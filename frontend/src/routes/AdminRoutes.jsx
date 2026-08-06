@@ -3,6 +3,7 @@ import AdminLayout from "../layouts/AdminLayout.jsx";
 import RoleRoute from "./RoleRoute.jsx";
 import AdminLogin from "../pages/admin/Login.jsx";
 import AdminDashboard from "../pages/admin/Dashboard.jsx";
+import AdminAnalytics from "../pages/admin/Analytics.jsx";
 import AdminProducts from "../pages/admin/Products.jsx";
 import AdminBannersPromotion from "../pages/admin/BannersPromotion.jsx";
 import AdminOrders from "../pages/admin/Orders.jsx";
@@ -26,6 +27,7 @@ export default function AdminRoutes() {
       <Route element={<RoleRoute allowedRoles={["admin"]} redirectTo="/admin/login" />}>
         <Route element={<AdminLayout />}>
           <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="analytics" element={<AdminAnalytics />} />
           <Route path="products" element={<AdminProducts />} />
           <Route path="banners" element={<AdminBannersPromotion />} />
           <Route path="orders" element={<AdminOrders />} />

@@ -402,6 +402,7 @@ class VendorAnalyticsExportView(APIView):
 
     def get(self, request):
         import csv
+        from datetime import timedelta
         from django.http import HttpResponse
         from django.utils import timezone as tz
         from django.utils.dateparse import parse_date

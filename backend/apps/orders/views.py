@@ -14,6 +14,8 @@ Endpoint map:
   Admin:    GET   /api/orders/admin/
             PATCH /api/orders/admin/<id>/            (status/courier/admin_notes)
             GET   /api/orders/admin/dashboard/        (§6.1 KPI dashboard)
+            GET   /api/orders/admin/analytics/        (date-range platform analytics)
+            GET   /api/orders/admin/analytics/export/ (CSV of platform analytics)
             /api/orders/admin/coupons/                (§8.3 CRUD)
             GET   /api/orders/admin/payouts/           (list every payout batch)
             POST  /api/orders/admin/payouts/generate/  (batch-generate eligible payouts)
@@ -418,6 +420,196 @@ class AdminPayoutViewSet(viewsets.ReadOnlyModelViewSet):
         payout.save(update_fields=["status", "reference", "admin_notes", "paid_at"])
         log_admin_action(request.user, "payout.marked_paid", payout, details=f"Rs. {payout.total_amount} — ref: {payout.reference}")
         return Response(PayoutSerializer(payout, context={"request": request}).data)
+
+
+class AdminAnalyticsView(APIView):
+    """
+    §6.7/Phase 8: platform-wide analytics — the admin-side counterpart to
+    apps.products.views.VendorAnalyticsView, same request shape:
+      ?range=7d|30d|90d  — preset rolling window (default 30d)
+      ?from=YYYY-MM-DD&to=YYYY-MM-DD — custom date range (inclusive both ends)
+    Custom range takes priority if both are supplied.
+
+    Unlike AdminDashboardView (fixed this-month-vs-last-month, always-on
+    KPI view), this is the date-range-driven breakdown: revenue/commission,
+    views, conversion, top products AND top vendors for whatever window the
+    admin picks.
+    """
+
+    permission_classes = [permissions.IsAuthenticated, IsAdminRole]
+
+    RANGE_DAYS = {"7d": 7, "30d": 30, "90d": 90}
+
+    def get(self, request):
+        from django.utils.dateparse import parse_date
+        from apps.products.models import ProductView
+
+        from_param = request.query_params.get("from")
+        to_param = request.query_params.get("to")
+
+        if from_param and to_param:
+            from_date = parse_date(from_param)
+            to_date = parse_date(to_param)
+            if not from_date or not to_date or from_date > to_date:
+                return Response(
+                    {"detail": "Invalid date range. Use ?from=YYYY-MM-DD&to=YYYY-MM-DD with from ≤ to."},
+                    status=400,
+                )
+            since = timezone.make_aware(timezone.datetime.combine(from_date, timezone.datetime.min.time()))
+            until = timezone.make_aware(timezone.datetime.combine(to_date, timezone.datetime.max.time()))
+            range_label = f"{from_date} – {to_date}"
+            days = (to_date - from_date).days + 1
+        else:
+            days = self.RANGE_DAYS.get(request.query_params.get("range"), 30)
+            since = timezone.now() - timedelta(days=days)
+            until = timezone.now()
+            range_label = f"{days}d"
+
+        items = (
+            OrderItem.objects.filter(order__created_at__gte=since, order__created_at__lte=until)
+            .exclude(order__status=Order.Status.CANCELLED)
+            .select_related("order", "vendor")
+        )
+
+        platform_revenue = Decimal("0.00")
+        platform_commission = Decimal("0.00")
+        units_sold = 0
+        order_ids = set()
+        top_products = {}
+        top_vendors = {}
+
+        for item in items:
+            platform_revenue += item.line_total
+            platform_commission += item.commission_amount
+            units_sold += item.quantity
+            order_ids.add(item.order_id)
+
+            p = top_products.setdefault(item.product_name, {"units": 0, "revenue": Decimal("0.00")})
+            p["units"] += item.quantity
+            p["revenue"] += item.line_total
+
+            vendor_label = (
+                f"{item.vendor.first_name} {item.vendor.last_name}".strip() or item.vendor.username
+                if item.vendor else "— (vendor removed)"
+            )
+            v = top_vendors.setdefault(vendor_label, {"units": 0, "revenue": Decimal("0.00")})
+            v["units"] += item.quantity
+            v["revenue"] += item.line_total
+
+        top_products = sorted(
+            ({"name": name, **v} for name, v in top_products.items()),
+            key=lambda r: r["revenue"], reverse=True,
+        )[:5]
+        top_vendors = sorted(
+            ({"name": name, **v} for name, v in top_vendors.items()),
+            key=lambda r: r["revenue"], reverse=True,
+        )[:5]
+
+        views_qs = ProductView.objects.filter(viewed_at__gte=since, viewed_at__lte=until)
+        total_views = views_qs.count()
+        source_breakdown = {
+            choice: views_qs.filter(source=choice).count() for choice in ProductView.Source.values
+        }
+        conversion_rate = round((len(order_ids) / total_views) * 100, 2) if total_views else None
+
+        return Response({
+            "range_days": days,
+            "range_label": range_label,
+            "platform_revenue": platform_revenue,
+            "platform_commission": platform_commission,
+            "order_count": len(order_ids),
+            "units_sold": units_sold,
+            "total_views": total_views,
+            "conversion_rate": conversion_rate,
+            "traffic_sources": source_breakdown,
+            "top_products": top_products,
+            "top_vendors": top_vendors,
+        })
+
+
+class AdminAnalyticsExportView(APIView):
+    """
+    GET /api/orders/admin/analytics/export/?range=30d
+    GET /api/orders/admin/analytics/export/?from=YYYY-MM-DD&to=YYYY-MM-DD
+    Downloads the platform-wide per-vendor/per-product breakdown as CSV
+    for whatever date range AdminAnalyticsView is showing.
+    """
+
+    permission_classes = [permissions.IsAuthenticated, IsAdminRole]
+
+    RANGE_DAYS = {"7d": 7, "30d": 30, "90d": 90}
+
+    def get(self, request):
+        from django.utils.dateparse import parse_date
+
+        from_param = request.query_params.get("from")
+        to_param = request.query_params.get("to")
+
+        if from_param and to_param:
+            from_date = parse_date(from_param)
+            to_date = parse_date(to_param)
+            if not from_date or not to_date or from_date > to_date:
+                return Response({"detail": "Invalid date range."}, status=400)
+            since = timezone.make_aware(timezone.datetime.combine(from_date, timezone.datetime.min.time()))
+            until = timezone.make_aware(timezone.datetime.combine(to_date, timezone.datetime.max.time()))
+            label = f"{from_date}_to_{to_date}"
+        else:
+            days = self.RANGE_DAYS.get(request.query_params.get("range"), 30)
+            since = timezone.now() - timedelta(days=days)
+            until = timezone.now()
+            label = f"{days}d"
+
+        items = (
+            OrderItem.objects.filter(order__created_at__gte=since, order__created_at__lte=until)
+            .exclude(order__status=Order.Status.CANCELLED)
+            .select_related("order", "vendor")
+        )
+
+        rows = {}
+        for item in items:
+            vendor_label = (
+                f"{item.vendor.first_name} {item.vendor.last_name}".strip() or item.vendor.username
+                if item.vendor else "— (vendor removed)"
+            )
+            key = (vendor_label, item.product_name)
+            row = rows.setdefault(key, {
+                "vendor": vendor_label,
+                "product": item.product_name,
+                "units_sold": 0,
+                "orders": set(),
+                "gross_revenue_pkr": Decimal("0.00"),
+                "platform_commission_pkr": Decimal("0.00"),
+                "net_to_vendor_pkr": Decimal("0.00"),
+            })
+            row["units_sold"] += item.quantity
+            row["orders"].add(item.order_id)
+            row["gross_revenue_pkr"] += item.line_total
+            row["platform_commission_pkr"] += item.commission_amount
+            row["net_to_vendor_pkr"] += item.net_to_vendor
+
+        resp = _csv_response(f"platform_analytics_{label}_{timezone.now().strftime('%Y%m%d')}.csv")
+        writer = csv.writer(resp)
+        writer.writerow([
+            f"Platform Analytics: {label}",
+            f"Exported: {timezone.now().strftime('%Y-%m-%d %H:%M')}",
+        ])
+        writer.writerow([])
+        writer.writerow([
+            "Vendor", "Product", "Units Sold", "Orders",
+            "Gross Revenue (PKR)", "Platform Commission (PKR)", "Net to Vendor (PKR)",
+        ])
+
+        for row in sorted(rows.values(), key=lambda r: r["gross_revenue_pkr"], reverse=True):
+            writer.writerow([
+                row["vendor"],
+                row["product"],
+                row["units_sold"],
+                len(row["orders"]),
+                row["gross_revenue_pkr"],
+                row["platform_commission_pkr"],
+                row["net_to_vendor_pkr"],
+            ])
+        return resp
 
 
 # ---------------------------------------------------------------------------

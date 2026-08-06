@@ -41,7 +41,9 @@ function MFASettingsCard() {
   const [busy, setBusy] = useState(false);
 
   const load = () => api.get("/auth/admin/mfa/status/").then(setStatus).catch(() => {});
-  useEffect(load, []);
+  useEffect(() => {
+    load();
+  }, []);
 
   const startSetup = async () => {
     setError("");

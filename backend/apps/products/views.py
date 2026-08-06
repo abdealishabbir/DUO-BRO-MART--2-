@@ -307,13 +307,11 @@ class WishlistToggleView(APIView):
 
 class VendorAnalyticsView(APIView):
     """
-    §6.7/Phase 6+ vendor Analytics — replaces the old placeholder. Built
-    entirely from data that genuinely exists: real orders (apps.orders)
-    for revenue/units/top products, and ProductView for traffic/conversion.
-    Deliberately NOT included: session-level funnels, returning-vs-new
-    visitor splits, or geographic breakdowns — none of that data is
-    captured anywhere yet (see DUOBROMART.md's Payout & Analytics Ledger
-    Subsystem section for what a fuller build would need).
+    §6.7/Phase 6+ vendor Analytics — replaces the old placeholder.
+    Accepts either:
+      ?range=7d|30d|90d  — preset rolling window (default 30d)
+      ?from=YYYY-MM-DD&to=YYYY-MM-DD — custom date range (inclusive both ends)
+    Custom range takes priority if both are supplied.
     """
 
     permission_classes = [permissions.IsAuthenticated, IsVendorRole]
@@ -321,16 +319,37 @@ class VendorAnalyticsView(APIView):
     RANGE_DAYS = {"7d": 7, "30d": 30, "90d": 90}
 
     def get(self, request):
-        from datetime import timedelta
+        from datetime import date, timedelta
+        from django.utils.dateparse import parse_date
 
         from apps.orders.models import Order, OrderItem
 
-        days = self.RANGE_DAYS.get(request.query_params.get("range"), 30)
-        since = timezone.now() - timedelta(days=days)
         vendor = request.user
+        from_param = request.query_params.get("from")
+        to_param = request.query_params.get("to")
+
+        if from_param and to_param:
+            from_date = parse_date(from_param)
+            to_date = parse_date(to_param)
+            if not from_date or not to_date or from_date > to_date:
+                return Response(
+                    {"detail": "Invalid date range. Use ?from=YYYY-MM-DD&to=YYYY-MM-DD with from ≤ to."},
+                    status=400,
+                )
+            since = timezone.make_aware(timezone.datetime.combine(from_date, timezone.datetime.min.time()))
+            until = timezone.make_aware(timezone.datetime.combine(to_date, timezone.datetime.max.time()))
+            range_label = f"{from_date} – {to_date}"
+            days = (to_date - from_date).days + 1
+        else:
+            days = self.RANGE_DAYS.get(request.query_params.get("range"), 30)
+            since = timezone.now() - timedelta(days=days)
+            until = timezone.now()
+            range_label = f"{days}d"
 
         items = OrderItem.objects.filter(
-            vendor=vendor, order__created_at__gte=since,
+            vendor=vendor,
+            order__created_at__gte=since,
+            order__created_at__lte=until,
         ).exclude(order__status=Order.Status.CANCELLED).select_related("order")
 
         revenue = sum((i.net_to_vendor for i in items), 0)
@@ -347,7 +366,9 @@ class VendorAnalyticsView(APIView):
             key=lambda r: r["revenue"], reverse=True,
         )[:5]
 
-        views_qs = ProductView.objects.filter(product__vendor=vendor, viewed_at__gte=since)
+        views_qs = ProductView.objects.filter(
+            product__vendor=vendor, viewed_at__gte=since, viewed_at__lte=until
+        )
         total_views = views_qs.count()
         source_breakdown = {
             choice: views_qs.filter(source=choice).count() for choice in ProductView.Source.values
@@ -357,6 +378,7 @@ class VendorAnalyticsView(APIView):
 
         return Response({
             "range_days": days,
+            "range_label": range_label,
             "revenue": revenue,
             "order_count": len(order_ids),
             "units_sold": units_sold,
@@ -370,9 +392,8 @@ class VendorAnalyticsView(APIView):
 class VendorAnalyticsExportView(APIView):
     """
     GET /api/products/vendor/analytics/export/?range=30d
-    Downloads the vendor's top-product analytics as CSV for the selected
-    date range — same data the Analytics page already shows, just in a
-    spreadsheet-friendly format.
+    GET /api/products/vendor/analytics/export/?from=YYYY-MM-DD&to=YYYY-MM-DD
+    Downloads the vendor's top-product analytics as CSV.
     """
 
     permission_classes = [permissions.IsAuthenticated, IsVendorRole]
@@ -383,19 +404,34 @@ class VendorAnalyticsExportView(APIView):
         import csv
         from django.http import HttpResponse
         from django.utils import timezone as tz
+        from django.utils.dateparse import parse_date
         from apps.orders.models import Order, OrderItem
 
-        days = self.RANGE_DAYS.get(request.query_params.get("range"), 30)
-        since = tz.now() - timedelta(days=days)
         vendor = request.user
+        from_param = request.query_params.get("from")
+        to_param = request.query_params.get("to")
+
+        if from_param and to_param:
+            from_date = parse_date(from_param)
+            to_date = parse_date(to_param)
+            if not from_date or not to_date or from_date > to_date:
+                return Response({"detail": "Invalid date range."}, status=400)
+            since = tz.make_aware(tz.datetime.combine(from_date, tz.datetime.min.time()))
+            until = tz.make_aware(tz.datetime.combine(to_date, tz.datetime.max.time()))
+            label = f"{from_date}_to_{to_date}"
+            days = (to_date - from_date).days + 1
+        else:
+            days = self.RANGE_DAYS.get(request.query_params.get("range"), 30)
+            since = tz.now() - timedelta(days=days)
+            until = tz.now()
+            label = f"{days}d"
 
         items = (
-            OrderItem.objects.filter(vendor=vendor, order__created_at__gte=since)
+            OrderItem.objects.filter(vendor=vendor, order__created_at__gte=since, order__created_at__lte=until)
             .exclude(order__status=Order.Status.CANCELLED)
             .select_related("order")
         )
 
-        # Aggregate per product
         product_rows = {}
         for item in items:
             row = product_rows.setdefault(item.product_name, {
@@ -411,12 +447,12 @@ class VendorAnalyticsExportView(APIView):
             row["orders"].add(item.order_id)
 
         resp = HttpResponse(content_type="text/csv; charset=utf-8")
-        resp["Content-Disposition"] = f'attachment; filename="analytics_{days}d_{tz.now().strftime("%Y%m%d")}.csv"'
+        resp["Content-Disposition"] = f'attachment; filename="analytics_{label}_{tz.now().strftime("%Y%m%d")}.csv"'
         resp.write("\ufeff")
 
         writer = csv.writer(resp)
         writer.writerow([
-            f"Analytics: last {days} days",
+            f"Analytics: {label}",
             f"Vendor: {vendor.first_name} {vendor.last_name}".strip() or vendor.username,
             f"Exported: {tz.now().strftime('%Y-%m-%d %H:%M')}",
         ])
@@ -432,7 +468,6 @@ class VendorAnalyticsExportView(APIView):
                 row["net_to_vendor_pkr"],
             ])
 
-        # Summary row
         writer.writerow([])
         writer.writerow([
             "TOTAL",

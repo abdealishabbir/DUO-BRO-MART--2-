@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Store, Lock, Mail } from "lucide-react";
+import { Store, Lock, Mail, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext.jsx";
 
 // §4.1/§4.3: hidden, unadvertised URL. No self-signup — credentials are
@@ -11,6 +11,7 @@ export default function VendorLogin() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -62,11 +63,19 @@ export default function VendorLogin() {
               <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-cream/60 px-3 py-2.5 focus-within:border-brand focus-within:ring-1 focus-within:ring-brand">
                 <Lock className="h-4 w-4 shrink-0 text-gray-400" />
                 <input
-                  type="password" required
+                  type={showPassword ? "text" : "password"} required
                   className="w-full bg-transparent text-sm text-ink outline-none placeholder:text-gray-400"
                   placeholder="••••••••"
                   value={password} onChange={(e) => setPassword(e.target.value)}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((s) => !s)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="shrink-0 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
             </label>
 

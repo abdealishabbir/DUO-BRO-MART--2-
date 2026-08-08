@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ShieldCheck, Lock, Mail, KeyRound } from "lucide-react";
+import { ShieldCheck, Lock, Mail, KeyRound, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext.jsx";
 
 // §4.1/§4.3/§8.1: hidden, unadvertised URL, provisioned manually (no
@@ -15,6 +15,7 @@ export default function AdminLogin() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [mfaToken, setMfaToken] = useState(null); // set once password step returns mfa_required
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
@@ -88,11 +89,19 @@ export default function AdminLogin() {
                   <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2.5 focus-within:border-brand focus-within:ring-1 focus-within:ring-brand">
                     <Lock className="h-4 w-4 shrink-0 text-gray-500" />
                     <input
-                      type="password" required
+                      type={showPassword ? "text" : "password"} required
                       className="w-full bg-transparent text-sm text-white outline-none placeholder:text-gray-500"
                       placeholder="••••••••"
                       value={password} onChange={(e) => setPassword(e.target.value)}
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((s) => !s)}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      className="shrink-0 text-gray-500 hover:text-gray-300"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
                 </label>
 

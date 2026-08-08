@@ -10,7 +10,7 @@ from rest_framework.test import APITestCase
 
 from apps.products.models import Category, Product
 
-from .models import Order, OrderItem
+from .models import Order, OrderItem, Payout
 
 User = get_user_model()
 
@@ -998,6 +998,116 @@ class PayoutTests(OrdersTestBase):
         resp = self.client.get(reverse("admin-payout-list"))
         self.assertEqual(resp.status_code, 403)
 
+    def test_admin_can_reopen_paid_payout_as_failed(self):
+        self.make_delivered_order_item(delivered_days_ago=10)
+        self.login_as(self.admin)
+        gen = self.client.post(reverse("admin-payout-generate"))
+        payout_id = gen.data["payouts"][0]["id"]
+        self.client.post(reverse("admin-payout-mark-paid", args=[payout_id]), {"reference": "TXN123"})
+
+        resp = self.client.post(
+            reverse("admin-payout-mark-failed", args=[payout_id]),
+            {"reason": "Bank rejected — account number mismatch"},
+        )
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertEqual(resp.data["status"], "failed")
+        self.assertEqual(resp.data["failure_reason"], "Bank rejected — account number mismatch")
+        self.assertIsNotNone(resp.data["failed_at"])
+
+    def test_mark_failed_requires_a_reason(self):
+        self.make_delivered_order_item(delivered_days_ago=10)
+        self.login_as(self.admin)
+        gen = self.client.post(reverse("admin-payout-generate"))
+        payout_id = gen.data["payouts"][0]["id"]
+        self.client.post(reverse("admin-payout-mark-paid", args=[payout_id]))
+
+        resp = self.client.post(reverse("admin-payout-mark-failed", args=[payout_id]), {"reason": "  "})
+        self.assertEqual(resp.status_code, 400)
+
+    def test_cannot_mark_failed_a_payout_that_isnt_paid(self):
+        self.make_delivered_order_item(delivered_days_ago=10)
+        self.login_as(self.admin)
+        gen = self.client.post(reverse("admin-payout-generate"))
+        payout_id = gen.data["payouts"][0]["id"]
+        # still pending, never marked paid
+        resp = self.client.post(reverse("admin-payout-mark-failed", args=[payout_id]), {"reason": "test"})
+        self.assertEqual(resp.status_code, 400)
+
+    def test_retry_after_failure_marks_paid_and_clears_failure_state(self):
+        self.make_delivered_order_item(delivered_days_ago=10)
+        self.login_as(self.admin)
+        gen = self.client.post(reverse("admin-payout-generate"))
+        payout_id = gen.data["payouts"][0]["id"]
+        self.client.post(reverse("admin-payout-mark-paid", args=[payout_id]), {"reference": "BAD-TXN"})
+        self.client.post(reverse("admin-payout-mark-failed", args=[payout_id]), {"reason": "Wrong account number"})
+
+        resp = self.client.post(reverse("admin-payout-mark-paid", args=[payout_id]), {"reference": "GOOD-TXN-2"})
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertEqual(resp.data["status"], "paid")
+        self.assertEqual(resp.data["reference"], "GOOD-TXN-2")
+        self.assertEqual(resp.data["failure_reason"], "")
+        self.assertIsNone(resp.data["failed_at"])
+
+    def test_retry_does_not_create_a_duplicate_payout_or_double_pay_items(self):
+        item = self.make_delivered_order_item(delivered_days_ago=10, base_price=Decimal("1000.00"))
+        self.login_as(self.admin)
+        gen = self.client.post(reverse("admin-payout-generate"))
+        payout_id = gen.data["payouts"][0]["id"]
+        self.client.post(reverse("admin-payout-mark-paid", args=[payout_id]))
+        self.client.post(reverse("admin-payout-mark-failed", args=[payout_id]), {"reason": "failed"})
+        self.client.post(reverse("admin-payout-mark-paid", args=[payout_id]), {"reference": "RETRY-TXN"})
+
+        # Reopening + retrying must not spawn a second Payout for the same item.
+        self.assertEqual(Payout.objects.filter(vendor=self.vendor).count(), 1)
+        item.refresh_from_db()
+        self.assertEqual(item.payout_item.payout_id, payout_id)
+
+        # And a fresh generate run must not pick the item up again.
+        gen_again = self.client.post(reverse("admin-payout-generate"))
+        self.assertEqual(gen_again.data["created_count"], 0)
+
+    def test_reopening_logs_admin_action(self):
+        from apps.core.models import AuditLogEntry
+
+        self.make_delivered_order_item(delivered_days_ago=10)
+        self.login_as(self.admin)
+        gen = self.client.post(reverse("admin-payout-generate"))
+        payout_id = gen.data["payouts"][0]["id"]
+        self.client.post(reverse("admin-payout-mark-paid", args=[payout_id]))
+        self.client.post(reverse("admin-payout-mark-failed", args=[payout_id]), {"reason": "Bank rejected"})
+
+        entry = AuditLogEntry.objects.filter(action="payout.marked_failed", target_id=payout_id).first()
+        self.assertIsNotNone(entry)
+        self.assertIn("Bank rejected", entry.details)
+
+    def test_vendor_cannot_mark_payout_failed(self):
+        self.make_delivered_order_item(delivered_days_ago=10)
+        self.login_as(self.admin)
+        gen = self.client.post(reverse("admin-payout-generate"))
+        payout_id = gen.data["payouts"][0]["id"]
+        self.client.post(reverse("admin-payout-mark-paid", args=[payout_id]))
+
+        self.login_as(self.vendor)
+        resp = self.client.post(reverse("admin-payout-mark-failed", args=[payout_id]), {"reason": "test"})
+        self.assertEqual(resp.status_code, 403)
+
+    def test_vendor_sees_failed_status_and_reason_in_export(self):
+        self.make_delivered_order_item(delivered_days_ago=10)
+        self.login_as(self.admin)
+        gen = self.client.post(reverse("admin-payout-generate"))
+        payout_id = gen.data["payouts"][0]["id"]
+        self.client.post(reverse("admin-payout-mark-paid", args=[payout_id]))
+        self.client.post(reverse("admin-payout-mark-failed", args=[payout_id]), {"reason": "Bank rejected transfer"})
+
+        self.login_as(self.vendor)
+        resp = self.client.get(reverse("vendor-payouts"))
+        self.assertEqual(resp.data["payouts"][0]["status"], "failed")
+        self.assertEqual(resp.data["payouts"][0]["failure_reason"], "Bank rejected transfer")
+
+        export_resp = self.client.get(reverse("vendor-payouts-export"))
+        self.assertEqual(export_resp.status_code, 200)
+        self.assertIn("Bank rejected transfer", export_resp.content.decode("utf-8-sig"))
+
     def test_second_batch_respects_cycle_cooldown(self):
         from apps.core.models import PlatformSettings
 
@@ -1041,6 +1151,149 @@ class NewOrderAlertTests(OrdersTestBase):
 
         self.place_order()
         self.assertEqual(len(mail.outbox), 0)
+
+
+class VendorPayoutScheduleOverrideTests(OrdersTestBase):
+    """Phase 8 deferred item: per-vendor payout hold/cycle overrides."""
+
+    def make_delivered_order_item(self, vendor=None, base_price=Decimal("1000.00"), quantity=1, delivered_days_ago=10):
+        from django.utils import timezone
+
+        product = self.make_product(vendor=vendor or self.vendor, base_price=base_price)
+        order = Order.objects.create(
+            order_code=f"DBM-SCHED-{OrderItem.objects.count() + 1}",
+            shipping_full_name="Test Customer", shipping_phone_number="03001234567", shipping_email="c@example.com",
+            shipping_province="sindh", shipping_city="Karachi", shipping_address_line="Street 1",
+            subtotal=base_price * quantity, shipping_fee=Decimal("0.00"), total=base_price * quantity,
+            status=Order.Status.DELIVERED,
+            delivered_at=timezone.now() - timedelta(days=delivered_days_ago),
+        )
+        return OrderItem.objects.create(
+            order=order, product=product, vendor=product.vendor,
+            product_name=product.name, product_slug=product.slug,
+            quantity=quantity, unit_price=product.selling_price, unit_base_price=base_price,
+        )
+
+    def test_no_override_uses_platform_default(self):
+        from apps.core.models import PlatformSettings
+
+        PlatformSettings.get_solo()  # ensure row exists at default 3-day hold
+        self.assertIsNone(self.vendor.payout_hold_days_override)
+        self.make_delivered_order_item(delivered_days_ago=2)  # inside default 3-day hold
+        self.login_as(self.admin)
+        resp = self.client.post(reverse("admin-payout-generate"))
+        self.assertEqual(resp.data["created_count"], 0)
+
+    def test_shorter_override_makes_item_eligible_sooner(self):
+        self.vendor.payout_hold_days_override = 1
+        self.vendor.save()
+        self.make_delivered_order_item(delivered_days_ago=2)  # would fail the 3-day platform default
+        self.login_as(self.admin)
+        resp = self.client.post(reverse("admin-payout-generate"))
+        self.assertEqual(resp.data["created_count"], 1, resp.data)
+
+    def test_longer_override_delays_eligibility(self):
+        self.vendor.payout_hold_days_override = 10
+        self.vendor.save()
+        self.make_delivered_order_item(delivered_days_ago=5)  # would pass the 3-day platform default
+        self.login_as(self.admin)
+        resp = self.client.post(reverse("admin-payout-generate"))
+        self.assertEqual(resp.data["created_count"], 0)
+
+    def test_override_is_per_vendor_not_global(self):
+        self.vendor.payout_hold_days_override = 1
+        self.vendor.save()
+        self.make_delivered_order_item(vendor=self.vendor, delivered_days_ago=2)
+        self.make_delivered_order_item(vendor=self.other_vendor, delivered_days_ago=2)  # no override, still inside 3-day default
+        self.login_as(self.admin)
+        resp = self.client.post(reverse("admin-payout-generate"))
+        self.assertEqual(resp.data["created_count"], 1)
+        self.assertEqual(resp.data["payouts"][0]["vendor"], self.vendor.id)
+
+    def test_cycle_override_shortens_cooldown(self):
+        self.vendor.payout_cycle_days_override = 1
+        self.vendor.save()
+        self.make_delivered_order_item(delivered_days_ago=10)
+        self.login_as(self.admin)
+        first = self.client.post(reverse("admin-payout-generate"))
+        self.assertEqual(first.data["created_count"], 1)
+
+        # Immediately generating again should still respect the 1-day cooldown (no new batch yet)
+        second = self.client.post(reverse("admin-payout-generate"))
+        self.assertEqual(second.data["created_count"], 0)
+
+    def test_admin_can_set_override(self):
+        self.login_as(self.admin)
+        resp = self.client.patch(
+            reverse("admin-vendor-payout-schedule", args=[self.vendor.id]),
+            {"payout_hold_days_override": 1, "payout_cycle_days_override": 2},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.vendor.refresh_from_db()
+        self.assertEqual(self.vendor.payout_hold_days_override, 1)
+        self.assertEqual(self.vendor.payout_cycle_days_override, 2)
+
+    def test_admin_can_reset_override_to_default(self):
+        self.vendor.payout_hold_days_override = 1
+        self.vendor.save()
+        self.login_as(self.admin)
+        resp = self.client.patch(
+            reverse("admin-vendor-payout-schedule", args=[self.vendor.id]),
+            {"payout_hold_days_override": None},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.vendor.refresh_from_db()
+        self.assertIsNone(self.vendor.payout_hold_days_override)
+
+    def test_override_rejects_out_of_range_value(self):
+        self.login_as(self.admin)
+        resp = self.client.patch(
+            reverse("admin-vendor-payout-schedule", args=[self.vendor.id]),
+            {"payout_hold_days_override": 999},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_override_rejects_non_numeric_value(self):
+        self.login_as(self.admin)
+        resp = self.client.patch(
+            reverse("admin-vendor-payout-schedule", args=[self.vendor.id]),
+            {"payout_hold_days_override": "not-a-number"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_vendor_cannot_set_own_override(self):
+        self.login_as(self.vendor)
+        resp = self.client.patch(
+            reverse("admin-vendor-payout-schedule", args=[self.vendor.id]),
+            {"payout_hold_days_override": 1},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 403)
+
+    def test_setting_override_is_logged(self):
+        from apps.core.models import AuditLogEntry
+
+        self.login_as(self.admin)
+        self.client.patch(
+            reverse("admin-vendor-payout-schedule", args=[self.vendor.id]),
+            {"payout_hold_days_override": 1},
+            format="json",
+        )
+        entry = AuditLogEntry.objects.filter(action="vendor.payout_schedule_changed", target_id=self.vendor.id).first()
+        self.assertIsNotNone(entry)
+
+    def test_admin_vendor_list_exposes_overrides(self):
+        self.vendor.payout_hold_days_override = 1
+        self.vendor.save()
+        self.login_as(self.admin)
+        resp = self.client.get(reverse("admin-vendor-list"))
+        row = next(v for v in resp.data if v["id"] == self.vendor.id)
+        self.assertEqual(row["payout_hold_days_override"], 1)
+        self.assertIsNone(row["payout_cycle_days_override"])
 
 
 class PayoutReadyAlertTests(OrdersTestBase):

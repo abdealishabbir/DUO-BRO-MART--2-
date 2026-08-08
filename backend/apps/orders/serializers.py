@@ -280,7 +280,8 @@ class PayoutSerializer(serializers.ModelSerializer):
         model = Payout
         fields = [
             "id", "vendor", "vendor_name", "period_start", "period_end", "total_amount",
-            "status", "reference", "admin_notes", "paid_at", "created_at", "items",
+            "status", "reference", "admin_notes", "paid_at", "failed_at", "failure_reason",
+            "created_at", "items",
         ]
         read_only_fields = [f for f in fields if f not in ("reference", "admin_notes")]
 

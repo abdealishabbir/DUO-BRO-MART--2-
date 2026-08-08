@@ -376,7 +376,7 @@ export default function AdminProducts() {
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
           />
-          <button type="submit" className="rounded-md border border-gray-300 p-2 text-gray-600 hover:bg-gray-50">
+          <button type="submit" aria-label="Search products" className="rounded-md border border-gray-300 p-2 text-gray-600 hover:bg-gray-50">
             <Search className="h-4 w-4" />
           </button>
         </form>

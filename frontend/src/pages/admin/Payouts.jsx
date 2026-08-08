@@ -10,6 +10,7 @@ const STATUS_STYLES = {
   pending: "bg-amber-100 text-amber-700",
   processing: "bg-blue-100 text-blue-700",
   paid: "bg-green-100 text-green-700",
+  failed: "bg-red-100 text-red-700",
 };
 
 const STATUS_TABS = [
@@ -17,12 +18,14 @@ const STATUS_TABS = [
   { value: "pending", label: "Pending" },
   { value: "processing", label: "Processing" },
   { value: "paid", label: "Paid" },
+  { value: "failed", label: "Failed" },
 ];
 
 function MarkPaidRow({ payout, onDone }) {
-  const [reference, setReference] = useState("");
+  const [reference, setReference] = useState(payout.reference || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const isRetry = payout.status === "failed";
 
   const submit = async () => {
     setSaving(true);
@@ -40,6 +43,12 @@ function MarkPaidRow({ payout, onDone }) {
   return (
     <tr className="border-t border-gray-100 bg-blue-50/40">
       <td colSpan={7} className="p-4">
+        {isRetry && payout.failure_reason && (
+          <div className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+            <span className="font-semibold">Previous attempt failed:</span> {payout.failure_reason}
+            {payout.failed_at && <span className="text-red-500"> ({new Date(payout.failed_at).toLocaleDateString()})</span>}
+          </div>
+        )}
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex-1">
             <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Items in this batch</h4>
@@ -57,7 +66,51 @@ function MarkPaidRow({ payout, onDone }) {
             <input className={`${inputClass} w-48`} placeholder="e.g. NayaPay TXN ID" value={reference} onChange={(e) => setReference(e.target.value)} />
           </label>
           <button onClick={submit} disabled={saving} className="rounded-md bg-green-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-green-700 disabled:opacity-60">
-            {saving ? "Saving..." : "Confirm Paid"}
+            {saving ? "Saving..." : isRetry ? "Confirm Retry Paid" : "Confirm Paid"}
+          </button>
+          {error && <span className="text-xs text-red-600">{error}</span>}
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function MarkFailedRow({ payout, onDone }) {
+  const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const submit = async () => {
+    if (!reason.trim()) {
+      setError("A reason is required.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await api.post(`/orders/admin/payouts/${payout.id}/mark-failed/`, { reason });
+      onDone();
+    } catch (err) {
+      setError(err.data?.detail || "Couldn't reopen this payout.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <tr className="border-t border-gray-100 bg-red-50/40">
+      <td colSpan={7} className="p-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <p className="w-full text-xs text-gray-600">
+            This reopens the batch as <span className="font-semibold text-red-700">Failed</span> so it shows up under Pending/Failed again for a retry —
+            use this if the transfer was marked Paid but actually never went through (wrong account number, bank rejected it, etc.).
+          </p>
+          <label className="flex-1 text-xs">
+            <span className="mb-1 block font-medium text-gray-700">Why did it fail?</span>
+            <input className={`${inputClass} w-full`} placeholder="e.g. Bank rejected — account number mismatch" value={reason} onChange={(e) => setReason(e.target.value)} />
+          </label>
+          <button onClick={submit} disabled={saving} className="rounded-md bg-red-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-60">
+            {saving ? "Saving..." : "Confirm Reopen as Failed"}
           </button>
           {error && <span className="text-xs text-red-600">{error}</span>}
         </div>
@@ -73,6 +126,7 @@ export default function AdminPayouts() {
   const [generating, setGenerating] = useState(false);
   const [generateMsg, setGenerateMsg] = useState("");
   const [markingId, setMarkingId] = useState(null);
+  const [failingId, setFailingId] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -140,7 +194,7 @@ export default function AdminPayouts() {
           <p className="mt-1 text-lg font-bold text-ink">{payouts.length}</p>
         </div>
         <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Owed (pending + processing)</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Owed (not yet paid)</p>
           <p className="mt-1 text-lg font-bold text-amber-700">{formatPKR(totalPending)}</p>
         </div>
       </div>
@@ -190,21 +244,35 @@ export default function AdminPayouts() {
                     <td className="px-4 py-3">
                       <span className={`rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${STATUS_STYLES[p.status]}`}>{p.status}</span>
                       {p.status === "paid" && p.reference && <span className="ml-1.5 text-xs text-gray-400">({p.reference})</span>}
+                      {p.status === "failed" && p.failure_reason && (
+                        <span className="ml-1.5 block max-w-[180px] truncate text-xs text-red-500" title={p.failure_reason}>{p.failure_reason}</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-xs text-gray-500">{new Date(p.created_at).toLocaleDateString()}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 whitespace-nowrap">
                       {p.status !== "paid" && (
                         <button
-                          onClick={() => setMarkingId(markingId === p.id ? null : p.id)}
+                          onClick={() => { setFailingId(null); setMarkingId(markingId === p.id ? null : p.id); }}
                           className="text-xs font-medium text-brand hover:underline"
                         >
-                          {markingId === p.id ? "Cancel" : "Mark Paid"}
+                          {markingId === p.id ? "Cancel" : p.status === "failed" ? "Retry Payment" : "Mark Paid"}
+                        </button>
+                      )}
+                      {p.status === "paid" && (
+                        <button
+                          onClick={() => { setMarkingId(null); setFailingId(failingId === p.id ? null : p.id); }}
+                          className="text-xs font-medium text-red-600 hover:underline"
+                        >
+                          {failingId === p.id ? "Cancel" : "Mark Failed"}
                         </button>
                       )}
                     </td>
                   </tr>
                   {markingId === p.id && (
                     <MarkPaidRow payout={p} onDone={() => { setMarkingId(null); load(); }} />
+                  )}
+                  {failingId === p.id && (
+                    <MarkFailedRow payout={p} onDone={() => { setFailingId(null); load(); }} />
                   )}
                 </Fragment>
               ))}

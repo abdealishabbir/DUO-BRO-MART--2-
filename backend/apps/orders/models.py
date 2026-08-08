@@ -229,12 +229,21 @@ class Payout(models.Model):
     marks it paid — see apps.orders.payouts.generate_payouts_for_vendor()
     for the eligibility rules (hold period + cycle spacing, same shape as
     Amazon's 7-day hold/14-day cycle or Etsy's reserve+deposit schedule).
+
+    A Paid batch can also be reopened: if the admin later discovers the
+    transfer actually failed outside the platform (bank rejected it, wrong
+    account number, etc.), `mark_failed` flips status to FAILED and records
+    why. A FAILED batch behaves like PENDING for `mark_paid` purposes — the
+    same PayoutItems are retried with a corrected reference rather than
+    reshuffled into a brand-new batch, keeping one clean audit trail per
+    batch instead of duplicating it.
     """
 
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
         PROCESSING = "processing", "Processing"
         PAID = "paid", "Paid"
+        FAILED = "failed", "Failed"
 
     vendor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="payouts")
     period_start = models.DateField()
@@ -244,6 +253,14 @@ class Payout(models.Model):
     reference = models.CharField(max_length=100, blank=True, help_text="Bank/wallet transaction reference, entered by the admin when marking this paid.")
     admin_notes = models.TextField(blank=True)
     paid_at = models.DateTimeField(null=True, blank=True)
+    failed_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text="When an admin reopened this batch after discovering the transfer actually failed outside the platform (no live bank/wallet API — see class docstring).",
+    )
+    failure_reason = models.TextField(
+        blank=True,
+        help_text="Why the transfer failed, entered by the admin when reopening a Paid batch (e.g. wrong account number, bank rejected transfer).",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

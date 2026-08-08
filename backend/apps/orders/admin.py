@@ -28,6 +28,6 @@ class PayoutItemInline(admin.TabularInline):
 
 @admin.register(Payout)
 class PayoutAdmin(admin.ModelAdmin):
-    list_display = ("id", "vendor", "period_start", "period_end", "total_amount", "status", "paid_at")
+    list_display = ("id", "vendor", "period_start", "period_end", "total_amount", "status", "paid_at", "failed_at")
     list_filter = ("status",)
     inlines = [PayoutItemInline]

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ChevronDown, Upload, CheckCircle2, Megaphone, Wallet, ShieldCheck, TrendingUp } from "lucide-react";
 import FormField, { inputClass } from "../../components/FormField.jsx";
 import { api } from "../../lib/api.js";
+import Meta from "../../components/Meta.jsx";
 
 const BUSINESS_TYPES = ["Retailer", "Wholesaler", "Manufacturer", "Home Business", "Importer", "Other"];
 
@@ -157,6 +158,7 @@ export default function BecomeVendor() {
 
   return (
     <div>
+      <Meta title="Sell on Duo Bro Mart — Become a Vendor" description="Start selling on Duo Bro Mart, Pakistan's multi-vendor marketplace — reach customers nationwide with COD delivery and built-in promotion tools." url={`${window.location.origin}/become-a-vendor`} />
       <section className="bg-cream px-4 py-14 text-center">
         <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl">Sell on Duo Bro Mart</h1>
         <p className="mx-auto mt-3 max-w-xl text-gray-600">

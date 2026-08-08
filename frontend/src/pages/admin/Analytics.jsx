@@ -92,7 +92,7 @@ export default function AdminAnalytics() {
               {r.value === "custom" ? <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> Custom</span> : r.label}
             </button>
           ))}
-          <button onClick={load} className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:border-brand hover:text-brand">
+          <button onClick={load} aria-label="Refresh analytics" className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:border-brand hover:text-brand">
             <RefreshCw className="h-4 w-4" />
           </button>
           <a

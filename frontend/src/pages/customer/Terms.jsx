@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import Meta from "../../components/Meta.jsx";
 
 function Section({ number, title, children }) {
   return (
@@ -15,6 +16,7 @@ function Section({ number, title, children }) {
 export default function Terms() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-12">
+      <Meta title="Terms & Conditions — Duo Bro Mart" description="Duo Bro Mart's terms and conditions for customers shopping on our Pakistani multi-vendor marketplace." url={`${window.location.origin}/terms`} />
       <span className="rounded-full bg-brand/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-brand">
         Placeholder — pending final legal review
       </span>

@@ -144,6 +144,21 @@ class User(AbstractUser):
     shop_logo = models.ImageField(upload_to="vendor_shop/logos/", blank=True, null=True, validators=[validate_shop_logo])
     shop_description = models.TextField(blank=True, max_length=1000)
 
+    # Per-vendor payout schedule override (Phase 8 deferred item) — most
+    # vendors just use PlatformSettings.payout_hold_days/payout_cycle_days
+    # (see apps.orders.payouts), but a high-volume or especially trusted
+    # vendor might get a shorter hold/cycle, same idea as Amazon offering
+    # faster disbursement tiers to established sellers. None means "use
+    # the platform default" — only meaningful when role == VENDOR.
+    payout_hold_days_override = models.PositiveSmallIntegerField(
+        null=True, blank=True,
+        help_text="Overrides PlatformSettings.payout_hold_days for this vendor only. Leave blank to use the platform default.",
+    )
+    payout_cycle_days_override = models.PositiveSmallIntegerField(
+        null=True, blank=True,
+        help_text="Overrides PlatformSettings.payout_cycle_days for this vendor only. Leave blank to use the platform default.",
+    )
+
     objects = UserManager()
 
     def __str__(self):

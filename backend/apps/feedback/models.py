@@ -53,7 +53,10 @@ def validate_feedback_image(image_file):
 
 class Feedback(models.Model):
     order = models.OneToOneField("orders.Order", on_delete=models.CASCADE, related_name="feedback")
-    customer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="feedback_given")
+    customer = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="feedback_given",
+        help_text="Null for a guest checkout — the order itself, verified by order_code + contact, is the real link, same as Order.customer.",
+    )
 
     delivery_rating = models.PositiveSmallIntegerField()
     packaging_rating = models.PositiveSmallIntegerField()

@@ -413,12 +413,46 @@ class AdminPayoutViewSet(viewsets.ReadOnlyModelViewSet):
         payout = self.get_object()
         if payout.status == Payout.Status.PAID:
             return Response({"detail": "This payout is already marked paid."}, status=status.HTTP_400_BAD_REQUEST)
+        was_retry = payout.status == Payout.Status.FAILED
         payout.status = Payout.Status.PAID
         payout.reference = request.data.get("reference", payout.reference)
         payout.admin_notes = request.data.get("admin_notes", payout.admin_notes)
         payout.paid_at = timezone.now()
-        payout.save(update_fields=["status", "reference", "admin_notes", "paid_at"])
-        log_admin_action(request.user, "payout.marked_paid", payout, details=f"Rs. {payout.total_amount} — ref: {payout.reference}")
+        # Clear the previous failure once it's successfully retried — the
+        # failure_reason/failed_at stay in AdminAuditLog history either way.
+        if was_retry:
+            payout.failed_at = None
+            payout.failure_reason = ""
+        payout.save(update_fields=["status", "reference", "admin_notes", "paid_at", "failed_at", "failure_reason"])
+        action_label = "payout.retry_marked_paid" if was_retry else "payout.marked_paid"
+        log_admin_action(request.user, action_label, payout, details=f"Rs. {payout.total_amount} — ref: {payout.reference}")
+        return Response(PayoutSerializer(payout, context={"request": request}).data)
+
+    @action(detail=True, methods=["post"], url_path="mark-failed")
+    def mark_failed(self, request, pk=None):
+        """
+        Reopens a batch that was marked Paid but whose transfer actually
+        failed outside the platform (bank rejected it, wrong account
+        number, etc. — no live bank/wallet API, see models.Payout
+        docstring). The same PayoutItems stay attached; the admin retries
+        via `mark_paid` once the issue is fixed, rather than the batch
+        being stuck showing "Paid" forever or needing a raw DB edit.
+        """
+        payout = self.get_object()
+        if payout.status != Payout.Status.PAID:
+            return Response(
+                {"detail": "Only a payout currently marked Paid can be reopened as failed."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        reason = (request.data.get("reason") or "").strip()
+        if not reason:
+            return Response({"detail": "A failure reason is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        payout.status = Payout.Status.FAILED
+        payout.failure_reason = reason
+        payout.failed_at = timezone.now()
+        payout.save(update_fields=["status", "failure_reason", "failed_at"])
+        log_admin_action(request.user, "payout.marked_failed", payout, details=f"Rs. {payout.total_amount} — {reason}")
         return Response(PayoutSerializer(payout, context={"request": request}).data)
 
 
@@ -715,7 +749,7 @@ class AdminPayoutsExportView(APIView):
             "Payout ID", "Vendor", "Vendor Email",
             "Period Start", "Period End",
             "Status", "Total Amount (PKR)", "Order Count",
-            "Reference", "Paid At", "Admin Notes", "Created At",
+            "Reference", "Paid At", "Failed At", "Failure Reason", "Admin Notes", "Created At",
         ])
 
         for payout in qs:
@@ -730,6 +764,8 @@ class AdminPayoutsExportView(APIView):
                 payout.items.count(),
                 payout.reference or "",
                 payout.paid_at.strftime("%Y-%m-%d %H:%M") if payout.paid_at else "",
+                payout.failed_at.strftime("%Y-%m-%d %H:%M") if payout.failed_at else "",
+                payout.failure_reason or "",
                 payout.admin_notes or "",
                 payout.created_at.strftime("%Y-%m-%d %H:%M"),
             ])
@@ -757,7 +793,7 @@ class VendorPayoutsExportView(APIView):
         writer.writerow([
             "Payout ID", "Period Start", "Period End",
             "Status", "Total Amount (PKR)", "Order Count",
-            "Reference", "Paid At", "Created At",
+            "Reference", "Paid At", "Failed At", "Failure Reason", "Created At",
         ])
 
         for payout in qs:
@@ -770,6 +806,8 @@ class VendorPayoutsExportView(APIView):
                 payout.items.count(),
                 payout.reference or "",
                 payout.paid_at.strftime("%Y-%m-%d %H:%M") if payout.paid_at else "",
+                payout.failed_at.strftime("%Y-%m-%d %H:%M") if payout.failed_at else "",
+                payout.failure_reason or "",
                 payout.created_at.strftime("%Y-%m-%d %H:%M"),
             ])
         return resp

@@ -67,6 +67,103 @@ class FeedbackTestBase(APITestCase):
         }
 
 
+class GuestFeedbackTests(FeedbackTestBase):
+    """Guest checkout customers have no account — verified by order_code +
+    the email/phone used at checkout, same pattern as
+    apps.orders.views.TrackOrderView/OrderCancelView."""
+
+    def make_guest_order(self, status=Order.Status.DELIVERED):
+        order = Order.objects.create(
+            customer=None,
+            shipping_full_name="Guest Buyer", shipping_phone_number="03009998888", shipping_email="guest@example.com",
+            shipping_province="sindh", shipping_city="Karachi", shipping_address_line="x",
+            subtotal=Decimal("1100.00"), shipping_fee=Decimal("250.00"), total=Decimal("1350.00"),
+            status=status,
+        )
+        OrderItem.objects.create(
+            order=order, product=self.product, vendor=self.vendor, product_name=self.product.name,
+            product_slug=self.product.slug, quantity=1, unit_price=Decimal("1100.00"), unit_base_price=Decimal("1000.00"),
+        )
+        return order
+
+    def test_guest_can_look_up_own_order_by_email(self):
+        order = self.make_guest_order()
+        resp = self.client.get(reverse("feedback-eligible-orders"), {"order_code": order.order_code, "contact": "guest@example.com"})
+        self.assertEqual(len(resp.data), 1)
+        self.assertEqual(resp.data[0]["id"], order.id)
+
+    def test_guest_can_look_up_own_order_by_phone(self):
+        order = self.make_guest_order()
+        resp = self.client.get(reverse("feedback-eligible-orders"), {"order_code": order.order_code, "contact": "03009998888"})
+        self.assertEqual(len(resp.data), 1)
+
+    def test_guest_lookup_with_wrong_contact_returns_empty(self):
+        order = self.make_guest_order()
+        resp = self.client.get(reverse("feedback-eligible-orders"), {"order_code": order.order_code, "contact": "wrong@example.com"})
+        self.assertEqual(resp.data, [])
+
+    def test_guest_lookup_without_contact_returns_empty_not_error(self):
+        order = self.make_guest_order()
+        resp = self.client.get(reverse("feedback-eligible-orders"), {"order_code": order.order_code})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data, [])
+
+    def test_no_params_and_unauthenticated_requires_login(self):
+        resp = self.client.get(reverse("feedback-eligible-orders"))
+        self.assertEqual(resp.status_code, 401)
+
+    def test_guest_can_submit_feedback_with_correct_contact(self):
+        order = self.make_guest_order()
+        payload = {**self.valid_payload(order), "contact": "guest@example.com"}
+        resp = self.client.post(reverse("feedback-create"), payload, format="json")
+        self.assertEqual(resp.status_code, 201, resp.data)
+        feedback = Feedback.objects.get()
+        self.assertIsNone(feedback.customer)
+        self.assertEqual(feedback.order_id, order.id)
+
+    def test_guest_cannot_submit_with_wrong_contact(self):
+        order = self.make_guest_order()
+        payload = {**self.valid_payload(order), "contact": "someone-else@example.com"}
+        resp = self.client.post(reverse("feedback-create"), payload, format="json")
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(Feedback.objects.count(), 0)
+
+    def test_guest_cannot_submit_for_another_customers_order(self):
+        # Order belongs to a real logged-in customer, not a guest — a
+        # stranger guessing the order code shouldn't be able to submit
+        # feedback just by knowing it, without the real contact info.
+        order = self.make_order()  # self.customer's order, not a guest order
+        payload = {**self.valid_payload(order), "contact": "random@example.com"}
+        resp = self.client.post(reverse("feedback-create"), payload, format="json")
+        self.assertEqual(resp.status_code, 400)
+
+    def test_guest_cannot_double_submit(self):
+        order = self.make_guest_order()
+        payload = {**self.valid_payload(order), "contact": "guest@example.com"}
+        self.client.post(reverse("feedback-create"), payload, format="json")
+        resp = self.client.post(reverse("feedback-create"), payload, format="json")
+        self.assertEqual(resp.status_code, 400)
+
+    def test_logged_in_customer_still_works_unaffected(self):
+        # Regression guard: the AllowAny + serializer-level ownership check
+        # must not weaken anything for the existing logged-in flow.
+        order = self.make_order()
+        self.login_as_customer()
+        resp = self.client.post(reverse("feedback-create"), self.valid_payload(order), format="json")
+        self.assertEqual(resp.status_code, 201, resp.data)
+        self.assertEqual(Feedback.objects.get().customer_id, self.customer.id)
+
+    def test_product_rating_updates_from_guest_feedback(self):
+        # Guest feedback must count toward the product's average rating
+        # same as a logged-in customer's — the vendor/product rating
+        # aggregate doesn't care who submitted it.
+        order = self.make_guest_order()
+        payload = {**self.valid_payload(order), "contact": "guest@example.com"}
+        self.client.post(reverse("feedback-create"), payload, format="json")
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.average_rating, 5.0)
+
+
 class FeedbackCreateTests(FeedbackTestBase):
     def test_can_submit_feedback_on_delivered_order(self):
         order = self.make_order()
@@ -101,10 +198,14 @@ class FeedbackCreateTests(FeedbackTestBase):
         resp = self.client.post(reverse("feedback-create"), payload, format="json")
         self.assertEqual(resp.status_code, 400)
 
-    def test_anonymous_cannot_submit(self):
+    def test_anonymous_without_contact_is_rejected(self):
+        # Permission layer is now AllowAny (guests must be able to submit
+        # too) — ownership is enforced in the serializer instead, so this
+        # is now a 400 (bad request: can't verify ownership) not a 401.
         order = self.make_order()
         resp = self.client.post(reverse("feedback-create"), self.valid_payload(order), format="json")
-        self.assertEqual(resp.status_code, 401)
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(Feedback.objects.count(), 0)
 
 
 class FeedbackPhotoUploadTests(FeedbackTestBase):

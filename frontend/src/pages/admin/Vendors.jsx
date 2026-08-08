@@ -121,7 +121,80 @@ function ApplicationRow({ application, onChanged }) {
   );
 }
 
-function VendorRow({ vendor, onChanged }) {
+function PayoutScheduleCell({ vendor, field, defaultDays, onChanged }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(vendor[field] ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const isOverride = vendor[field] !== null && vendor[field] !== undefined;
+
+  const save = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      await api.patch(`/admin/vendors/${vendor.id}/payout-schedule/`, { [field]: value === "" ? null : Number(value) });
+      setEditing(false);
+      onChanged();
+    } catch (err) {
+      setError(err.data?.detail || "Couldn't save.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const resetToDefault = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      await api.patch(`/admin/vendors/${vendor.id}/payout-schedule/`, { [field]: null });
+      setEditing(false);
+      onChanged();
+    } catch (err) {
+      setError(err.data?.detail || "Couldn't reset.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!editing) {
+    return (
+      <button
+        onClick={() => { setValue(vendor[field] ?? ""); setEditing(true); }}
+        className="text-left text-xs hover:underline"
+        title="Click to edit"
+      >
+        {isOverride ? (
+          <span className="font-semibold text-brand">{vendor[field]}d <span className="font-normal text-gray-400">(override)</span></span>
+        ) : (
+          <span className="text-gray-500">{defaultDays}d <span className="text-gray-400">(default)</span></span>
+        )}
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      <input
+        type="number"
+        min="0"
+        max="90"
+        className="w-14 rounded border border-gray-300 px-1.5 py-0.5 text-xs"
+        placeholder={String(defaultDays)}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+      />
+      <button disabled={saving} onClick={save} className="rounded bg-brand px-1.5 py-0.5 text-xs font-semibold text-white hover:bg-brand-dark disabled:opacity-50">✓</button>
+      {isOverride && (
+        <button disabled={saving} onClick={resetToDefault} className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600 hover:bg-gray-200">Reset</button>
+      )}
+      <button onClick={() => setEditing(false)} className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600 hover:bg-gray-200">✕</button>
+      {error && <span className="text-xs text-red-600">{error}</span>}
+    </div>
+  );
+}
+
+function VendorRow({ vendor, defaults, onChanged }) {
   const [busy, setBusy] = useState(false);
 
   const toggle = async () => {
@@ -142,6 +215,12 @@ function VendorRow({ vendor, onChanged }) {
       <td className="p-2">{formatPKR(vendor.gross_sales)}</td>
       <td className="p-2 text-red-600">-{formatPKR(vendor.commission_earned)}</td>
       <td className="p-2 font-semibold text-green-700">{formatPKR(vendor.net_paid_out)}</td>
+      <td className="p-2">
+        <PayoutScheduleCell vendor={vendor} field="payout_hold_days_override" defaultDays={defaults.payout_hold_days} onChanged={onChanged} />
+      </td>
+      <td className="p-2">
+        <PayoutScheduleCell vendor={vendor} field="payout_cycle_days_override" defaultDays={defaults.payout_cycle_days} onChanged={onChanged} />
+      </td>
       <td className="p-2">
         {vendor.is_active ? (
           <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">Active</span>
@@ -167,16 +246,19 @@ function VendorRow({ vendor, onChanged }) {
 export default function AdminVendors() {
   const [applications, setApplications] = useState([]);
   const [vendors, setVendors] = useState([]);
+  const [defaults, setDefaults] = useState({ payout_hold_days: 3, payout_cycle_days: 7 });
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
     setLoading(true);
-    const [apps, vendorList] = await Promise.all([
+    const [apps, vendorList, settings] = await Promise.all([
       api.get("/admin/vendor-applications/?status=pending"),
       api.get("/admin/vendors/"),
+      api.get("/settings/admin/"),
     ]);
     setApplications(apps.results ?? apps);
     setVendors(vendorList);
+    setDefaults({ payout_hold_days: settings.payout_hold_days, payout_cycle_days: settings.payout_cycle_days });
     setLoading(false);
   };
 
@@ -221,7 +303,10 @@ export default function AdminVendors() {
       </section>
 
       <section>
-        <h2 className="mb-3 text-sm font-bold text-gray-900">Active Vendors</h2>
+        <h2 className="mb-1 text-sm font-bold text-gray-900">Active Vendors</h2>
+        <p className="mb-3 text-xs text-gray-500">
+          Payout Hold/Cycle columns are editable — click a value to give that vendor a faster (or slower) payout schedule than the platform default.
+        </p>
         <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
           <table className="w-full text-left text-xs">
             <thead className="bg-gray-50 text-gray-500">
@@ -232,17 +317,19 @@ export default function AdminVendors() {
                 <th className="p-2">Gross Sales</th>
                 <th className="p-2">Commission Earned</th>
                 <th className="p-2">Net Paid Out</th>
+                <th className="p-2">Payout Hold</th>
+                <th className="p-2">Payout Cycle</th>
                 <th className="p-2">Status</th>
                 <th className="p-2">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="p-4 text-center text-sm text-gray-500">Loading...</td></tr>
+                <tr><td colSpan={10} className="p-4 text-center text-sm text-gray-500">Loading...</td></tr>
               ) : vendors.length === 0 ? (
-                <tr><td colSpan={8} className="p-4 text-center text-sm text-gray-500">No vendors yet.</td></tr>
+                <tr><td colSpan={10} className="p-4 text-center text-sm text-gray-500">No vendors yet.</td></tr>
               ) : (
-                vendors.map((vendor) => <VendorRow key={vendor.id} vendor={vendor} onChanged={load} />)
+                vendors.map((vendor) => <VendorRow key={vendor.id} vendor={vendor} defaults={defaults} onChanged={load} />)
               )}
             </tbody>
           </table>

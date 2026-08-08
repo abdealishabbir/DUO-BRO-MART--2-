@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Package, Clock, RotateCcw, ThumbsUp, ThumbsDown, Star, Camera, CheckCircle2, XCircle, X } from "lucide-react";
+import { Package, Clock, RotateCcw, ThumbsUp, ThumbsDown, Star, Camera, CheckCircle2, XCircle, X, ShieldCheck } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
 import { inputClass } from "../../components/FormField.jsx";
+import { useAuth } from "../../auth/AuthContext.jsx";
 
 const RETURN_WINDOW_DAYS = 7;
 
@@ -60,7 +61,8 @@ function PhotoDropzone({ files, onAdd, onRemove, error }) {
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onRemove(i); }}
-                className="absolute right-0.5 top-0.5 rounded-full bg-black/60 p-0.5 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                aria-label={`Remove photo ${i + 1}`}
+                className="absolute right-0.5 top-0.5 rounded-full bg-black/60 p-0.5 text-white opacity-0 transition-opacity focus:opacity-100 focus:outline focus:outline-2 focus:outline-white group-hover:opacity-100"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -108,7 +110,7 @@ function StarRow({ value, onChange }) {
   );
 }
 
-function ItemCard({ item, state, onConfirm, onReport }) {
+function ItemCard({ item, state, contact, onConfirm, onReport }) {
   const [reason, setReason] = useState("wrong_product");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -118,7 +120,7 @@ function ItemCard({ item, state, onConfirm, onReport }) {
     setSubmitting(true);
     setError("");
     try {
-      await api.post("/complaints/", { order_item: item.id, reason, description });
+      await api.post("/complaints/", { order_item: item.id, reason, description, contact });
       onReport(item.id);
     } catch (err) {
       setError(err.data?.detail || Object.values(err.data || {}).flat().join(" ") || "Could not submit report.");
@@ -195,6 +197,10 @@ function ItemCard({ item, state, onConfirm, onReport }) {
 
 export default function OrderFeedback() {
   const { orderCode } = useParams();
+  const { isAuthenticated } = useAuth();
+  const [contact, setContact] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [verifyError, setVerifyError] = useState("");
   const [order, setOrder] = useState(null);
   const [notFound, setNotFound] = useState(false);
   const [itemStates, setItemStates] = useState({});
@@ -241,31 +247,43 @@ export default function OrderFeedback() {
     });
   };
 
-  useEffect(() => {
-    api.get("/feedback/eligible-orders/").then((orders) => {
-      const found = orders.find((o) => o.order_code === orderCode);
+  // Logged-in owners: verified by session, matching this order's customer —
+  // no contact needed, look it up automatically on load. Guests: no session
+  // to check against, so we wait for them to prove ownership via the form
+  // below (same order_code + email/phone-at-checkout check TrackOrder uses)
+  // before ever fetching order details.
+  const lookupOrder = (contactValue) => {
+    const params = new URLSearchParams({ order_code: orderCode });
+    if (contactValue) params.set("contact", contactValue);
+    return api.get(`/feedback/eligible-orders/?${params.toString()}`).then((orders) => {
+      const found = orders[0];
       if (!found) {
-        setNotFound(true);
+        if (contactValue) {
+          setVerifyError("We couldn't verify that order — check the order ID and the email/phone used at checkout.");
+        } else {
+          setNotFound(true);
+        }
         return;
       }
       setOrder(found);
       setItemStates(Object.fromEntries(found.items.map((i) => [i.id, "pending"])));
     });
-  }, [orderCode]);
+  };
 
-  if (notFound) {
-    return (
-      <div className="mx-auto max-w-lg px-4 py-16 text-center">
-        <p className="text-gray-600">
-          This order isn&apos;t awaiting feedback right now — it may not be delivered yet, or you&apos;ve already submitted feedback for it.
-        </p>
-        <Link to="/account" className="mt-3 inline-block text-sm font-medium text-brand hover:underline">Go to My Orders</Link>
-      </div>
-    );
-  }
-  if (!order) return <div className="mx-auto max-w-3xl px-4 py-16 text-center text-sm text-gray-500">Loading...</div>;
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    setVerifying(true);
+    lookupOrder(null).finally(() => setVerifying(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, orderCode]);
 
-  const allHandled = Object.values(itemStates).every((s) => s === "confirmed" || s === "reported");
+  const handleVerify = async (e) => {
+    e.preventDefault();
+    setVerifyError("");
+    setVerifying(true);
+    await lookupOrder(contact.trim());
+    setVerifying(false);
+  };
 
   const handleConfirm = (itemId) => setItemStates((s) => ({ ...s, [itemId]: "confirmed" }));
   const handleReport = (itemIdOrShowFlag) => {
@@ -285,6 +303,7 @@ export default function OrderFeedback() {
     try {
       const formData = new FormData();
       formData.append("order", order.id);
+      formData.append("contact", contact);
       Object.entries(ratings).forEach(([key, value]) => formData.append(key, value));
       formData.append("review_text", reviewText);
       if (wouldRecommend !== null) formData.append("would_recommend", wouldRecommend);
@@ -297,6 +316,59 @@ export default function OrderFeedback() {
       setSubmitting(false);
     }
   };
+
+  // Guest gate: not logged in, and we haven't yet confirmed ownership of
+  // this specific order. Shown before anything about the order itself —
+  // its contents, delivery date, items — is fetched or displayed.
+  if (!isAuthenticated && !order && !notFound) {
+    return (
+      <div className="mx-auto max-w-md px-4 py-16">
+        <div className="flex items-center gap-2 text-brand">
+          <ShieldCheck className="h-5 w-5" />
+          <h1 className="text-xl font-bold text-gray-900">Verify Your Order</h1>
+        </div>
+        <p className="mt-1 text-sm text-gray-500">
+          Confirm the email or phone number used at checkout for order <span className="font-semibold text-gray-700">{orderCode}</span>.
+        </p>
+        <form onSubmit={handleVerify} className="mt-5 space-y-4 rounded-lg border border-gray-200 bg-white p-5">
+          <label className="block text-sm">
+            <span className="mb-1 block font-medium text-gray-700">Email or Phone Number</span>
+            <input
+              className={inputClass}
+              placeholder="you@example.com or 03001234567"
+              value={contact}
+              onChange={(e) => setContact(e.target.value)}
+            />
+          </label>
+          {verifyError && <p className="text-sm text-red-600">{verifyError}</p>}
+          <button
+            type="submit"
+            disabled={verifying || !contact.trim()}
+            className="w-full rounded-md bg-brand py-3 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-60"
+          >
+            {verifying ? "Verifying..." : "Continue"}
+          </button>
+        </form>
+        <p className="mt-4 text-center text-xs text-gray-400">
+          Have an account? <Link to="/login" state={{ from: `/order-feedback/${orderCode}` }} className="font-medium text-brand hover:underline">Log in</Link> to skip this step.
+        </p>
+      </div>
+    );
+  }
+
+  if (notFound) {
+    return (
+      <div className="mx-auto max-w-lg px-4 py-16 text-center">
+        <p className="text-gray-600">
+          This order isn&apos;t awaiting feedback right now — it may not be delivered yet, or you&apos;ve already submitted feedback for it.
+        </p>
+        <Link to="/account" className="mt-3 inline-block text-sm font-medium text-brand hover:underline">Go to My Orders</Link>
+      </div>
+    );
+  }
+  if (!order) return <div className="mx-auto max-w-3xl px-4 py-16 text-center text-sm text-gray-500">Loading...</div>;
+
+  const allHandled = Object.values(itemStates).every((s) => s === "confirmed" || s === "reported");
 
   if (submitted) {
     return (
@@ -348,7 +420,7 @@ export default function OrderFeedback() {
       {step === 1 ? (
         <div className="mt-5 space-y-4">
           {order.items.map((item) => (
-            <ItemCard key={item.id} item={item} state={itemStates[item.id]} onConfirm={handleConfirm} onReport={handleReport} />
+            <ItemCard key={item.id} item={item} state={itemStates[item.id]} contact={contact} onConfirm={handleConfirm} onReport={handleReport} />
           ))}
           <p className="text-center text-xs text-gray-400">
             {allHandled ? "" : "Please confirm or report each item above to proceed"}

@@ -37,6 +37,7 @@ account_patterns = [
 admin_patterns = [
     path("vendors/", views.AdminVendorListView.as_view(), name="admin-vendor-list"),
     path("vendors/<int:pk>/suspend/", views.AdminVendorSuspendView.as_view(), name="admin-vendor-suspend"),
+    path("vendors/<int:pk>/payout-schedule/", views.AdminVendorPayoutScheduleView.as_view(), name="admin-vendor-payout-schedule"),
     path("", include(admin_router.urls)),
 ]
 

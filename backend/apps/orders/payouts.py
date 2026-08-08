@@ -23,13 +23,18 @@ from .notifications import maybe_send_payout_ready_alert
 def eligible_order_items_for_vendor(vendor, as_of=None):
     """
     Delivered order items belonging to `vendor` that:
-      - were delivered at least PlatformSettings.payout_hold_days ago, and
+      - were delivered at least `vendor`'s effective payout_hold_days ago
+        (their own override if set, else PlatformSettings.payout_hold_days), and
       - haven't already been claimed by an earlier Payout (OneToOne guard).
     """
     from apps.core.models import PlatformSettings
 
     as_of = as_of or timezone.now()
-    hold_days = PlatformSettings.get_solo().payout_hold_days
+    hold_days = (
+        vendor.payout_hold_days_override
+        if vendor.payout_hold_days_override is not None
+        else PlatformSettings.get_solo().payout_hold_days
+    )
     cutoff = as_of - timedelta(days=hold_days)
 
     return (
@@ -45,13 +50,17 @@ def eligible_order_items_for_vendor(vendor, as_of=None):
 
 
 def next_eligible_at_for_vendor(vendor):
-    """When a vendor's next payout batch is allowed, per payout_cycle_days — None if they've never been paid."""
+    """When a vendor's next payout batch is allowed — their own payout_cycle_days_override if set, else PlatformSettings.payout_cycle_days. None if they've never been paid."""
     from apps.core.models import PlatformSettings
 
     last = Payout.objects.filter(vendor=vendor).order_by("-created_at").first()
     if not last:
         return None
-    cycle_days = PlatformSettings.get_solo().payout_cycle_days
+    cycle_days = (
+        vendor.payout_cycle_days_override
+        if vendor.payout_cycle_days_override is not None
+        else PlatformSettings.get_solo().payout_cycle_days
+    )
     return last.created_at + timedelta(days=cycle_days)
 
 

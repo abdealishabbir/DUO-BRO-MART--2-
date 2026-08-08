@@ -18,7 +18,10 @@ from .serializers import ComplaintCreateSerializer, ComplaintSerializer
 
 
 class ComplaintCreateView(generics.CreateAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    # AllowAny at the transport layer — ComplaintCreateSerializer.validate_order_item()
+    # does the real ownership check (logged-in owner OR guest order_code+contact
+    # match), same split responsibility as apps.feedback.views.FeedbackCreateView.
+    permission_classes = [permissions.AllowAny]
     serializer_class = ComplaintCreateSerializer
 
 

@@ -98,14 +98,15 @@ export default function VendorSettings() {
             <button
               type="button"
               onClick={() => shopLogoInputRef.current?.click()}
-              className="group relative h-16 w-16 shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-50"
+              aria-label="Change shop logo"
+              className="group relative h-16 w-16 shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-50 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-brand"
             >
               {shopLogoPreview ? (
                 <img src={shopLogoPreview} alt="Shop logo" className="h-full w-full object-cover" />
               ) : (
                 <Store className="absolute inset-0 m-auto h-6 w-6 text-gray-300" />
               )}
-              <span className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+              <span className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100">
                 <Camera className="h-5 w-5 text-white" />
               </span>
             </button>

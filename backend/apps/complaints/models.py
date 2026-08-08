@@ -26,7 +26,10 @@ class Complaint(models.Model):
         REJECTED = "rejected", "Rejected"
 
     order_item = models.OneToOneField("orders.OrderItem", on_delete=models.CASCADE, related_name="complaint")
-    customer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="complaints_filed")
+    customer = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="complaints_filed",
+        help_text="Null for a guest checkout — order_item.order is the real link, verified by order_code + contact at submission time.",
+    )
 
     reason = models.CharField(max_length=30, choices=Reason.choices)
     description = models.TextField()

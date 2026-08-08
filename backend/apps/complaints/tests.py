@@ -73,10 +73,91 @@ class ComplaintCreateTests(ComplaintTestBase):
         resp = self.client.post(reverse("complaint-create"), payload, format="json")
         self.assertEqual(resp.status_code, 400)
 
-    def test_anonymous_cannot_file(self):
+    def test_anonymous_without_contact_is_rejected(self):
+        # Permission layer is now AllowAny (guests must be able to file a
+        # return request too) — ownership is enforced in the serializer
+        # instead, so this is a 400 now, not a 401.
         item = self.make_order_item()
         resp = self.client.post(reverse("complaint-create"), {"order_item": item.id, "reason": "damaged", "description": "x"}, format="json")
-        self.assertEqual(resp.status_code, 401)
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(Complaint.objects.count(), 0)
+
+
+class GuestComplaintTests(ComplaintTestBase):
+    """Mirrors apps.feedback.tests.GuestFeedbackTests — guest checkout
+    customers verified by order_code + email/phone at checkout instead of
+    a login session."""
+
+    def make_guest_order_item(self):
+        order = Order.objects.create(
+            customer=None,
+            shipping_full_name="Guest Buyer", shipping_phone_number="03009998888", shipping_email="guest@example.com",
+            shipping_province="sindh", shipping_city="Karachi", shipping_address_line="x",
+            subtotal=Decimal("1100.00"), shipping_fee=Decimal("250.00"), total=Decimal("1350.00"),
+            status=Order.Status.DELIVERED,
+        )
+        return OrderItem.objects.create(
+            order=order, product=self.product, vendor=self.vendor, product_name=self.product.name,
+            product_slug=self.product.slug, quantity=1, unit_price=Decimal("1100.00"), unit_base_price=Decimal("1000.00"),
+        )
+
+    def test_guest_can_file_with_correct_contact(self):
+        item = self.make_guest_order_item()
+        resp = self.client.post(
+            reverse("complaint-create"),
+            {"order_item": item.id, "reason": "damaged", "description": "Box crushed", "contact": "guest@example.com"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201, resp.data)
+        complaint = Complaint.objects.get()
+        self.assertIsNone(complaint.customer)
+
+    def test_guest_can_file_with_phone_contact(self):
+        item = self.make_guest_order_item()
+        resp = self.client.post(
+            reverse("complaint-create"),
+            {"order_item": item.id, "reason": "damaged", "description": "x", "contact": "03009998888"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201, resp.data)
+
+    def test_guest_cannot_file_with_wrong_contact(self):
+        item = self.make_guest_order_item()
+        resp = self.client.post(
+            reverse("complaint-create"),
+            {"order_item": item.id, "reason": "damaged", "description": "x", "contact": "wrong@example.com"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(Complaint.objects.count(), 0)
+
+    def test_guest_cannot_double_file(self):
+        item = self.make_guest_order_item()
+        payload = {"order_item": item.id, "reason": "damaged", "description": "x", "contact": "guest@example.com"}
+        self.client.post(reverse("complaint-create"), payload, format="json")
+        resp = self.client.post(reverse("complaint-create"), payload, format="json")
+        self.assertEqual(resp.status_code, 400)
+
+    def test_logged_in_customer_still_works_unaffected(self):
+        item = self.make_order_item()
+        self.login_as_customer()
+        resp = self.client.post(reverse("complaint-create"), {"order_item": item.id, "reason": "damaged", "description": "x"}, format="json")
+        self.assertEqual(resp.status_code, 201, resp.data)
+        self.assertEqual(Complaint.objects.get().customer_id, self.customer.id)
+
+    def test_admin_queue_shows_shipping_email_for_guest_complaint(self):
+        # Regression guard for the ComplaintSerializer.customer_email bug
+        # this feature would otherwise introduce (customer is now nullable).
+        item = self.make_guest_order_item()
+        self.client.post(
+            reverse("complaint-create"),
+            {"order_item": item.id, "reason": "damaged", "description": "x", "contact": "guest@example.com"},
+            format="json",
+        )
+        self.login_as_admin()
+        resp = self.client.get(reverse("admin-complaints"))
+        results = resp.data.get("results", resp.data)
+        self.assertEqual(results[0]["customer_email"], "guest@example.com")
 
 
 class AdminComplaintQueueTests(ComplaintTestBase):

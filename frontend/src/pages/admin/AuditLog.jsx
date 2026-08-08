@@ -13,10 +13,13 @@ const ACTION_LABELS = {
   "vendor_application.rejected": "Vendor Application Rejected",
   "vendor.suspended": "Vendor Suspended",
   "vendor.reinstated": "Vendor Reinstated",
+  "vendor.payout_schedule_changed": "Vendor Payout Schedule Changed",
   "banner_application.approved": "Banner Application Approved",
   "banner_application.rejected": "Banner Application Rejected",
   "order.status_changed": "Order Status Changed",
   "payout.marked_paid": "Payout Marked Paid",
+  "payout.retry_marked_paid": "Payout Retried & Marked Paid",
+  "payout.marked_failed": "Payout Marked Failed (Reopened)",
 };
 
 const ACTION_COLORS = {
@@ -26,6 +29,7 @@ const ACTION_COLORS = {
   reinstated: "bg-green-100 text-green-700",
   changed: "bg-blue-100 text-blue-700",
   paid: "bg-green-100 text-green-700",
+  failed: "bg-red-100 text-red-700",
 };
 
 function badgeColor(action) {

@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import Meta from "../../components/Meta.jsx";
 
 function Section({ number, title, children }) {
   return (
@@ -14,6 +15,7 @@ function Section({ number, title, children }) {
 export default function VendorTerms() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-12">
+      <Meta title="Vendor Terms & Conditions — Duo Bro Mart" description="Terms and conditions for vendors selling on Duo Bro Mart, Pakistan's multi-vendor marketplace." url={`${window.location.origin}/vendor-terms`} />
       <span className="rounded-full bg-brand/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-brand">
         Placeholder — pending final legal review
       </span>

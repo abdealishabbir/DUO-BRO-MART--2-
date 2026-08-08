@@ -11,9 +11,23 @@ alongside the security/market recommendations already discussed.
   console in dev (Django's default backend). This blocks:
   - Vendor approval credentials email (works in dev/console, not in real inboxes)
   - Password reset emails
-  - "Order delivered — leave feedback" email (the actual link-in-email flow
+  - ~~"Order delivered — leave feedback" email (the actual link-in-email flow
     for `/order-feedback/:orderCode` doesn't exist yet — customers only
-    reach that page via Account → Orders right now)
+    reach that page via Account → Orders right now)~~ — **the deeper bug is
+    fixed**: `/order-feedback/:orderCode` was never actually SMTP-blocked —
+    the page itself was public, but the API behind it
+    (`/feedback/`, `/feedback/eligible-orders/`, `/complaints/`) was
+    `IsAuthenticated`-only and scoped to `request.user`, so a **guest COD
+    customer — most of this platform's orders — could never reach this
+    flow at all**, link or no link. Now verified by order_code + the
+    email/phone used at checkout (same pattern as `TrackOrderView`/
+    `OrderCancelView`), with a "Verify Your Order" gate shown only to
+    non-logged-in visitors. `Feedback.customer`/`Complaint.customer` are
+    now nullable to support this, mirroring `Order.customer`. What's
+    *still* genuinely SMTP-blocked: nothing yet automatically emails the
+    customer that link after delivery — they'd need to know their own
+    order code and visit `/order-feedback/DBM-XXXX-XXXX` directly (or use
+    Account → Orders if logged in) until that email trigger exists.
   - Low-stock admin alerts (logic is wired, §7.2, but goes nowhere real
     without SMTP configured — see note above)
   - The 4 notification toggles in Admin Settings (§7.7 — New Order, New
@@ -98,8 +112,10 @@ alongside the security/market recommendations already discussed.
   `UnorderedObjectListWarning` flags — fixed by making it explicit.
 - ~~Rating stars missing from Home/Shop product cards~~ — **fixed**: added
   using the same data ProductDetail already displayed.
-- **Multi-vendor cart/checkout doesn't show a per-vendor cost breakdown** —
-  still open, no external resources needed to build this.
+- ~~Multi-vendor cart/checkout doesn't show a per-vendor cost breakdown~~ —
+  **turned out to already be built**: `OrderSummarySidebar.jsx` +
+  `groupLinesByVendor()` already handle this across Cart, CheckoutShipping,
+  CheckoutPayment, and CheckoutConfirmation. This bullet was stale.
 - ~~No customer-initiated order cancellation~~ — **built**, with a
   deliberate scope call rather than a silent assumption: self-service
   cancel only works while the order is still `pending` (matches real
@@ -111,9 +127,13 @@ alongside the security/market recommendations already discussed.
   (one-click from Account → Orders, no re-entering contact info). 10 new
   tests covering both ownership paths, restocking, coupon reversal, and
   the pending-only boundary.
-- **No sitemap.xml or per-page meta tags** — 404 page, favicon, and
-  robots.txt all already exist; sitemap and meta tags genuinely still
-  don't. No external resources needed.
+- ~~No sitemap.xml or per-page meta tags~~ — **both already existed or now
+  fixed**: `sitemap.xml` and `robots.txt` were already registered and
+  working (bullet was stale on that half). Per-page `Meta`
+  (react-helmet-async) was already on Home/Shop/ProductDetail/
+  VendorStorefront/Cart/Checkout/Wishlist; added it to the three remaining
+  public pages this session (Terms, VendorTerms, BecomeVendor). Auth/
+  account pages deliberately skipped — not SEO targets.
 - ~~Checkout isn't idempotent — a slow network + retry could theoretically
   create two real orders~~ — **fixed**: `Order.idempotency_key`, generated
   once per checkout attempt on the frontend (`crypto.randomUUID()`, reused
@@ -165,12 +185,15 @@ with `InventoryWebSocketTests` passing.
 - ~~**Admin coupons UI**~~ — **built**: `Coupons.jsx` (list, create, edit,
   delete, active/expired/inactive status). Backend CRUD was already real
   and tested.
-- **Accessibility pass was a spot-fix, not an audit** — only the highest-
-  traffic pages got aria-labels (global header search, Shop view toggle,
-  ProductDetail carousel/stepper). Admin panel, vendor panel, and the
-  checkout flow's icon-only buttons haven't been reviewed. A real
-  accessibility audit (screen reader pass, keyboard nav, color contrast,
-  skip-to-content link) is still outstanding.
+- ~~Accessibility pass was a spot-fix, not an audit~~ — **audited**: no
+  keyboard-inaccessible clickable `<div>`s, no missing `alt` text, and
+  every icon-only table row action already had `aria-label`s. 6 real
+  gaps found and fixed: icon-only search-submit buttons (admin
+  Orders/Products), icon-only refresh buttons (Analytics pages), and —
+  the most important one — two upload/remove buttons that were only
+  *visible* on mouse hover with no `focus`/`focus-visible` fallback,
+  making them genuinely undiscoverable for keyboard-only users
+  (OrderFeedback photo-remove, vendor Settings shop-logo upload).
 - ~~**CheckoutConfirmation/OrderSummarySidebar don't display coupon
   discounts**~~ — **fixed**: `CheckoutConfirmation.jsx` and `TrackOrder.jsx`
   now show the real subtotal/coupon-discount/shipping breakdown from the
@@ -194,13 +217,18 @@ placeholders. What's still genuinely missing, not faked or stubbed:
   manual admin action with a free-text reference field. No NayaPay/
   Easypaisa/bank payout API is called. This is the single biggest gap
   standing between what's built and an actual working payout system.
-- **Payout schedule is platform-wide, not per-vendor** — one hold period +
-  one cycle length (Admin Settings) applies to every vendor. A real system
-  would likely let vendors choose their own cadence (Etsy-style) or let
-  admin set tiers by vendor trust level.
-- **No payout failure/retry handling** — if a "Paid" batch's transfer
-  actually failed outside the platform, there's no way to reopen it; an
-  admin would have to fix it directly in Django admin.
+- ~~Payout schedule is platform-wide, not per-vendor~~ — **built**:
+  `payout_hold_days_override`/`payout_cycle_days_override` nullable fields
+  on `User` (null = use the platform default, same pattern as
+  `shop_name`/`shop_logo`). Admin Vendors page gets click-to-edit Hold/
+  Cycle columns showing "(default)" vs "(override)" with a one-click
+  reset. 12 new tests confirming isolation (one vendor's override doesn't
+  touch another's eligibility).
+- ~~No payout failure/retry handling~~ — **built**: a Paid batch can be
+  reopened as `FAILED` (with a required reason, logged to the audit
+  trail), then retried via the same `mark_paid` action with a corrected
+  reference — same batch, same `PayoutItem`s, no risk of double-paying.
+  Vendors see the failure reason on their own Payouts page/CSV, read-only.
 - **Traffic-source detection is referrer-based only** — no UTM parameter
   capture, no campaign tracking, no session/cookie-level attribution. It's
   a coarse direct/search/social/other bucket, good enough for a directional
@@ -210,5 +238,15 @@ placeholders. What's still genuinely missing, not faked or stubbed:
   and buys Thursday still counts, and there's no per-session linkage.
 - **No returning-vs-new-visitor split, no geographic breakdown** — nothing
   captures visitor identity or location at all (deliberately — kept PII-free).
-- **Analytics/Payouts admin views have no CSV export** and the date range
-  is fixed to 7/30/90-day tabs, no custom picker.
+- ~~Analytics/Payouts admin views have no CSV export and the date range is
+  fixed to 7/30/90-day tabs, no custom picker~~ — **built**: Vendor
+  Analytics turned out to already have both (found while auditing this
+  item — the bullet was stale for that page). The real gap was that
+  there was no platform-wide Admin Analytics page at all, only a fixed
+  month-over-month Dashboard — built a new Admin Analytics page mirroring
+  the vendor one (custom date range, CSV export, top products, top
+  vendors, platform commission). Also fixed a real bug found while
+  auditing: Vendor Analytics' CSV export crashed with `NameError:
+  timedelta` on the default/preset-range path (only the custom-range path
+  had imported it) — had zero test coverage before, which is exactly how
+  it shipped unnoticed.

@@ -634,6 +634,8 @@ class AdminVendorListView(generics.ListAPIView):
                 "rating": round(rating, 1) if rating is not None else None,
                 "is_active": vendor.is_active,
                 "must_change_password": vendor.must_change_password,
+                "payout_hold_days_override": vendor.payout_hold_days_override,
+                "payout_cycle_days_override": vendor.payout_cycle_days_override,
             })
         return Response(results)
 
@@ -655,6 +657,60 @@ class AdminVendorSuspendView(APIView):
         vendor.save(update_fields=["is_active"])
         log_admin_action(request.user, "vendor.suspended" if action_type == "suspend" else "vendor.reinstated", vendor)
         return Response({"id": vendor.id, "is_active": vendor.is_active})
+
+
+class AdminVendorPayoutScheduleView(APIView):
+    """
+    §6.7 deferred item: per-vendor payout schedule tiers. Most vendors just
+    use PlatformSettings.payout_hold_days/payout_cycle_days (see
+    apps.orders.payouts) — this lets an admin give an individual vendor a
+    shorter (or longer) hold/cycle, e.g. faster disbursement for an
+    established, high-trust seller. Send null/blank for either field to
+    reset that one back to the platform default.
+    """
+
+    permission_classes = [permissions.IsAuthenticated, IsAdminRole]
+
+    MAX_DAYS = 90
+
+    def patch(self, request, pk):
+        User = get_user_model()
+        try:
+            vendor = User.objects.get(pk=pk, role=User.Role.VENDOR)
+        except User.DoesNotExist:
+            return Response({"detail": "Vendor not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        update_fields = []
+        for field, label in (("payout_hold_days_override", "hold days"), ("payout_cycle_days_override", "cycle days")):
+            if field not in request.data:
+                continue
+            raw = request.data.get(field)
+            if raw in (None, ""):
+                setattr(vendor, field, None)
+            else:
+                try:
+                    value = int(raw)
+                except (TypeError, ValueError):
+                    return Response({"detail": f"Invalid {label}: must be a whole number of days."}, status=status.HTTP_400_BAD_REQUEST)
+                if not (0 <= value <= self.MAX_DAYS):
+                    return Response({"detail": f"{label.capitalize()} must be between 0 and {self.MAX_DAYS}."}, status=status.HTTP_400_BAD_REQUEST)
+                setattr(vendor, field, value)
+            update_fields.append(field)
+
+        if not update_fields:
+            return Response({"detail": "Nothing to update — send payout_hold_days_override and/or payout_cycle_days_override."}, status=status.HTTP_400_BAD_REQUEST)
+
+        vendor.save(update_fields=update_fields)
+        log_admin_action(
+            request.user, "vendor.payout_schedule_changed", vendor,
+            details=f"hold={vendor.payout_hold_days_override if vendor.payout_hold_days_override is not None else 'default'}, "
+                    f"cycle={vendor.payout_cycle_days_override if vendor.payout_cycle_days_override is not None else 'default'}",
+        )
+        return Response({
+            "id": vendor.id,
+            "payout_hold_days_override": vendor.payout_hold_days_override,
+            "payout_cycle_days_override": vendor.payout_cycle_days_override,
+        })
 
 
 # ---------------------------------------------------------------------------

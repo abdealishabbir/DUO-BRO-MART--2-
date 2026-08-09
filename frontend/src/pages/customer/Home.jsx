@@ -232,8 +232,15 @@ function CategoryGrid({ categories }) {
   // Measure how wide one tile should be (4 per row on mobile, 8 on
   // larger screens, matching the old static grid) so the slide
   // distance is always exactly one tile — recalculated on resize.
-  // Measured twice on mount (immediately + after paint) since some
-  // layouts report 0 width on the very first tick before it settles.
+  //
+  // Also re-runs whenever `categories` goes from empty to populated: this
+  // component returns null (see below) while categories haven't loaded
+  // yet, so containerRef isn't attached to any DOM node on the very
+  // first mount — a mount-only ([]) effect would measure a null ref
+  // forever and never retry once the real container finally renders.
+  // Measuring on that transition (not just mount) is what actually
+  // fixes it; the rAF/timeout retries below only cover the separate
+  // "container exists but hasn't been laid out yet" timing issue.
   useEffect(() => {
     function measure() {
       const width = containerRef.current?.offsetWidth ?? 0;
@@ -250,7 +257,12 @@ function CategoryGrid({ categories }) {
       clearTimeout(timeout);
       window.removeEventListener("resize", measure);
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally
+    // depends on the same condition as the `categories.length === 0`
+    // early-return below (not on `order`, which lags a render behind
+    // `categories` via its own effect) — this is the exact moment the
+    // container goes from not-rendered to rendered.
+  }, [categories.length > 0]);
 
   // Start each cycle with the track shifted one tile-width to the left,
   // hiding a duplicate of the last category just off-screen to the left.

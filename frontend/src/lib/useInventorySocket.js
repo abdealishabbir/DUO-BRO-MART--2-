@@ -22,6 +22,10 @@ export function useInventorySocket(onUpdate) {
   callbackRef.current = onUpdate;
 
   useEffect(() => {
+    // Demo mode has no real backend to connect to — skip the attempt
+    // entirely rather than letting it fail silently every time.
+    if (import.meta.env.VITE_MOCK_MODE === "true") return undefined;
+
     let socket;
     try {
       socket = new WebSocket(inventoryWsUrl());

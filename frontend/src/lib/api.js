@@ -1,4 +1,15 @@
+import { mockApi } from "./mockApi.js";
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+
+// Demo/deploy-preview mode — set VITE_MOCK_MODE=true in Vercel's env vars
+// when there's no real backend deployed yet. Every request below then
+// answers from mockApi.js (static catalog data + a fake localStorage
+// session) instead of hitting `${API_BASE_URL}`. This is the ONLY place
+// that decides mock vs. real — remove the env var (or set it to anything
+// else) once VITE_API_BASE_URL points at a real backend, and everything
+// reverts to normal with no other code changes needed.
+const MOCK_MODE = import.meta.env.VITE_MOCK_MODE === "true";
 
 let refreshInFlight = null;
 
@@ -38,6 +49,8 @@ async function refreshAccessToken() {
  * Throws an ApiError with .status and .data (the parsed JSON error body) on failure.
  */
 async function request(path, { method = "GET", body, skipRefresh = false } = {}) {
+  if (MOCK_MODE) return mockApi.request(path, method, body);
+
   let response = await rawRequest(path, {
     method,
     body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -67,6 +80,15 @@ async function request(path, { method = "GET", body, skipRefresh = false } = {})
 }
 
 async function requestForm(path, { method = "POST", formData }) {
+  if (MOCK_MODE) {
+    // File-upload flows (vendor application docs, feedback photos, etc.)
+    // aren't part of the browse/search/checkout demo scope — succeed
+    // with an empty response rather than hard-failing on a real fetch()
+    // that has nowhere real to go.
+    await new Promise((r) => setTimeout(r, 300));
+    return {};
+  }
+
   let response = await rawFormRequest(path, { method, body: formData });
 
   if (response.status === 401) {

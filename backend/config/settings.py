@@ -17,7 +17,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # --- Core ---
 _INSECURE_DEFAULT_SECRET_KEY = "dev-insecure-key-change-me"
 SECRET_KEY = config("DJANGO_SECRET_KEY", default=_INSECURE_DEFAULT_SECRET_KEY)
-DEBUG = config("DJANGO_DEBUG", default=True, cast=bool)
+DEBUG = config("DJANGO_DEBUG", default=False, cast=bool)
 ALLOWED_HOSTS = config(
     "DJANGO_ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv()
 )

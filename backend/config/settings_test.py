@@ -5,7 +5,17 @@ or this sandbox during development). Real local dev should still use
 `docker compose up` against the settings in settings.py.
 """
 
-from .settings import *  # noqa: F401,F403
+import os  # noqa: E402
+
+# Must happen BEFORE the wildcard import below: settings.py's insecure-
+# secret-key guard evaluates DEBUG during that very import, so setting the
+# Python-level DEBUG constant afterward would be too late. This module is
+# never used in production (see docstring above), so it has no business
+# requiring a real SECRET_KEY to boot — `setdefault` (not a hard override)
+# so an explicitly-set DJANGO_DEBUG in the environment still wins.
+os.environ.setdefault("DJANGO_DEBUG", "True")
+
+from .settings import *  # noqa: F401,F403,E402
 
 DATABASES = {
     "default": {

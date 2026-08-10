@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
+import ImageWithFallback from "../../components/ImageWithFallback.jsx";
 
 const STATUS_STYLES = {
   pending: "bg-amber-100 text-amber-700",
@@ -128,10 +129,11 @@ export default function AdminDashboard() {
             ) : (
               data.top_products.map((product) => (
                 <div key={product.slug} className="flex items-center gap-3">
-                  <img
-                    src={product.image || "https://placehold.co/48x48?text=No+Image"}
+                  <ImageWithFallback
+                    src={product.image}
                     alt=""
                     className="h-10 w-10 shrink-0 rounded-md object-cover"
+                    iconClassName="h-4 w-4"
                   />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-xs font-medium text-gray-900">{product.name}</p>

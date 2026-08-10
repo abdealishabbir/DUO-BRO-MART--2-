@@ -7,6 +7,7 @@ import { formatPKR } from "../../lib/currency.js";
 import { useInventorySocket } from "../../lib/useInventorySocket.js";
 import WishlistButton from "../../components/WishlistButton.jsx";
 import Meta from "../../components/Meta.jsx";
+import ImageWithFallback from "../../components/ImageWithFallback.jsx";
 
 // Feeds the vendor Analytics traffic-source breakdown (§6.7/Phase 6+). No
 // UTM parsing, no session tracking — just a coarse bucket from referrer,
@@ -27,12 +28,12 @@ function detectTrafficSource() {
 
 function ImageCarousel({ images, name }) {
   const [active, setActive] = useState(0);
-  const shown = images.length ? images : ["https://placehold.co/600x600?text=No+Image"];
+  const shown = images.length ? images : [null]; // ImageWithFallback shows its own local placeholder for a null src — no third-party dependency
 
   return (
     <div>
       <div className="relative">
-        <img src={shown[active]} alt={name} className="aspect-square w-full rounded-lg object-cover" />
+        <ImageWithFallback src={shown[active]} alt={name} className="aspect-square w-full rounded-lg object-cover" />
         {shown.length > 1 && (
           <>
             <button
@@ -59,7 +60,7 @@ function ImageCarousel({ images, name }) {
             onClick={() => setActive(i)}
             className={`h-16 w-16 shrink-0 overflow-hidden rounded-md border-2 ${i === active ? "border-brand" : "border-transparent"}`}
           >
-            <img src={img} alt="" className="h-full w-full object-cover" />
+            <ImageWithFallback src={img} alt="" className="h-full w-full object-cover" iconClassName="h-6 w-6" />
           </button>
         ))}
       </div>
@@ -109,7 +110,7 @@ function RelatedProducts({ products }) {
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {products.map((p) => (
           <Link key={p.id} to={`/product/${p.slug}`} className="rounded-lg border border-gray-200 bg-white p-3 hover:shadow-md">
-            <img src={p.images[0] || "https://placehold.co/300x300?text=No+Image"} alt={p.name} className="h-32 w-full rounded-md object-cover" />
+            <ImageWithFallback src={p.images[0]} alt={p.name} className="h-32 w-full rounded-md object-cover" />
             <p className="mt-2 line-clamp-2 text-sm font-medium text-gray-900">{p.name}</p>
             <p className="mt-1 text-sm font-bold text-gray-900">{formatPKR(p.price)}</p>
           </Link>

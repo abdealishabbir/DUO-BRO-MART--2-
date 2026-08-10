@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Search, Clock } from "lucide-react";
 import { api } from "../lib/api.js";
 import { formatPKR } from "../lib/currency.js";
+import ImageWithFallback from "./ImageWithFallback.jsx";
 
 const RECENT_SEARCHES_KEY = "dbm_recent_searches";
 const MAX_RECENT = 5;
@@ -216,10 +217,11 @@ export default function SearchAutocomplete({ placeholder = "Search for products,
                             highlightIndex === idx ? "bg-brand/5" : "hover:bg-gray-50"
                           }`}
                         >
-                          <img
-                            src={p.image || "https://placehold.co/64x64?text=No+Image"}
+                          <ImageWithFallback
+                            src={p.image}
                             alt=""
                             className="h-10 w-10 shrink-0 rounded object-cover"
+                            iconClassName="h-4 w-4"
                           />
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-sm font-medium text-gray-900">{p.name}</span>

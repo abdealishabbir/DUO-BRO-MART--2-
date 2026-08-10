@@ -5,6 +5,7 @@ import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
 import { groupLinesByVendor } from "../../lib/vendorGrouping.js";
 import { inputClass } from "../../components/FormField.jsx";
+import ImageWithFallback from "../../components/ImageWithFallback.jsx";
 
 // PRD §5.4: Pending -> Processing -> Shipped -> Delivered (or Cancelled).
 // The admin updates this status from their panel (§6.4) — this page
@@ -157,7 +158,7 @@ export default function TrackOrder() {
                       {group.items.map((item) => (
                         <div key={item.key} className="flex items-center justify-between text-sm">
                           <div className="flex items-center gap-3">
-                            {item.image && <img src={item.image} alt="" className="h-10 w-10 rounded-md object-cover" />}
+                            {item.image && <ImageWithFallback src={item.image} alt="" className="h-10 w-10 rounded-md object-cover" iconClassName="h-4 w-4" />}
                             <div>
                               <p className="font-medium text-gray-900">{item.name}</p>
                               <p className="text-xs text-gray-500">Qty: {item.quantity}</p>

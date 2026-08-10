@@ -3,6 +3,7 @@ import { ImagePlus, RefreshCw } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
 import FormField, { inputClass } from "../../components/FormField.jsx";
+import ImageWithFallback from "../../components/ImageWithFallback.jsx";
 
 // Hero banner is rendered full-width at a fixed aspect ratio on Home
 // (see Hero() in customer/Home.jsx) — an image that isn't exactly this
@@ -243,7 +244,7 @@ function ApplicationsList({ applications }) {
       {applications.map((app) => (
         <div key={app.id} className="flex items-center justify-between rounded-md border border-gray-200 bg-white p-3 text-sm">
           <div className="flex items-center gap-3">
-            <img src={app.image} alt="" className="h-10 w-16 rounded object-cover" />
+            <ImageWithFallback src={app.image} alt="" className="h-10 w-16 rounded object-cover" iconClassName="h-4 w-4" />
             <div>
               <p className="font-medium text-gray-900">{app.headline}</p>
               <p className="text-xs text-gray-500">{app.requested_days} days · {app.payment_type} · Rs. {app.total_price}</p>
@@ -260,7 +261,7 @@ function BannerPaymentCard({ banner }) {
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4">
       <div className="flex items-start gap-3">
-        <img src={banner.image} alt="" className="h-16 w-28 rounded-md object-cover" />
+        <ImageWithFallback src={banner.image} alt="" className="h-16 w-28 rounded-md object-cover" iconClassName="h-5 w-5" />
         <div className="flex-1">
           <div className="flex items-center justify-between">
             <p className="font-semibold text-gray-900">{banner.headline}</p>

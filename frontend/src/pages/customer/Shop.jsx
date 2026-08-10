@@ -6,6 +6,7 @@ import { useCart } from "../../cart/CartContext.jsx";
 import { formatPKR } from "../../lib/currency.js";
 import WishlistButton from "../../components/WishlistButton.jsx";
 import Meta from "../../components/Meta.jsx";
+import ImageWithFallback from "../../components/ImageWithFallback.jsx";
 
 const DEFAULT_FILTERS = { categories: [], brands: [], minPrice: "", maxPrice: "", dealsOnly: false, minRating: "", search: "" };
 
@@ -207,8 +208,8 @@ export function ProductCard({ product, view }) {
         <div className="absolute right-1.5 top-1.5 z-10">
           <WishlistButton product={product} />
         </div>
-        <img
-          src={product.images[0] || "https://placehold.co/300x300?text=No+Image"}
+        <ImageWithFallback
+          src={product.images[0]}
           alt={product.name}
           className={`w-full rounded-md object-cover ${isList ? "h-28" : "h-48"}`}
         />

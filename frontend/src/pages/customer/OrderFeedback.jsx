@@ -5,6 +5,7 @@ import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
 import { inputClass } from "../../components/FormField.jsx";
 import { useAuth } from "../../auth/AuthContext.jsx";
+import ImageWithFallback from "../../components/ImageWithFallback.jsx";
 
 const RETURN_WINDOW_DAYS = 7;
 
@@ -135,7 +136,7 @@ function ItemCard({ item, state, contact, onConfirm, onReport }) {
   return (
     <div className={`rounded-lg border p-4 ${style}`}>
       <div className="flex items-start gap-3">
-        {item.image && <img src={item.image} alt="" className="h-16 w-16 rounded-md object-cover" />}
+        {item.image && <ImageWithFallback src={item.image} alt="" className="h-16 w-16 rounded-md object-cover" iconClassName="h-6 w-6" />}
         <div className="flex-1">
           <div className="flex items-start justify-between">
             <div>

@@ -6,6 +6,7 @@ import {
 import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
 import FormField, { inputClass } from "../../components/FormField.jsx";
+import ImageWithFallback from "../../components/ImageWithFallback.jsx";
 
 const OTHER_CATEGORY = "__other__";
 const EMPTY_FORM = { name: "", sku: "", category: "", customCategory: "", base_price: "", stock_quantity: "", description: "" };
@@ -382,7 +383,7 @@ export default function VendorProducts() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-gray-100 overflow-hidden">
-                          {p.images?.[0] ? <img src={p.images[0].image} alt="" className="h-full w-full object-cover" /> : null}
+                          <ImageWithFallback src={p.images?.[0]?.image} alt="" className="h-full w-full object-cover" iconClassName="h-3.5 w-3.5" />
                         </span>
                         <div className="min-w-0">
                           <p className="truncate font-medium text-ink">{p.name}</p>

@@ -1,6 +1,7 @@
 import { ShieldCheck } from "lucide-react";
 import { formatPKR } from "../lib/currency.js";
 import { groupLinesByVendor } from "../lib/vendorGrouping.js";
+import ImageWithFallback from "./ImageWithFallback.jsx";
 
 export default function OrderSummarySidebar({ lines, subtotal, shipping, tax = 0, discount = 0, showCoupon = false }) {
   const total = subtotal - discount + shipping + tax;
@@ -32,7 +33,7 @@ export default function OrderSummarySidebar({ lines, subtotal, shipping, tax = 0
             <div className="space-y-3">
               {group.items.map((item) => (
                 <div key={item.key} className="flex items-center gap-3">
-                  <img src={item.image} alt="" className="h-12 w-12 shrink-0 rounded-md object-cover" />
+                  <ImageWithFallback src={item.image} alt="" className="h-12 w-12 shrink-0 rounded-md object-cover" iconClassName="h-5 w-5" />
                   <div className="flex-1 text-sm">
                     <p className="font-medium text-gray-900">{item.name}</p>
                     <p className="text-xs text-gray-500">

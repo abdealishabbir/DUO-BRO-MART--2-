@@ -1,4 +1,5 @@
 import Meta from "../../components/Meta.jsx";
+import ImageWithFallback from "../../components/ImageWithFallback.jsx";
 import { Link, useNavigate } from "react-router-dom";
 import { Minus, Plus, Trash2, ShoppingBag, ArrowRight } from "lucide-react";
 import { useCart } from "../../cart/CartContext.jsx";
@@ -13,8 +14,8 @@ function CartLine({ line, onUpdateQuantity, onRemove }) {
   return (
     <div className="flex gap-4 rounded-lg border border-gray-200 bg-white p-4">
       <Link to={`/product/${product.slug}`} className="shrink-0">
-        <img
-          src={product.images?.[0] || "https://placehold.co/200x200?text=No+Image"}
+        <ImageWithFallback
+          src={product.images?.[0]}
           alt={product.name}
           className="h-24 w-24 rounded-md object-cover"
         />

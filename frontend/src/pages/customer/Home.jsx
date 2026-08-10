@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import CountdownTimer from "../../components/CountdownTimer.jsx";
 import Meta from "../../components/Meta.jsx";
+import ImageWithFallback from "../../components/ImageWithFallback.jsx";
 import { api } from "../../lib/api.js";
 import { useCart } from "../../cart/CartContext.jsx";
 import { heroSlides as fallbackHeroSlides, promoTiles } from "../../data/homeMockData.js";
@@ -184,7 +185,7 @@ function FlashDeals({ items }) {
                 <span className="absolute left-0 top-0 rounded-br-md rounded-tl-md bg-red-600 px-2 py-0.5 text-xs font-bold text-white">
                   -{discountPct}%
                 </span>
-                <img src={item.images[0] || "https://placehold.co/300x300?text=No+Image"} alt={item.name} className="h-32 w-full rounded-md object-cover" />
+                <ImageWithFallback src={item.images[0]} alt={item.name} className="h-32 w-full rounded-md object-cover" />
               </div>
               <p className="mt-2 line-clamp-2 text-sm font-medium text-gray-900">{item.name}</p>
               {item.rating_count > 0 && (
@@ -385,7 +386,7 @@ function TopSelling({ items }) {
                   Sale
                 </span>
               )}
-              <img src={item.images[0] || "https://placehold.co/300x300?text=No+Image"} alt={item.name} className="h-36 w-full rounded-md object-cover" />
+              <ImageWithFallback src={item.images[0]} alt={item.name} className="h-36 w-full rounded-md object-cover" />
             </div>
             <p className="mt-2 line-clamp-2 text-sm font-medium text-gray-900">{item.name}</p>
             {item.rating_count > 0 && (
@@ -430,7 +431,7 @@ function BestOfStrip({ items }) {
         <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
           {items.map((item) => (
             <Link key={item.id} to={`/product/${item.slug}`} className="group">
-              <img src={item.images[0] || "https://placehold.co/400x400?text=No+Image"} alt={item.name} className="aspect-square w-full rounded-lg object-cover transition group-hover:opacity-90" />
+              <ImageWithFallback src={item.images[0]} alt={item.name} className="aspect-square w-full rounded-lg object-cover transition group-hover:opacity-90" />
               <p className="mt-3 text-sm font-medium text-white">{item.name}</p>
               <p className="mt-1 text-sm text-gold">{formatPKR(item.price)}</p>
             </Link>

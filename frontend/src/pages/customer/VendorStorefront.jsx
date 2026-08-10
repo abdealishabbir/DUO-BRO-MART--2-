@@ -4,6 +4,7 @@ import { Store, Star, PackageSearch, CalendarDays } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { ProductCard, Pagination } from "./Shop.jsx";
 import Meta from "../../components/Meta.jsx";
+import ImageWithFallback from "../../components/ImageWithFallback.jsx";
 
 const PAGE_SIZE = 20; // matches DEFAULT_PAGINATION_CLASS PAGE_SIZE (config/settings.py)
 
@@ -89,7 +90,7 @@ export default function VendorStorefront() {
       <div className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-6 sm:flex-row sm:items-center lg:px-8">
           {store.shop_logo ? (
-            <img src={store.shop_logo} alt={store.shop_name} className="h-20 w-20 shrink-0 rounded-full border border-gray-200 object-cover" />
+            <ImageWithFallback src={store.shop_logo} alt={store.shop_name} className="h-20 w-20 shrink-0 rounded-full border border-gray-200 object-cover" iconClassName="h-8 w-8" />
           ) : (
             <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-brand/10">
               <Store className="h-9 w-9 text-brand" />

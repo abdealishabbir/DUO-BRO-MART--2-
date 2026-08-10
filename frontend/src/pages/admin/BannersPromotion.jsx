@@ -3,6 +3,7 @@ import { RefreshCw, Check, X, Upload, Ban } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
 import { inputClass } from "../../components/FormField.jsx";
+import ImageWithFallback from "../../components/ImageWithFallback.jsx";
 
 const STATUS_STYLES = {
   pending: "bg-amber-100 text-amber-700",
@@ -79,7 +80,7 @@ function PendingApplications({ applications, onDecided }) {
       {applications.map((app) => (
         <div key={app.id} className="flex items-center justify-between rounded-md border border-gray-200 bg-white p-3">
           <div className="flex items-center gap-3">
-            <img src={app.image} alt="" className="h-12 w-20 rounded object-cover" />
+            <ImageWithFallback src={app.image} alt="" className="h-12 w-20 rounded object-cover" iconClassName="h-4 w-4" />
             <div className="text-sm">
               <p className="font-medium text-gray-900">{app.headline}</p>
               <p className="text-xs text-gray-500">
@@ -133,7 +134,7 @@ function PublishForm({ application, slotLimit, onPublished, onCancel }) {
 
   return (
     <form onSubmit={publish} className="flex items-center gap-3 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm">
-      <img src={application.image} alt="" className="h-10 w-16 rounded object-cover" />
+      <ImageWithFallback src={application.image} alt="" className="h-10 w-16 rounded object-cover" iconClassName="h-4 w-4" />
       <span className="font-medium text-gray-900">{application.headline}</span>
       <select required className={`${inputClass} w-28`} value={slot} onChange={(e) => setSlot(e.target.value)}>
         <option value="">Slot #</option>
@@ -172,7 +173,7 @@ function ApprovedAwaitingPublish({ applications, slotLimit, onPublished }) {
           ) : (
             <div key={app.id} className="flex items-center justify-between rounded-md border border-gray-200 bg-white p-3 text-sm">
               <div className="flex items-center gap-3">
-                <img src={app.image} alt="" className="h-10 w-16 rounded object-cover" />
+                <ImageWithFallback src={app.image} alt="" className="h-10 w-16 rounded object-cover" iconClassName="h-4 w-4" />
                 <span className="font-medium text-gray-900">{app.headline}</span>
                 <span className="text-xs text-gray-500">{app.vendor_name} · {app.payment_type}</span>
               </div>
@@ -244,7 +245,7 @@ function LiveBannersTable({ banners, onChanged }) {
           {banners.map((b) => (
             <tr key={b.id} className="border-t border-gray-100">
               <td className="flex items-center gap-2 p-2">
-                <img src={b.image} alt="" className="h-8 w-12 rounded object-cover" />
+                <ImageWithFallback src={b.image} alt="" className="h-8 w-12 rounded object-cover" iconClassName="h-3 w-3" />
                 {b.headline}
               </td>
               <td className="p-2">{b.vendor_name}</td>

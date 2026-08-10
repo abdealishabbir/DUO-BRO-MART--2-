@@ -20,7 +20,7 @@ export default function Terms() {
       <span className="rounded-full bg-brand/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-brand">
         Placeholder — pending final legal review
       </span>
-      <h1 className="mt-4 text-3xl font-bold text-gray-900">Terms &amp; Conditions</h1>
+      <h1 className="font-display mt-4 text-3xl font-bold text-gray-900">Terms &amp; Conditions</h1>
       <p className="mt-2 text-sm text-gray-500">Last updated: July 2026 · Duo Bro Mart, Pakistan</p>
 
       <Section number={1} title="Acceptance of Terms">

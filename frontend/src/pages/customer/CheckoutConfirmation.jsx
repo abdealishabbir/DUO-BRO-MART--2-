@@ -50,7 +50,7 @@ export default function CheckoutConfirmation() {
 
       <div className="mt-10 text-center">
         <CheckCircle2 className="mx-auto h-16 w-16 text-green-500" />
-        <h1 className="mt-4 text-2xl font-bold text-gray-900">Order Confirmed!</h1>
+        <h1 className="font-display mt-4 text-2xl font-bold text-gray-900">Order Confirmed!</h1>
         <p className="mt-1 text-gray-500">Thank you, {firstName}!</p>
 
         <span className="mt-4 inline-block rounded-md border border-brand/30 bg-cream px-4 py-1.5 font-mono text-sm font-semibold text-brand">

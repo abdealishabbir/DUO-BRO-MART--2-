@@ -326,7 +326,7 @@ export default function OrderFeedback() {
       <div className="mx-auto max-w-md px-4 py-16">
         <div className="flex items-center gap-2 text-brand">
           <ShieldCheck className="h-5 w-5" />
-          <h1 className="text-xl font-bold text-gray-900">Verify Your Order</h1>
+          <h1 className="font-display text-xl font-bold text-gray-900">Verify Your Order</h1>
         </div>
         <p className="mt-1 text-sm text-gray-500">
           Confirm the email or phone number used at checkout for order <span className="font-semibold text-gray-700">{orderCode}</span>.
@@ -375,7 +375,7 @@ export default function OrderFeedback() {
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center">
         <CheckCircle2 className="mx-auto h-12 w-12 text-green-600" />
-        <h1 className="mt-3 text-xl font-bold text-gray-900">Thanks for your feedback!</h1>
+        <h1 className="font-display mt-3 text-xl font-bold text-gray-900">Thanks for your feedback!</h1>
         <p className="mt-1 text-sm text-gray-500">It helps other shoppers and helps us do better.</p>
         <Link to="/shop" className="mt-4 inline-block rounded-md bg-brand px-6 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark">
           Continue Shopping
@@ -389,7 +389,7 @@ export default function OrderFeedback() {
       <p className="text-sm text-gray-400">
         <Link to="/account" className="hover:text-brand">My Orders</Link> <span className="mx-1">›</span> Order Confirmation & Feedback
       </p>
-      <h1 className="mt-1 text-2xl font-bold text-gray-900">Confirm Your Order</h1>
+      <h1 className="font-display mt-1 text-2xl font-bold text-gray-900">Confirm Your Order</h1>
       <p className="mt-1 text-sm text-gray-500">Please verify that all items in your order are correct before submitting your feedback.</p>
 
       <div className="mt-5 flex flex-wrap items-center gap-6 rounded-lg border border-gray-200 bg-white p-4 text-sm">

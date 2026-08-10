@@ -184,7 +184,7 @@ export default function ProductDetail() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-sm font-medium text-brand">{product.category_name}</p>
-              <h1 className="mt-1 text-2xl font-bold text-gray-900">{product.name}</h1>
+              <h1 className="font-display mt-1 text-2xl font-bold text-gray-900">{product.name}</h1>
             </div>
             <WishlistButton product={product} size="h-5 w-5" className="mt-1 shrink-0 border border-gray-200" />
           </div>

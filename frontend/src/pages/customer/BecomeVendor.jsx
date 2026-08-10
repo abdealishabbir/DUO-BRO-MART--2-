@@ -145,7 +145,7 @@ export default function BecomeVendor() {
     return (
       <div className="mx-auto max-w-xl px-4 py-16 text-center">
         <CheckCircle2 className="mx-auto h-12 w-12 text-green-600" />
-        <h1 className="mt-4 text-2xl font-bold text-gray-900">Application received</h1>
+        <h1 className="font-display mt-4 text-2xl font-bold text-gray-900">Application received</h1>
         <p className="mt-2 text-sm text-gray-600">
           You&apos;ll be verified — including confirming your bank account matches your CNIC — and receive vendor panel login access within <strong>4-5 business days</strong>. We&apos;ll email {form.email} once your account is approved.
         </p>
@@ -160,7 +160,7 @@ export default function BecomeVendor() {
     <div>
       <Meta title="Sell on Duo Bro Mart — Become a Vendor" description="Start selling on Duo Bro Mart, Pakistan's multi-vendor marketplace — reach customers nationwide with COD delivery and built-in promotion tools." url={`${window.location.origin}/become-a-vendor`} />
       <section className="bg-cream px-4 py-14 text-center">
-        <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl">Sell on Duo Bro Mart</h1>
+        <h1 className="font-display text-3xl font-bold text-gray-900 sm:text-4xl">Sell on Duo Bro Mart</h1>
         <p className="mx-auto mt-3 max-w-xl text-gray-600">
           Reach customers across Pakistan — including rural areas most marketplaces skip — with our COD delivery network and built-in banner promotion tools.
         </p>

@@ -305,7 +305,7 @@ export default function Account() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-10">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">My account</h1>
+        <h1 className="font-display text-2xl font-bold text-gray-900">My account</h1>
         <button onClick={handleLogout} className="text-sm text-gray-500 hover:text-brand">
           Log out
         </button>

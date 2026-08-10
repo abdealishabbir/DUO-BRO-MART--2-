@@ -83,7 +83,7 @@ function Hero() {
     >
       <div className="mx-auto w-full max-w-7xl py-20">
         <div className="max-w-xl">
-          <h1 className="text-4xl font-extrabold leading-tight text-white sm:text-5xl lg:text-6xl">{slide.title}</h1>
+          <h1 className="font-display text-4xl font-extrabold leading-tight text-white sm:text-5xl lg:text-6xl">{slide.title}</h1>
           <p className="mt-5 text-lg text-white/90 sm:text-xl">{slide.subtitle}</p>
           <Link
             to={slide.ctaHref}
@@ -166,7 +166,7 @@ function FlashDeals({ items }) {
     <section className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h2 className="flex items-center gap-1.5 text-xl font-bold text-gray-900">
+          <h2 className="font-display flex items-center gap-1.5 text-xl font-bold text-gray-900">
             <Zap className="h-5 w-5 fill-brand text-brand" /> Flash Deals
           </h2>
           <CountdownTimer />
@@ -312,7 +312,7 @@ function CategoryGrid({ categories }) {
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-10 lg:px-8">
-      <h2 className="mb-4 text-xl font-bold text-gray-900">Shop by Category</h2>
+      <h2 className="font-display mb-4 text-xl font-bold text-gray-900">Shop by Category</h2>
       <div ref={containerRef} className="overflow-hidden">
         <div
           className="flex"
@@ -370,7 +370,7 @@ function TopSelling({ items }) {
     <section className="mx-auto max-w-7xl px-4 py-10 lg:px-8">
       <div className="mb-4 flex items-end justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">Top Selling Products</h2>
+          <h2 className="font-display text-xl font-bold text-gray-900">Top Selling Products</h2>
           <p className="text-sm text-gray-500">Loved by our community</p>
         </div>
         <Link to="/shop" className="text-sm font-medium text-brand hover:underline">
@@ -427,7 +427,7 @@ function BestOfStrip({ items }) {
   return (
     <section className="bg-ink py-12">
       <div className="mx-auto max-w-7xl px-4 lg:px-8">
-        <h2 className="mb-8 text-center text-2xl font-bold text-white">Best of Duo Bro Mart</h2>
+        <h2 className="font-display mb-8 text-center text-2xl font-bold text-white">Best of Duo Bro Mart</h2>
         <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
           {items.map((item) => (
             <Link key={item.id} to={`/product/${item.slug}`} className="group">
@@ -467,7 +467,7 @@ function TrustStrip() {
 function NewsletterBanner() {
   return (
     <section className="bg-gold px-4 py-14 text-center">
-      <h2 className="text-2xl font-bold text-ink">Get 15% off your first order</h2>
+      <h2 className="font-display text-2xl font-bold text-ink">Get 15% off your first order</h2>
       <p className="mx-auto mt-2 max-w-md text-sm text-ink/80">
         Join our newsletter and be the first to know about new arrivals, sales, and exclusive offers.
       </p>

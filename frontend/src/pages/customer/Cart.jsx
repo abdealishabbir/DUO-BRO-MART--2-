@@ -67,7 +67,7 @@ function EmptyCart() {
   return (
     <div className="mx-auto max-w-md px-4 py-20 text-center">
       <ShoppingBag className="mx-auto h-12 w-12 text-gray-300" />
-      <h1 className="mt-4 text-xl font-bold text-gray-900">Your cart is empty</h1>
+      <h1 className="font-display mt-4 text-xl font-bold text-gray-900">Your cart is empty</h1>
       <p className="mt-2 text-sm text-gray-500">Looks like you haven&apos;t added anything yet.</p>
       <Link to="/shop" className="mt-6 inline-flex items-center gap-2 rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark">
         Browse Shop <ArrowRight className="h-4 w-4" />
@@ -100,7 +100,7 @@ export default function Cart() {
       <div className="mx-auto max-w-6xl px-4 py-8">
         <CheckoutSteps current={1} />
 
-        <h1 className="mt-6 text-2xl font-bold text-gray-900">
+        <h1 className="font-display mt-6 text-2xl font-bold text-gray-900">
           Your Cart <span className="text-base font-normal text-gray-400">({lines.length} item{lines.length !== 1 && "s"})</span>
         </h1>
 

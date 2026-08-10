@@ -187,14 +187,14 @@ function FlashDeals({ items }) {
                 </span>
                 <ImageWithFallback src={item.images[0]} alt={item.name} className="h-32 w-full rounded-md object-cover" />
               </div>
-              <p className="mt-2 line-clamp-2 text-sm font-medium text-gray-900">{item.name}</p>
+              <p className="mt-2 line-clamp-2 text-base font-medium text-gray-900">{item.name}</p>
               {item.rating_count > 0 && (
                 <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-500">
                   <Star className="h-3 w-3 fill-gold text-gold" /> {item.average_rating}
                   <span className="text-gray-400">({item.rating_count})</span>
                 </p>
               )}
-              <p className="mt-1 text-sm">
+              <p className="mt-1 text-base">
                 <span className="font-bold text-red-600">{formatPKR(item.price)}</span>{" "}
                 {item.original_price && <span className="text-xs text-gray-400 line-through">{formatPKR(item.original_price)}</span>}
               </p>
@@ -208,7 +208,7 @@ function FlashDeals({ items }) {
               )}
               <button
                 onClick={(e) => handleAdd(e, item)}
-                className="mt-2 w-full rounded-md border border-gray-300 py-1.5 text-xs font-semibold text-gray-700 hover:border-brand hover:text-brand"
+                className="mt-2 w-full rounded-md border border-gray-300 py-1.5 text-sm font-semibold text-gray-700 hover:border-brand hover:text-brand"
               >
                 {addedSlug === item.slug ? "Added ✓" : "Add to Cart"}
               </button>
@@ -388,14 +388,14 @@ function TopSelling({ items }) {
               )}
               <ImageWithFallback src={item.images[0]} alt={item.name} className="h-36 w-full rounded-md object-cover" />
             </div>
-            <p className="mt-2 line-clamp-2 text-sm font-medium text-gray-900">{item.name}</p>
+            <p className="mt-2 line-clamp-2 text-base font-medium text-gray-900">{item.name}</p>
             {item.rating_count > 0 && (
               <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-500">
                 <Star className="h-3 w-3 fill-gold text-gold" /> {item.average_rating}
                 <span className="text-gray-400">({item.rating_count})</span>
               </p>
             )}
-            <p className="mt-1 text-sm">
+            <p className="mt-1 text-base">
               <span className="font-bold text-gray-900">{formatPKR(item.price)}</span>{" "}
               {item.original_price && (
                 <span className="text-xs text-gray-400 line-through">{formatPKR(item.original_price)}</span>
@@ -404,13 +404,13 @@ function TopSelling({ items }) {
             <div className="mt-2 flex gap-2">
               <button
                 onClick={(e) => handleAdd(e, item)}
-                className="flex-1 rounded-md border border-gray-300 py-1.5 text-xs font-semibold text-gray-700 hover:border-brand hover:text-brand"
+                className="flex-1 rounded-md border border-gray-300 py-1.5 text-sm font-semibold text-gray-700 hover:border-brand hover:text-brand"
               >
                 {addedSlug === item.slug ? "Added ✓" : "Add to Cart"}
               </button>
               <button
                 onClick={(e) => handleBuyNow(e, item)}
-                className="flex-1 rounded-md bg-brand py-1.5 text-xs font-semibold text-white hover:bg-brand-dark"
+                className="flex-1 rounded-md bg-brand py-1.5 text-sm font-semibold text-white hover:bg-brand-dark"
               >
                 Buy Now
               </button>
@@ -432,8 +432,8 @@ function BestOfStrip({ items }) {
           {items.map((item) => (
             <Link key={item.id} to={`/product/${item.slug}`} className="group">
               <ImageWithFallback src={item.images[0]} alt={item.name} className="aspect-square w-full rounded-lg object-cover transition group-hover:opacity-90" />
-              <p className="mt-3 text-sm font-medium text-white">{item.name}</p>
-              <p className="mt-1 text-sm text-gold">{formatPKR(item.price)}</p>
+              <p className="mt-3 text-base font-medium text-white">{item.name}</p>
+              <p className="mt-1 text-base font-semibold text-gold">{formatPKR(item.price)}</p>
             </Link>
           ))}
         </div>

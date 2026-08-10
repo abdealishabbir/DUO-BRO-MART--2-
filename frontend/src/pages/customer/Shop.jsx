@@ -228,7 +228,7 @@ export function ProductCard({ product, view }) {
             <span className="font-bold text-gray-900">{formatPKR(product.price)}</span>{" "}
             {product.original_price && <span className="text-xs text-gray-400 line-through">{formatPKR(product.original_price)}</span>}
           </p>
-          <button onClick={handleAdd} className="rounded-md bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-ink">
+          <button onClick={handleAdd} className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-ink">
             {added ? "Added ✓" : "Add to Cart"}
           </button>
         </div>

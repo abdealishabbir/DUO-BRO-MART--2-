@@ -202,7 +202,7 @@ export default function ProductDetail() {
             {product.original_price && <span className="text-lg text-gray-400 line-through">{formatPKR(product.original_price)}</span>}
           </div>
 
-          <p className="mt-4 text-sm leading-relaxed text-gray-600">{product.description}</p>
+          <p className="mt-4 text-base leading-relaxed text-gray-600">{product.description}</p>
 
           <div className="mt-5 rounded-lg border border-gray-200 bg-cream p-4">
             <p className="flex items-center gap-2 text-sm font-semibold text-gray-900">
@@ -233,14 +233,14 @@ export default function ProductDetail() {
               <div className="mt-6 flex gap-3">
                 <button
                   onClick={handleAddToCart}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-md border border-gray-300 py-3 text-sm font-semibold text-gray-800 hover:border-brand hover:text-brand"
+                  className="flex flex-1 items-center justify-center gap-2 rounded-md border border-gray-300 py-3 text-base font-semibold text-gray-800 hover:border-brand hover:text-brand"
                 >
                   <ShoppingCart className="h-4 w-4" /> {added ? "Added!" : "Add to Cart"}
                 </button>
                 <Link
                   to="/checkout/shipping"
                   onClick={handleBuyNow}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-md bg-brand py-3 text-sm font-semibold text-white hover:bg-brand-dark"
+                  className="flex flex-1 items-center justify-center gap-2 rounded-md bg-brand py-3 text-base font-semibold text-white hover:bg-brand-dark"
                 >
                   <Zap className="h-4 w-4" /> Buy Now
                 </Link>

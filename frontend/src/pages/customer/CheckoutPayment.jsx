@@ -258,7 +258,7 @@ export default function CheckoutPayment() {
               <button
                 onClick={handlePlaceOrder}
                 disabled={placing}
-                className="rounded-md bg-brand px-8 py-3 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-60"
+                className="rounded-md bg-brand px-8 py-3 text-base font-semibold text-white hover:bg-brand-dark disabled:opacity-60"
               >
                 {placing ? "Placing Order..." : "Place Order"}
               </button>

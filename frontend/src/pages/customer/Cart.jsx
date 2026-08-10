@@ -115,7 +115,7 @@ export default function Cart() {
             <OrderSummarySidebar lines={lines} subtotal={subtotal} shipping={shipping} discount={discount} showCoupon />
             <button
               onClick={() => navigate("/checkout/shipping")}
-              className="flex w-full items-center justify-center gap-2 rounded-md bg-brand py-3 text-sm font-semibold text-white hover:bg-brand-dark"
+              className="flex w-full items-center justify-center gap-2 rounded-md bg-brand py-3 text-base font-semibold text-white hover:bg-brand-dark"
             >
               Proceed to Checkout <ArrowRight className="h-4 w-4" />
             </button>

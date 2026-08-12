@@ -1,26 +1,33 @@
+import { lazy } from "react";
 import { Route } from "react-router-dom";
 import CustomerLayout from "../layouts/CustomerLayout.jsx";
 import Home from "../pages/customer/Home.jsx";
-import Shop from "../pages/customer/Shop.jsx";
-import ProductDetail from "../pages/customer/ProductDetail.jsx";
-import VendorStorefront from "../pages/customer/VendorStorefront.jsx";
-import Cart from "../pages/customer/Cart.jsx";
-import Wishlist from "../pages/customer/Wishlist.jsx";
-import CheckoutShipping from "../pages/customer/CheckoutShipping.jsx";
-import CheckoutPayment from "../pages/customer/CheckoutPayment.jsx";
-import CheckoutConfirmation from "../pages/customer/CheckoutConfirmation.jsx";
-import TrackOrder from "../pages/customer/TrackOrder.jsx";
-import OrderFeedback from "../pages/customer/OrderFeedback.jsx";
-import Terms from "../pages/customer/Terms.jsx";
-import VendorTerms from "../pages/customer/VendorTerms.jsx";
-import Account from "../pages/customer/Account.jsx";
-import BecomeVendor from "../pages/customer/BecomeVendor.jsx";
-import Feedback from "../pages/customer/Feedback.jsx";
-import Login from "../pages/customer/Login.jsx";
-import Signup from "../pages/customer/Signup.jsx";
-import ForgotPassword from "../pages/customer/ForgotPassword.jsx";
-import ResetPassword from "../pages/customer/ResetPassword.jsx";
-import VerifyEmail from "../pages/customer/VerifyEmail.jsx";
+
+// Home stays a normal (eager) import — it's the entry point virtually
+// every visitor needs on first paint, so lazy-loading it wouldn't save
+// any bytes for the common case, only add a loading flash. Everything
+// below genuinely benefits: a visitor just browsing Shop never needs
+// Checkout's or Account's JS downloaded at all.
+const Shop = lazy(() => import("../pages/customer/Shop.jsx"));
+const ProductDetail = lazy(() => import("../pages/customer/ProductDetail.jsx"));
+const VendorStorefront = lazy(() => import("../pages/customer/VendorStorefront.jsx"));
+const Cart = lazy(() => import("../pages/customer/Cart.jsx"));
+const Wishlist = lazy(() => import("../pages/customer/Wishlist.jsx"));
+const CheckoutShipping = lazy(() => import("../pages/customer/CheckoutShipping.jsx"));
+const CheckoutPayment = lazy(() => import("../pages/customer/CheckoutPayment.jsx"));
+const CheckoutConfirmation = lazy(() => import("../pages/customer/CheckoutConfirmation.jsx"));
+const TrackOrder = lazy(() => import("../pages/customer/TrackOrder.jsx"));
+const OrderFeedback = lazy(() => import("../pages/customer/OrderFeedback.jsx"));
+const Terms = lazy(() => import("../pages/customer/Terms.jsx"));
+const VendorTerms = lazy(() => import("../pages/customer/VendorTerms.jsx"));
+const Account = lazy(() => import("../pages/customer/Account.jsx"));
+const BecomeVendor = lazy(() => import("../pages/customer/BecomeVendor.jsx"));
+const Feedback = lazy(() => import("../pages/customer/Feedback.jsx"));
+const Login = lazy(() => import("../pages/customer/Login.jsx"));
+const Signup = lazy(() => import("../pages/customer/Signup.jsx"));
+const ForgotPassword = lazy(() => import("../pages/customer/ForgotPassword.jsx"));
+const ResetPassword = lazy(() => import("../pages/customer/ResetPassword.jsx"));
+const VerifyEmail = lazy(() => import("../pages/customer/VerifyEmail.jsx"));
 
 /**
  * PRD §3.2 page inventory — customer channel. This is the default

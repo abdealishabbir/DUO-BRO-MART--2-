@@ -1,19 +1,25 @@
+import { lazy } from "react";
 import { Route } from "react-router-dom";
 import AdminLayout from "../layouts/AdminLayout.jsx";
 import RoleRoute from "./RoleRoute.jsx";
-import AdminLogin from "../pages/admin/Login.jsx";
-import AdminDashboard from "../pages/admin/Dashboard.jsx";
-import AdminAnalytics from "../pages/admin/Analytics.jsx";
-import AdminProducts from "../pages/admin/Products.jsx";
-import AdminBannersPromotion from "../pages/admin/BannersPromotion.jsx";
-import AdminOrders from "../pages/admin/Orders.jsx";
-import AdminPayouts from "../pages/admin/Payouts.jsx";
-import AdminVendors from "../pages/admin/Vendors.jsx";
-import AdminPricing from "../pages/admin/Pricing.jsx";
-import AdminCoupons from "../pages/admin/Coupons.jsx";
-import AdminSettings from "../pages/admin/Settings.jsx";
-import AdminAuditLog from "../pages/admin/AuditLog.jsx";
-import AdminComplaints from "../pages/admin/Complaints.jsx";
+
+// A customer should never download any of this — lazy() means each of
+// these only becomes a separate network request the moment someone
+// actually navigates to /admin/*, instead of being bundled into the
+// same JS every single visitor downloads on first paint.
+const AdminLogin = lazy(() => import("../pages/admin/Login.jsx"));
+const AdminDashboard = lazy(() => import("../pages/admin/Dashboard.jsx"));
+const AdminAnalytics = lazy(() => import("../pages/admin/Analytics.jsx"));
+const AdminProducts = lazy(() => import("../pages/admin/Products.jsx"));
+const AdminBannersPromotion = lazy(() => import("../pages/admin/BannersPromotion.jsx"));
+const AdminOrders = lazy(() => import("../pages/admin/Orders.jsx"));
+const AdminPayouts = lazy(() => import("../pages/admin/Payouts.jsx"));
+const AdminVendors = lazy(() => import("../pages/admin/Vendors.jsx"));
+const AdminPricing = lazy(() => import("../pages/admin/Pricing.jsx"));
+const AdminCoupons = lazy(() => import("../pages/admin/Coupons.jsx"));
+const AdminSettings = lazy(() => import("../pages/admin/Settings.jsx"));
+const AdminAuditLog = lazy(() => import("../pages/admin/AuditLog.jsx"));
+const AdminComplaints = lazy(() => import("../pages/admin/Complaints.jsx"));
 
 /**
  * PRD §3.2/§4.1: admin portal lives on a separate, unadvertised URL

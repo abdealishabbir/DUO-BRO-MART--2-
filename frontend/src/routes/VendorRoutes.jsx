@@ -1,18 +1,20 @@
+import { lazy } from "react";
 import { Route } from "react-router-dom";
 import VendorLayout from "../layouts/VendorLayout.jsx";
 import RoleRoute from "./RoleRoute.jsx";
-import VendorLogin from "../pages/vendor/Login.jsx";
-import VendorDashboard from "../pages/vendor/Dashboard.jsx";
-import VendorChangePassword from "../pages/vendor/ChangePassword.jsx";
-import VendorProducts from "../pages/vendor/Products.jsx";
-import VendorDeals from "../pages/vendor/Deals.jsx";
-import VendorStock from "../pages/vendor/Stock.jsx";
-import VendorOrders from "../pages/vendor/Orders.jsx";
-import VendorAnalytics from "../pages/vendor/Analytics.jsx";
-import VendorPayouts from "../pages/vendor/Payouts.jsx";
-import PromotionBanner from "../pages/vendor/PromotionBanner.jsx";
-import VendorSettings from "../pages/vendor/Settings.jsx";
-import VendorSupport from "../pages/vendor/Support.jsx";
+
+const VendorLogin = lazy(() => import("../pages/vendor/Login.jsx"));
+const VendorDashboard = lazy(() => import("../pages/vendor/Dashboard.jsx"));
+const VendorChangePassword = lazy(() => import("../pages/vendor/ChangePassword.jsx"));
+const VendorProducts = lazy(() => import("../pages/vendor/Products.jsx"));
+const VendorDeals = lazy(() => import("../pages/vendor/Deals.jsx"));
+const VendorStock = lazy(() => import("../pages/vendor/Stock.jsx"));
+const VendorOrders = lazy(() => import("../pages/vendor/Orders.jsx"));
+const VendorAnalytics = lazy(() => import("../pages/vendor/Analytics.jsx"));
+const VendorPayouts = lazy(() => import("../pages/vendor/Payouts.jsx"));
+const PromotionBanner = lazy(() => import("../pages/vendor/PromotionBanner.jsx"));
+const VendorSettings = lazy(() => import("../pages/vendor/Settings.jsx"));
+const VendorSupport = lazy(() => import("../pages/vendor/Support.jsx"));
 
 /**
  * PRD §3.2/§4.1: vendor portal lives on a separate, unadvertised URL

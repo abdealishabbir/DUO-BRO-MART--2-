@@ -9,6 +9,7 @@ import { api } from "../../lib/api.js";
 import FormField, { inputClass } from "../../components/FormField.jsx";
 import CheckoutSteps from "../../components/CheckoutSteps.jsx";
 import OrderSummarySidebar from "../../components/OrderSummarySidebar.jsx";
+import Button from "../../components/Button.jsx";
 import { PROVINCES, citiesFor } from "../../lib/pkLocations.js";
 import { formatPKR, DEFAULT_SHIPPING_RATE } from "../../lib/currency.js";
 
@@ -265,13 +266,9 @@ export default function CheckoutShipping() {
             <button onClick={() => navigate("/cart")} className="text-sm font-medium text-gray-600 hover:text-brand">
               Back to Cart
             </button>
-            <button
-              onClick={handleContinue}
-              disabled={submitting}
-              className="flex items-center gap-2 rounded-md bg-ink px-6 py-3 text-base font-semibold text-white hover:bg-black disabled:opacity-60"
-            >
-              Continue to Payment <ArrowRight className="h-4 w-4" />
-            </button>
+            <Button onClick={handleContinue} disabled={submitting} icon={ArrowRight} iconPosition="right">
+              Continue to Payment
+            </Button>
           </div>
         </div>
 

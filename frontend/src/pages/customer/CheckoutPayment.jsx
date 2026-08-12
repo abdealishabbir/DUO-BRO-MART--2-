@@ -6,6 +6,7 @@ import { useCart } from "../../cart/CartContext.jsx";
 import { useCheckout } from "../../cart/CheckoutContext.jsx";
 import CheckoutSteps from "../../components/CheckoutSteps.jsx";
 import OrderSummarySidebar from "../../components/OrderSummarySidebar.jsx";
+import Button from "../../components/Button.jsx";
 import FormField, { inputClass } from "../../components/FormField.jsx";
 import { PROVINCES, citiesFor } from "../../lib/pkLocations.js";
 import { DELIVERY_METHODS } from "./CheckoutShipping.jsx";
@@ -255,13 +256,9 @@ export default function CheckoutPayment() {
             </button>
             <div className="text-right">
               {error && <p className="mb-2 text-sm text-red-600">{error}</p>}
-              <button
-                onClick={handlePlaceOrder}
-                disabled={placing}
-                className="rounded-md bg-brand px-8 py-3 text-base font-semibold text-white hover:bg-brand-dark disabled:opacity-60"
-              >
-                {placing ? "Placing Order..." : "Place Order"}
-              </button>
+              <Button onClick={handlePlaceOrder} loading={placing} loadingText="Placing Order..." size="lg">
+                Place Order
+              </Button>
             </div>
           </div>
         </div>

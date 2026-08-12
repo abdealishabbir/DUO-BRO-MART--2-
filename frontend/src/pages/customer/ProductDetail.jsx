@@ -8,6 +8,7 @@ import { useInventorySocket } from "../../lib/useInventorySocket.js";
 import WishlistButton from "../../components/WishlistButton.jsx";
 import Meta from "../../components/Meta.jsx";
 import ImageWithFallback from "../../components/ImageWithFallback.jsx";
+import Button, { buttonClasses } from "../../components/Button.jsx";
 
 // Feeds the vendor Analytics traffic-source breakdown (§6.7/Phase 6+). No
 // UTM parsing, no session tracking — just a coarse bucket from referrer,
@@ -231,16 +232,13 @@ export default function ProductDetail() {
               </div>
 
               <div className="mt-6 flex gap-3">
-                <button
-                  onClick={handleAddToCart}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-md border border-gray-300 py-3 text-base font-semibold text-gray-800 hover:border-brand hover:text-brand"
-                >
-                  <ShoppingCart className="h-4 w-4" /> {added ? "Added!" : "Add to Cart"}
-                </button>
+                <Button onClick={handleAddToCart} variant="secondary" icon={ShoppingCart} className="flex-1">
+                  {added ? "Added!" : "Add to Cart"}
+                </Button>
                 <Link
                   to="/checkout/shipping"
                   onClick={handleBuyNow}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-md bg-brand py-3 text-base font-semibold text-white hover:bg-brand-dark"
+                  className={buttonClasses({ className: "flex-1" })}
                 >
                   <Zap className="h-4 w-4" /> Buy Now
                 </Link>

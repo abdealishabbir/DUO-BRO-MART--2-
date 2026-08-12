@@ -1,5 +1,6 @@
 import Meta from "../../components/Meta.jsx";
 import ImageWithFallback from "../../components/ImageWithFallback.jsx";
+import Button from "../../components/Button.jsx";
 import { Link, useNavigate } from "react-router-dom";
 import { Minus, Plus, Trash2, ShoppingBag, ArrowRight } from "lucide-react";
 import { useCart } from "../../cart/CartContext.jsx";
@@ -113,12 +114,9 @@ export default function Cart() {
 
           <div className="space-y-4">
             <OrderSummarySidebar lines={lines} subtotal={subtotal} shipping={shipping} discount={discount} showCoupon />
-            <button
-              onClick={() => navigate("/checkout/shipping")}
-              className="flex w-full items-center justify-center gap-2 rounded-md bg-brand py-3 text-base font-semibold text-white hover:bg-brand-dark"
-            >
-              Proceed to Checkout <ArrowRight className="h-4 w-4" />
-            </button>
+            <Button onClick={() => navigate("/checkout/shipping")} icon={ArrowRight} iconPosition="right" fullWidth>
+              Proceed to Checkout
+            </Button>
             <Link to="/shop" className="block text-center text-sm text-gray-500 hover:text-brand">
               Continue shopping
             </Link>

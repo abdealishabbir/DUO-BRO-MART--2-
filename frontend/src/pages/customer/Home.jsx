@@ -7,6 +7,7 @@ import {
 import CountdownTimer from "../../components/CountdownTimer.jsx";
 import Meta from "../../components/Meta.jsx";
 import ImageWithFallback from "../../components/ImageWithFallback.jsx";
+import Button from "../../components/Button.jsx";
 import { api } from "../../lib/api.js";
 import { useCart } from "../../cart/CartContext.jsx";
 import { heroSlides as fallbackHeroSlides, promoTiles } from "../../data/homeMockData.js";
@@ -206,12 +207,9 @@ function FlashDeals({ items }) {
                   <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-gray-400">Only {item.stock_quantity} left</p>
                 </>
               )}
-              <button
-                onClick={(e) => handleAdd(e, item)}
-                className="mt-2 w-full rounded-md border border-gray-300 py-1.5 text-sm font-semibold text-gray-700 hover:border-brand hover:text-brand"
-              >
+              <Button onClick={(e) => handleAdd(e, item)} variant="secondary" size="sm" fullWidth className="mt-2">
                 {addedSlug === item.slug ? "Added ✓" : "Add to Cart"}
-              </button>
+              </Button>
             </Link>
           );
         })}
@@ -402,18 +400,12 @@ function TopSelling({ items }) {
               )}
             </p>
             <div className="mt-2 flex gap-2">
-              <button
-                onClick={(e) => handleAdd(e, item)}
-                className="flex-1 rounded-md border border-gray-300 py-1.5 text-sm font-semibold text-gray-700 hover:border-brand hover:text-brand"
-              >
+              <Button onClick={(e) => handleAdd(e, item)} variant="secondary" size="sm" className="flex-1">
                 {addedSlug === item.slug ? "Added ✓" : "Add to Cart"}
-              </button>
-              <button
-                onClick={(e) => handleBuyNow(e, item)}
-                className="flex-1 rounded-md bg-brand py-1.5 text-sm font-semibold text-white hover:bg-brand-dark"
-              >
+              </Button>
+              <Button onClick={(e) => handleBuyNow(e, item)} size="sm" className="flex-1">
                 Buy Now
-              </button>
+              </Button>
             </div>
           </Link>
         ))}

@@ -7,6 +7,8 @@ import { formatPKR } from "../../lib/currency.js";
 import WishlistButton from "../../components/WishlistButton.jsx";
 import Meta from "../../components/Meta.jsx";
 import ImageWithFallback from "../../components/ImageWithFallback.jsx";
+import Card from "../../components/Card.jsx";
+import Button from "../../components/Button.jsx";
 
 const DEFAULT_FILTERS = { categories: [], brands: [], minPrice: "", maxPrice: "", dealsOnly: false, minRating: "", search: "" };
 
@@ -197,10 +199,7 @@ export function ProductCard({ product, view }) {
   };
 
   return (
-    <Link
-      to={`/product/${product.slug}`}
-      className={`rounded-lg border border-gray-200 bg-white p-4 hover:shadow-md ${isList ? "flex items-center gap-4" : ""}`}
-    >
+    <Card to={`/product/${product.slug}`} hover className={isList ? "flex items-center gap-4" : ""}>
       <div className={`relative ${isList ? "w-40 shrink-0" : ""}`}>
         {product.is_deal_active && (
           <span className="absolute left-0 top-0 rounded-br-md rounded-tl-md bg-ink px-2 py-0.5 text-xs font-bold text-white">Sale</span>
@@ -228,12 +227,12 @@ export function ProductCard({ product, view }) {
             <span className="font-bold text-gray-900">{formatPKR(product.price)}</span>{" "}
             {product.original_price && <span className="text-xs text-gray-400 line-through">{formatPKR(product.original_price)}</span>}
           </p>
-          <button onClick={handleAdd} className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-ink">
+          <Button onClick={handleAdd} size="sm">
             {added ? "Added ✓" : "Add to Cart"}
-          </button>
+          </Button>
         </div>
       </div>
-    </Link>
+    </Card>
   );
 }
 

@@ -34,7 +34,7 @@ function ImageCarousel({ images, name }) {
   return (
     <div>
       <div className="relative">
-        <ImageWithFallback src={shown[active]} alt={name} className="aspect-square w-full rounded-lg object-cover" />
+        <ImageWithFallback src={shown[active]} alt={name} className="aspect-square w-full rounded-lg object-cover" eager />
         {shown.length > 1 && (
           <>
             <button

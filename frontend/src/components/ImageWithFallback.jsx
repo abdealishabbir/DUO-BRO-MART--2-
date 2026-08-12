@@ -20,8 +20,17 @@ import { ImageOff } from "lucide-react";
  * Deliberately not used for local blob previews (`URL.createObjectURL`)
  * of a file the user just selected in this session — those can't fail to
  * load the way a remote URL can, so wrapping them here would add nothing.
+ *
+ * Defaults to native lazy-loading (loading="lazy") — the browser only
+ * fetches the image once it's near the viewport, instead of every image
+ * on the page (including ones the visitor may never scroll to) competing
+ * for bandwidth on first load. Pass `eager` for anything that's already
+ * visible without scrolling — the main product photo on ProductDetail is
+ * the one clear case in this app — since lazy-loading something already
+ * on-screen only delays it for no benefit, and can hurt LCP if it's the
+ * page's largest visible element.
  */
-export default function ImageWithFallback({ src, alt = "", className = "", iconClassName, ...rest }) {
+export default function ImageWithFallback({ src, alt = "", className = "", iconClassName, eager = false, ...rest }) {
   const [failed, setFailed] = useState(false);
 
   if (!src || failed) {
@@ -36,5 +45,15 @@ export default function ImageWithFallback({ src, alt = "", className = "", iconC
     );
   }
 
-  return <img src={src} alt={alt} className={className} onError={() => setFailed(true)} {...rest} />;
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      onError={() => setFailed(true)}
+      loading={eager ? "eager" : "lazy"}
+      fetchPriority={eager ? "high" : "auto"}
+      {...rest}
+    />
+  );
 }

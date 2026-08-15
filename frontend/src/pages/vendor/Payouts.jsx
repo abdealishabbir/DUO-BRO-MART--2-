@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { RefreshCw, Wallet, Clock, Download } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
+import { SkeletonTable, SkeletonStatCard } from "../../components/Skeleton.jsx";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
@@ -51,7 +52,16 @@ export default function VendorPayouts() {
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 
       {!data ? (
-        <p className="mt-6 text-sm text-gray-400">Loading...</p>
+        <>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <SkeletonStatCard />
+            <SkeletonStatCard />
+            <SkeletonStatCard />
+          </div>
+          <div className="mt-6 overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
+            <SkeletonTable columns={5} rows={5} />
+          </div>
+        </>
       ) : (
         <>
           <div className="mt-4 grid gap-3 sm:grid-cols-3">

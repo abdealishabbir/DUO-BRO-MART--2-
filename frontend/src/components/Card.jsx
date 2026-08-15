@@ -7,6 +7,13 @@ import { Link } from "react-router-dom";
  * vs rounded-xl, p-3 vs p-4) across product cards, dashboard stat
  * cards, and list items.
  *
+ * Elevation: every card sits at shadow-sm at rest (a page of them
+ * still reads as flat sheets on the cream background, not a stack of
+ * disconnected boxes). Cards that are actually clickable (`hover` or
+ * `to`) lift to shadow-lg plus a small upward translate on hover, so
+ * interactive cards visibly separate from static ones instead of every
+ * card in the app sharing one identical, motionless treatment.
+ *
  * Renders as a <Link> when `to` is provided (the product-card use
  * case), otherwise a plain <div> — so the same component covers both
  * "clickable card" and "static content card" without a separate name.
@@ -14,9 +21,9 @@ import { Link } from "react-router-dom";
 export default function Card({ to, hover = false, padding = "md", className = "", children, ...rest }) {
   const paddings = { none: "", sm: "p-3", md: "p-4", lg: "p-6" };
   const classes = [
-    "rounded-lg border border-gray-200 bg-white",
+    "rounded-lg border border-gray-200 bg-white shadow-sm",
     paddings[padding] ?? paddings.md,
-    hover || to ? "transition hover:shadow-md" : "",
+    hover || to ? "transition duration-200 hover:-translate-y-0.5 hover:shadow-lg" : "",
     className,
   ]
     .filter(Boolean)

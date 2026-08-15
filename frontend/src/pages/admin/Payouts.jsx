@@ -3,6 +3,7 @@ import { RefreshCw, Wallet, Download } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
 import { inputClass } from "../../components/FormField.jsx";
+import { SkeletonTable } from "../../components/Skeleton.jsx";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
@@ -215,7 +216,7 @@ export default function AdminPayouts() {
 
       <div className="mt-4 overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
         {loading ? (
-          <p className="p-6 text-sm text-gray-400">Loading...</p>
+          <SkeletonTable columns={7} rows={5} />
         ) : payouts.length === 0 ? (
           <p className="p-10 text-center text-sm text-gray-500">
             No payout batches yet. Click &quot;Generate Payouts&quot; once vendors have delivered orders past the hold period.

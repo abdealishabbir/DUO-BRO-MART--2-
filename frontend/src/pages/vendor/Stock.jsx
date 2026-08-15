@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { Boxes, Plus, Info } from "lucide-react";
 import { api } from "../../lib/api.js";
 import FormField, { inputClass } from "../../components/FormField.jsx";
+import { SkeletonTable } from "../../components/Skeleton.jsx";
 
 const STATUS_BADGE = {
   pending: "bg-amber-100 text-amber-700",
@@ -138,7 +139,7 @@ export default function VendorStock() {
 
       <div className="mt-5 rounded-xl border border-gray-100 bg-white shadow-sm">
         {requests === null ? (
-          <p className="p-6 text-sm text-gray-400">Loading...</p>
+          <SkeletonTable columns={5} rows={5} />
         ) : requests.length === 0 ? (
           <div className="p-8 text-center">
             <Boxes className="mx-auto h-8 w-8 text-gray-300" />

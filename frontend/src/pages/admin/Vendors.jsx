@@ -3,6 +3,7 @@ import { RefreshCw, Check, X, Image as ImageIcon } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
 import { inputClass } from "../../components/FormField.jsx";
+import { SkeletonTableRows } from "../../components/Skeleton.jsx";
 
 function ApplicationRow({ application, onChanged }) {
   const [busy, setBusy] = useState(false);
@@ -291,7 +292,7 @@ export default function AdminVendors() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} className="p-4 text-center text-sm text-gray-500">Loading...</td></tr>
+                <SkeletonTableRows columns={6} rows={4} />
               ) : applications.length === 0 ? (
                 <tr><td colSpan={6} className="p-4 text-center text-sm text-gray-500">No pending applications.</td></tr>
               ) : (
@@ -325,7 +326,7 @@ export default function AdminVendors() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={10} className="p-4 text-center text-sm text-gray-500">Loading...</td></tr>
+                <SkeletonTableRows columns={10} rows={5} />
               ) : vendors.length === 0 ? (
                 <tr><td colSpan={10} className="p-4 text-center text-sm text-gray-500">No vendors yet.</td></tr>
               ) : (

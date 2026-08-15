@@ -3,6 +3,8 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { CheckCircle2, Truck, MapPin } from "lucide-react";
 import CheckoutSteps from "../../components/CheckoutSteps.jsx";
 import ImageWithFallback from "../../components/ImageWithFallback.jsx";
+import Card from "../../components/Card.jsx";
+import { buttonClasses } from "../../components/Button.jsx";
 import { formatPKR } from "../../lib/currency.js";
 import { groupLinesByVendor } from "../../lib/vendorGrouping.js";
 
@@ -65,7 +67,7 @@ export default function CheckoutConfirmation() {
         </p>
       </div>
 
-      <div className="mt-8 rounded-lg border border-gray-200 bg-white p-5">
+      <Card padding="none" className="mt-8 p-5">
         <h2 className="font-bold text-gray-900">Order Summary</h2>
         <div className="mt-4 space-y-4 border-b border-gray-100 pb-4">
           {vendorGroups.map((group) => (
@@ -118,7 +120,7 @@ export default function CheckoutConfirmation() {
             <span>{formatPKR(order.total)}</span>
           </div>
         </div>
-      </div>
+      </Card>
 
       <div className="mt-6 flex items-center justify-center gap-2 rounded-md border border-gray-200 bg-cream px-4 py-3 text-sm">
         <Truck className="h-4 w-4 text-brand" />
@@ -139,13 +141,10 @@ export default function CheckoutConfirmation() {
       )}
 
       <div className="mt-6 flex justify-center gap-3">
-        <Link
-          to={`/track-order?order=${order.order_code}`}
-          className="rounded-md border border-gray-300 px-6 py-2.5 text-sm font-semibold text-gray-800 hover:border-brand hover:text-brand"
-        >
+        <Link to={`/track-order?order=${order.order_code}`} className={buttonClasses({ variant: "secondary" })}>
           Track Your Order
         </Link>
-        <Link to="/shop" className="rounded-md bg-brand px-6 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark">
+        <Link to="/shop" className={buttonClasses()}>
           Continue Shopping
         </Link>
       </div>

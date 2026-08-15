@@ -1,5 +1,6 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
+import RouteErrorBoundary from "../components/RouteErrorBoundary.jsx";
 
 // Full 7-section admin nav (§6.1-§6.7), all built out as of Phase 6.
 const NAV_LINKS = [
@@ -19,6 +20,7 @@ const NAV_LINKS = [
 
 export default function AdminLayout() {
   const { logout, user } = useAuth();
+  const location = useLocation();
 
   return (
     <div className="flex min-h-screen">
@@ -54,7 +56,9 @@ export default function AdminLayout() {
         </nav>
       </aside>
       <main id="maincontent" className="flex-1 bg-cream">
-        <Outlet />
+        <RouteErrorBoundary key={location.pathname}>
+          <Outlet />
+        </RouteErrorBoundary>
       </main>
     </div>
   );

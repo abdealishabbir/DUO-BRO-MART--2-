@@ -3,6 +3,7 @@ import { RefreshCw, Search, Info, Download } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
 import { inputClass } from "../../components/FormField.jsx";
+import { SkeletonTableRows } from "../../components/Skeleton.jsx";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
@@ -232,7 +233,7 @@ export default function AdminOrders() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={9} className="p-4 text-center text-sm text-gray-500">Loading...</td></tr>
+              <SkeletonTableRows columns={9} rows={6} />
             ) : orders.length === 0 ? (
               <tr><td colSpan={9} className="p-4 text-center text-sm text-gray-500">No orders match these filters.</td></tr>
             ) : (

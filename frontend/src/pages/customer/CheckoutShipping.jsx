@@ -12,6 +12,7 @@ import OrderSummarySidebar from "../../components/OrderSummarySidebar.jsx";
 import Button from "../../components/Button.jsx";
 import { PROVINCES, citiesFor } from "../../lib/pkLocations.js";
 import { formatPKR, DEFAULT_SHIPPING_RATE } from "../../lib/currency.js";
+import { Skeleton } from "../../components/Skeleton.jsx";
 
 // PRD §5.4: three named tiers — Standard (5-7 days, economical/default,
 // PKR 250 base), Express (3-4 days, moderate), Urgent (24-48 hrs, highest).
@@ -134,7 +135,20 @@ export default function CheckoutShipping() {
               <Truck className="h-4 w-4 text-brand" /> Shipping Details
             </h1>
 
-            {isAuthenticated && loadingAddresses && <p className="mt-4 text-sm text-gray-500">Loading your addresses...</p>}
+            {isAuthenticated && loadingAddresses && (
+              <div className="mt-4 space-y-2">
+                {Array.from({ length: 2 }).map((_, i) => (
+                  <div key={i} className="flex items-start gap-3 rounded-lg border border-gray-200 p-4">
+                    <Skeleton className="mt-1 h-4 w-4 rounded-full" />
+                    <div className="w-full space-y-1.5">
+                      <Skeleton className="h-3.5 w-1/3" />
+                      <Skeleton className="h-3 w-1/2" />
+                      <Skeleton className="h-3 w-2/3" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {isAuthenticated && !loadingAddresses && savedAddresses.length > 0 && !showForm && (
               <div className="mt-4 space-y-2">

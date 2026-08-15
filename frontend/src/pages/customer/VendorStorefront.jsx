@@ -5,6 +5,7 @@ import { api } from "../../lib/api.js";
 import { ProductCard, Pagination } from "./Shop.jsx";
 import Meta from "../../components/Meta.jsx";
 import ImageWithFallback from "../../components/ImageWithFallback.jsx";
+import { SkeletonCard } from "../../components/Skeleton.jsx";
 
 const PAGE_SIZE = 20; // matches DEFAULT_PAGINATION_CLASS PAGE_SIZE (config/settings.py)
 
@@ -132,7 +133,11 @@ export default function VendorStorefront() {
         </div>
 
         {productsLoading ? (
-          <p className="mt-10 text-center text-sm text-gray-400">Loading products...</p>
+          <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </div>
         ) : products.length === 0 ? (
           <p className="mt-10 text-center text-sm text-gray-400">This shop hasn&apos;t listed any products yet.</p>
         ) : (

@@ -4,6 +4,44 @@ import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
 import { inputClass } from "../../components/FormField.jsx";
 import ImageWithFallback from "../../components/ImageWithFallback.jsx";
+import { Skeleton, SkeletonTable } from "../../components/Skeleton.jsx";
+
+function BannersPromotionSkeleton() {
+  return (
+    <div className="space-y-8 p-6">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-5 w-52" />
+        <Skeleton className="h-4 w-16" />
+      </div>
+
+      <div className="flex flex-wrap items-end gap-4 rounded-lg border border-gray-200 bg-white p-4">
+        <div><Skeleton className="mb-1.5 h-3 w-24" /><Skeleton className="h-8 w-32" /></div>
+        <div><Skeleton className="mb-1.5 h-3 w-24" /><Skeleton className="h-8 w-32" /></div>
+        <Skeleton className="h-9 w-24 rounded-md" />
+      </div>
+
+      <section>
+        <Skeleton className="mb-3 h-3.5 w-32" />
+        <div className="space-y-3">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3">
+              <Skeleton className="h-14 w-24 shrink-0 rounded-md" />
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <Skeleton className="h-3.5 w-1/3" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <Skeleton className="mb-3 h-3.5 w-56" />
+        <SkeletonTable columns={7} rows={4} cellClassName="p-2" />
+      </section>
+    </div>
+  );
+}
 
 const STATUS_STYLES = {
   pending: "bg-amber-100 text-amber-700",
@@ -304,7 +342,7 @@ export default function AdminBannersPromotion() {
     return () => clearInterval(interval);
   }, []);
 
-  if (loading || !settings) return <div className="p-6 text-sm text-gray-500">Loading...</div>;
+  if (loading || !settings) return <BannersPromotionSkeleton />;
 
   const pending = applications.filter((a) => a.status === "pending");
   const approved = applications.filter((a) => a.status === "approved");

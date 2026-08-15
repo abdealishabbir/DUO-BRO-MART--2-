@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { inputClass } from "../../components/FormField.jsx";
+import { SkeletonTableRows } from "../../components/Skeleton.jsx";
 
 const STATUS_TABS = [
   ["", "All"], ["open", "Open"], ["under_review", "Under Review"],
@@ -106,7 +107,7 @@ export default function AdminComplaints() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={5} className="p-4 text-center text-sm text-gray-500">Loading...</td></tr>
+              <SkeletonTableRows columns={5} rows={5} />
             ) : complaints.length === 0 ? (
               <tr><td colSpan={5} className="p-4 text-center text-sm text-gray-500">No complaints match this filter.</td></tr>
             ) : (

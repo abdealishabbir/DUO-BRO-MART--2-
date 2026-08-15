@@ -4,6 +4,45 @@ import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
 import FormField, { inputClass } from "../../components/FormField.jsx";
 import ImageWithFallback from "../../components/ImageWithFallback.jsx";
+import { Skeleton } from "../../components/Skeleton.jsx";
+
+function PromotionBannerSkeleton() {
+  return (
+    <div className="mx-auto max-w-3xl space-y-8 p-6">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-5 w-48" />
+        <Skeleton className="h-4 w-16" />
+      </div>
+
+      <section>
+        <Skeleton className="mb-3 h-3.5 w-40" />
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <div className="flex items-start gap-3">
+            <Skeleton className="h-16 w-28 shrink-0 rounded-md" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-4 w-1/3" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <Skeleton className="mb-3 h-3.5 w-56" />
+        <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-4">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+        </div>
+      </section>
+
+      <section>
+        <Skeleton className="mb-3 h-3.5 w-32" />
+        <Skeleton className="h-16 w-full" />
+      </section>
+    </div>
+  );
+}
 
 // Hero banner is rendered full-width at a fixed aspect ratio on Home
 // (see Hero() in customer/Home.jsx) — an image that isn't exactly this
@@ -332,7 +371,7 @@ export default function PromotionBanner() {
     return () => clearInterval(interval);
   }, []);
 
-  if (loading) return <div className="p-6 text-sm text-gray-500">Loading...</div>;
+  if (loading) return <PromotionBannerSkeleton />;
 
   return (
     <div className="mx-auto max-w-3xl space-y-8 p-6">

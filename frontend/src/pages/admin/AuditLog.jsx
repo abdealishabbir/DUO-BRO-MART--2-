@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { RefreshCw, ScrollText } from "lucide-react";
 import { api } from "../../lib/api.js";
+import { SkeletonTable } from "../../components/Skeleton.jsx";
 
 const ACTION_LABELS = {
   "product.approved": "Product Approved",
@@ -80,7 +81,7 @@ export default function AdminAuditLog() {
 
       <div className="mt-4 overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
         {entries === null ? (
-          <p className="p-6 text-sm text-gray-400">Loading...</p>
+          <SkeletonTable columns={5} rows={6} />
         ) : entries.length === 0 ? (
           <div className="p-10 text-center">
             <ScrollText className="mx-auto h-8 w-8 text-gray-300" />

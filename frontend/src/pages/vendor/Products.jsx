@@ -7,6 +7,7 @@ import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
 import FormField, { inputClass } from "../../components/FormField.jsx";
 import ImageWithFallback from "../../components/ImageWithFallback.jsx";
+import { SkeletonTable } from "../../components/Skeleton.jsx";
 
 const OTHER_CATEGORY = "__other__";
 const EMPTY_FORM = { name: "", sku: "", category: "", customCategory: "", base_price: "", stock_quantity: "", description: "" };
@@ -301,7 +302,7 @@ export default function VendorProducts() {
         <div>
           <h2 className="text-xl font-bold text-ink">My Products</h2>
           <p className="text-sm text-gray-500">
-            {products === null ? "Loading..." : `${products.length} listing${products.length !== 1 ? "s" : ""} · ${outOfStockCount} out of stock`}
+            {products === null ? <span className="inline-block h-3.5 w-56 animate-pulse rounded bg-gray-200 align-middle" /> : `${products.length} listing${products.length !== 1 ? "s" : ""} · ${outOfStockCount} out of stock`}
           </p>
         </div>
         <button
@@ -354,7 +355,7 @@ export default function VendorProducts() {
 
       <div className="mt-4 overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
         {products === null ? (
-          <p className="p-6 text-sm text-gray-400">Loading your products...</p>
+          <SkeletonTable columns={9} rows={6} />
         ) : filtered.length === 0 ? (
           <p className="p-6 text-sm text-gray-500">
             {products.length === 0 ? "No products yet — click \"Add Product\" to create your first listing." : "No products match your search/filter."}

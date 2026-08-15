@@ -4,6 +4,7 @@ import { Percent, Plus, Info, X } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
 import FormField, { inputClass } from "../../components/FormField.jsx";
+import { SkeletonTable } from "../../components/Skeleton.jsx";
 
 const CHANGE_TYPES = [
   { value: "discount", label: "Discount %" },
@@ -197,7 +198,7 @@ export default function VendorDeals() {
 
       <div className="mt-5 rounded-xl border border-gray-100 bg-white shadow-sm">
         {requests === null ? (
-          <p className="p-6 text-sm text-gray-400">Loading...</p>
+          <SkeletonTable columns={5} rows={5} />
         ) : requests.length === 0 ? (
           <div className="p-8 text-center">
             <Percent className="mx-auto h-8 w-8 text-gray-300" />

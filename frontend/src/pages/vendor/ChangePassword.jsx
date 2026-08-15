@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../../lib/api.js";
 import { useAuth } from "../../auth/AuthContext.jsx";
 import FormField, { inputClass } from "../../components/FormField.jsx";
+import Button from "../../components/Button.jsx";
 
 // §2.4/§4.3: forced first-login password change for admin-provisioned vendor accounts.
 export default function VendorChangePassword() {
@@ -64,13 +65,9 @@ export default function VendorChangePassword() {
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-60"
-        >
-          {submitting ? "Saving..." : "Save and continue"}
-        </button>
+        <Button type="submit" loading={submitting} loadingText="Saving..." fullWidth>
+          Save and continue
+        </Button>
       </form>
     </div>
   );

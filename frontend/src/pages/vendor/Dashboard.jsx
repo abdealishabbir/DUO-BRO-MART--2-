@@ -4,6 +4,7 @@ import { Package, Clock, CheckCircle2, ShoppingBag, Info, AlertTriangle, PlusCir
 import { useAuth } from "../../auth/AuthContext.jsx";
 import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
+import { Skeleton } from "../../components/Skeleton.jsx";
 
 const LOW_STOCK_THRESHOLD = 10;
 
@@ -93,7 +94,17 @@ export default function VendorDashboard() {
             <Link to="/vendor/products" className="text-xs font-medium text-brand hover:underline">View all</Link>
           </div>
           {loading ? (
-            <p className="text-sm text-gray-400">Loading...</p>
+            <ul className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <li key={i} className="flex items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1 space-y-1.5">
+                    <Skeleton className="h-3.5 w-2/3" />
+                    <Skeleton className="h-3 w-16" />
+                  </div>
+                  <Skeleton className="h-5 w-14 shrink-0 rounded-full" />
+                </li>
+              ))}
+            </ul>
           ) : recentProducts.length === 0 ? (
             <p className="text-sm text-gray-500">
               No products yet. <Link to="/vendor/products?new=1" className="font-medium text-brand hover:underline">Add your first one</Link>.

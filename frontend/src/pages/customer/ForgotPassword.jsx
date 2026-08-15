@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../../lib/api.js";
 import FormField, { inputClass } from "../../components/FormField.jsx";
+import Button from "../../components/Button.jsx";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -50,13 +51,9 @@ export default function ForgotPassword() {
             onChange={(e) => setEmail(e.target.value)}
           />
         </FormField>
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-60"
-        >
-          {submitting ? "Sending..." : "Send reset link"}
-        </button>
+        <Button type="submit" loading={submitting} loadingText="Sending..." fullWidth>
+          Send reset link
+        </Button>
       </form>
 
       <p className="mt-6 text-center text-sm text-gray-500">

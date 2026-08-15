@@ -45,10 +45,20 @@ export default function Modal({ open, onClose, title, children, footer }) {
   if (!open) return null;
 
   return (
+    // Click-outside-to-dismiss is a convenience shortcut, not the only way to
+    // close this dialog — Escape (handled above) and the Close button below
+    // are the accessible, keyboard-operable paths, so this backdrop doesn't
+    // need its own keyboard handler.
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={onClose}
     >
+      {/* stopPropagation keeps a click inside the dialog panel from bubbling to
+          the backdrop above and closing the modal; role="dialog" + tabIndex
+          already make this the focus target, so no separate keyboard handler
+          is needed for the click itself. */}
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
       <div
         ref={dialogRef}
         role="dialog"

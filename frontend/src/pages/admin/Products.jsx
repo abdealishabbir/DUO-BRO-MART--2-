@@ -3,6 +3,7 @@ import { RefreshCw, Check, X, Pencil, Trash2, Search } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
 import { inputClass } from "../../components/FormField.jsx";
+import { SkeletonTableRows } from "../../components/Skeleton.jsx";
 
 const STATUS_TABS = [
   { value: "", label: "All" },
@@ -398,7 +399,7 @@ export default function AdminProducts() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={8} className="p-4 text-center text-sm text-gray-500">Loading...</td></tr>
+              <SkeletonTableRows columns={8} rows={6} />
             ) : products.length === 0 ? (
               <tr><td colSpan={8} className="p-4 text-center text-sm text-gray-500">No products match these filters.</td></tr>
             ) : (

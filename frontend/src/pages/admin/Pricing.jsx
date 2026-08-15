@@ -3,6 +3,37 @@ import { RefreshCw, Check, X } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
 import { inputClass } from "../../components/FormField.jsx";
+import { Skeleton, SkeletonText, SkeletonTable } from "../../components/Skeleton.jsx";
+
+function PricingSkeleton() {
+  return (
+    <div className="space-y-6 p-6">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-5 w-56" />
+        <Skeleton className="h-4 w-16" />
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <Skeleton className="mb-3 h-4 w-40" />
+        <SkeletonText lines={3} />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div key={i} className="rounded-lg border border-gray-200 bg-white p-4">
+            <Skeleton className="mb-3 h-4 w-44" />
+            <SkeletonText lines={3} />
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <Skeleton className="mb-3 h-4 w-32" />
+        <SkeletonTable columns={8} rows={5} cellClassName="p-2" />
+      </div>
+    </div>
+  );
+}
 
 function CommissionRatesCard({ rates, onSaved }) {
   const [edits, setEdits] = useState({});
@@ -156,7 +187,7 @@ export default function AdminPricing() {
     load();
   }, []);
 
-  if (loading) return <div className="p-6 text-sm text-gray-500">Loading...</div>;
+  if (loading) return <PricingSkeleton />;
 
   return (
     <div className="space-y-6 p-6">

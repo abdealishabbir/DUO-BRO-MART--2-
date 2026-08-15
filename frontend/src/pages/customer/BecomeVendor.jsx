@@ -168,7 +168,7 @@ export default function BecomeVendor() {
 
       <section className="mx-auto max-w-5xl px-4 py-12">
         <h2 className="text-xl font-bold text-gray-900">Why sell on Duo Bro Mart</h2>
-        <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-5 grid gap-5 sm:grid-cols-2 md:grid-cols-4">
           {[
             { icon: TrendingUp, title: "Nationwide Reach", desc: "Get discovered by customers in every province, from Karachi to rural landmarks." },
             { icon: Wallet, title: "Fair Commission", desc: "Set your own base price — our commission is added on top, never deducted from it." },
@@ -187,7 +187,7 @@ export default function BecomeVendor() {
       <section className="bg-gray-50 px-4 py-12">
         <div className="mx-auto max-w-5xl">
           <h2 className="text-xl font-bold text-gray-900">How it works</h2>
-          <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="mt-5 grid gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
             {[
               "Fill application",
               "Verification & review",

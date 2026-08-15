@@ -177,7 +177,7 @@ function FlashDeals({ items }) {
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
         {items.map((item) => {
           const discountPct = item.original_price ? Math.round((1 - item.price / item.original_price) * 100) : 0;
           return (
@@ -375,7 +375,7 @@ function TopSelling({ items }) {
           View All
         </Link>
       </div>
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
         {items.map((item) => (
           <Link key={item.id} to={`/product/${item.slug}`} className="rounded-lg border border-gray-200 bg-white p-3 hover:shadow-md">
             <div className="relative">
@@ -443,7 +443,7 @@ function TrustStrip() {
   ];
   return (
     <section className="mx-auto max-w-7xl px-4 py-12 lg:px-8">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
         {items.map((item) => (
           <div key={item.title} className="rounded-xl border border-gray-200 bg-white p-6 text-center">
             <item.icon className="mx-auto h-7 w-7 text-brand" />

@@ -4,6 +4,42 @@ import { TrendingUp, TrendingDown } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
 import ImageWithFallback from "../../components/ImageWithFallback.jsx";
+import { Skeleton, SkeletonStatCard, SkeletonTable } from "../../components/Skeleton.jsx";
+
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-6 p-6">
+      <Skeleton className="h-6 w-48" />
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <SkeletonStatCard key={i} />
+        ))}
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="rounded-lg border border-gray-200 bg-white p-4 lg:col-span-2">
+          <Skeleton className="mb-3 h-4 w-28" />
+          <SkeletonTable columns={6} rows={5} cellClassName="p-1.5" />
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <Skeleton className="mb-3 h-4 w-36" />
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <Skeleton className="h-10 w-10 shrink-0 rounded-md" />
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <Skeleton className="h-3 w-3/4" />
+                  <Skeleton className="h-2.5 w-1/2" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const STATUS_STYLES = {
   pending: "bg-amber-100 text-amber-700",
@@ -36,7 +72,7 @@ function ChangeIndicator({ pct }) {
 
 function KpiCard({ label, value, sublabel, children }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
+    <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
       <p className="text-xs font-medium text-gray-500">{label}</p>
       <p className="mt-1 text-2xl font-bold text-gray-900">{value}</p>
       {sublabel && <p className="mt-0.5 text-xs text-gray-400">{sublabel}</p>}
@@ -57,7 +93,7 @@ export default function AdminDashboard() {
   }, []);
 
   if (loading || !data) {
-    return <div className="p-6 text-sm text-gray-500">Loading dashboard...</div>;
+    return <DashboardSkeleton />;
   }
 
   return (

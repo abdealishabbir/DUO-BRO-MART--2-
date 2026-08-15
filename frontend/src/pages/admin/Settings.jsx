@@ -1,6 +1,37 @@
 import { useEffect, useState } from "react";
 import { api } from "../../lib/api.js";
 import { inputClass } from "../../components/FormField.jsx";
+import { Skeleton } from "../../components/Skeleton.jsx";
+
+function SkeletonFormCard({ fields = 3 }) {
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white p-4">
+      <Skeleton className="mb-3 h-4 w-36" />
+      <div className="space-y-3">
+        {Array.from({ length: fields }).map((_, i) => (
+          <div key={i}>
+            <Skeleton className="mb-1.5 h-2.5 w-28" />
+            <Skeleton className="h-8 w-full" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SettingsSkeleton() {
+  return (
+    <div className="space-y-6 p-6">
+      <Skeleton className="h-5 w-36" />
+      <div className="grid gap-6 lg:grid-cols-2">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <SkeletonFormCard key={i} />
+        ))}
+      </div>
+      <Skeleton className="h-10 w-36 rounded-md" />
+    </div>
+  );
+}
 
 function Toggle({ checked, onChange }) {
   return (
@@ -195,7 +226,7 @@ export default function AdminSettings() {
     }
   };
 
-  if (!form) return <div className="p-6 text-sm text-gray-500">Loading...</div>;
+  if (!form) return <SettingsSkeleton />;
 
   return (
     <div className="space-y-6 p-6">

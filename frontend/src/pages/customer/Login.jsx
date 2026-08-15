@@ -4,6 +4,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext.jsx";
 import FormField, { inputClass } from "../../components/FormField.jsx";
 import GoogleSignInButton from "../../components/GoogleSignInButton.jsx";
+import Button from "../../components/Button.jsx";
 
 export default function Login() {
   const { login, googleLogin } = useAuth();
@@ -105,13 +106,9 @@ export default function Login() {
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-60"
-        >
-          {submitting ? "Signing in..." : "Sign in"}
-        </button>
+        <Button type="submit" loading={submitting} loadingText="Signing in..." fullWidth>
+          Sign in
+        </Button>
       </form>
 
       <div className="mt-6">

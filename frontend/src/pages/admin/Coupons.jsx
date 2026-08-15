@@ -3,6 +3,7 @@ import { Plus, Trash2, Pencil } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
 import { inputClass } from "../../components/FormField.jsx";
+import { SkeletonTable } from "../../components/Skeleton.jsx";
 
 const EMPTY_FORM = {
   code: "", discount_type: "percent", discount_value: "", min_order_value: "0",
@@ -162,7 +163,7 @@ export default function AdminCoupons() {
 
       <div className="mt-4 overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
         {coupons === null ? (
-          <p className="p-6 text-sm text-gray-400">Loading...</p>
+          <SkeletonTable columns={7} rows={5} />
         ) : coupons.length === 0 ? (
           <p className="p-10 text-center text-sm text-gray-500">No coupons yet — create one to get started.</p>
         ) : (

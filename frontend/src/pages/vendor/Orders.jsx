@@ -3,6 +3,7 @@ import { Search, RefreshCw, Package } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { useAuth } from "../../auth/AuthContext.jsx";
 import { formatPKR } from "../../lib/currency.js";
+import { SkeletonTable } from "../../components/Skeleton.jsx";
 
 const STATUS_STYLES = {
   pending: "bg-amber-100 text-amber-700",
@@ -109,7 +110,7 @@ export default function VendorOrders() {
         <div>
           <h2 className="text-xl font-bold text-ink">Orders</h2>
           <p className="text-sm text-gray-500">
-            {orders === null ? "Loading..." : `${rows.length} order${rows.length !== 1 ? "s" : ""} contain your products`}
+            {orders === null ? <span className="inline-block h-3.5 w-48 animate-pulse rounded bg-gray-200 align-middle" /> : `${rows.length} order${rows.length !== 1 ? "s" : ""} contain your products`}
           </p>
         </div>
         <button onClick={load} className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:border-brand hover:text-brand">
@@ -163,7 +164,7 @@ export default function VendorOrders() {
 
       <div className="mt-4 overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
         {orders === null ? (
-          <p className="p-6 text-sm text-gray-400">Loading your orders...</p>
+          <SkeletonTable columns={6} rows={6} />
         ) : filtered.length === 0 ? (
           <div className="p-10 text-center">
             <Package className="mx-auto h-8 w-8 text-gray-300" />

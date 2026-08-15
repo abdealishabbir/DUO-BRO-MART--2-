@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
 import { Store, User, ShoppingCart, Heart, Menu, X } from "lucide-react";
 import { useAuth } from "../auth/AuthContext.jsx";
@@ -35,54 +35,75 @@ function NavItem({ to, label, end }) {
 
 export default function CustomerLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const { isAuthenticated } = useAuth();
   const { itemCount: cartCount } = useCart();
   const { count: wishlistCount } = useWishlist();
+
+  // The header sits flush with the page at the very top (a hairline border is
+  // enough separation there). Once the page scrolls underneath it, it's
+  // visually "floating" above content rather than part of the page flow, so
+  // it picks up a shadow to read as elevated instead of just... stuck there.
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
     <div className="flex min-h-screen flex-col bg-cream">
       <a href="#maincontent" className="sr-only focus:not-sr-only inline-block rounded bg-white px-3 py-2 text-sm font-medium text-brand">
         Skip to main content
       </a>
-      <header className="sticky top-0 z-30 border-b border-gray-200 bg-cream">
+      <header className={`sticky top-0 z-30 border-b border-gray-200 bg-cream transition-shadow duration-200 ${scrolled ? "shadow-md" : ""}`}>
         <div className="mx-auto flex max-w-7xl items-center gap-6 px-4 py-3 lg:px-8">
           <Link to="/" className="flex shrink-0 items-center gap-2">
             <Store className="h-6 w-6 text-brand" strokeWidth={2.25} />
             <span className="text-xl font-bold text-gray-900">Duo Bro Mart</span>
           </Link>
 
-          <nav className="hidden items-center gap-6 lg:flex">
+          <nav className="hidden items-center gap-4 md:flex md:gap-5 lg:gap-6">
             {NAV_LINKS.map((link) => (
               <NavItem key={link.label} {...link} />
             ))}
           </nav>
 
-          <div className="hidden flex-1 items-center lg:flex">
-            <div className="relative w-full max-w-xl">
+          <div className="hidden flex-1 items-center md:flex">
+            <div className="relative w-full max-w-[14rem] lg:max-w-xl">
               <SearchAutocomplete />
             </div>
           </div>
 
-          <div className="ml-auto hidden items-center gap-6 lg:flex">
+          <div className="ml-auto hidden items-center gap-3 md:flex md:gap-4 lg:gap-6">
             <Link
               to={isAuthenticated ? "/account" : "/login"}
               className="flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-brand"
+              title={isAuthenticated ? "Account" : "Sign in"}
             >
               <User className="h-4 w-4" />
-              {isAuthenticated ? "Account" : "Sign in"}
+              <span className="hidden lg:inline">{isAuthenticated ? "Account" : "Sign in"}</span>
             </Link>
-            <Link to="/wishlist" className="relative flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-brand">
+            <Link
+              to="/wishlist"
+              className="relative flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-brand"
+              title="Wishlist"
+            >
               <Heart className="h-4 w-4" />
-              Wishlist
+              <span className="hidden lg:inline">Wishlist</span>
               {wishlistCount > 0 && (
                 <span className="absolute -right-3 -top-2 rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-bold text-white">
                   {wishlistCount}
                 </span>
               )}
             </Link>
-            <Link to="/cart" className="relative flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-brand">
+            <Link
+              to="/cart"
+              className="relative flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-brand"
+              title="Cart"
+            >
               <ShoppingCart className="h-4 w-4" />
-              Cart
+              <span className="hidden lg:inline">Cart</span>
               {cartCount > 0 && (
                 <span className="absolute -right-3 -top-2 rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-bold text-white">
                   {cartCount}
@@ -93,7 +114,7 @@ export default function CustomerLayout() {
 
           <button
             type="button"
-            className="ml-auto lg:hidden"
+            className="ml-auto md:hidden"
             aria-label="Toggle menu"
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((v) => !v)}
@@ -103,7 +124,7 @@ export default function CustomerLayout() {
         </div>
 
         {menuOpen && (
-          <nav className="space-y-3 border-t border-gray-200 bg-cream px-4 py-3 lg:hidden">
+          <nav className="space-y-3 border-t border-gray-200 bg-cream px-4 py-3 md:hidden">
             <SearchAutocomplete placeholder="Search..." onNavigate={() => setMenuOpen(false)} />
             <div className="flex flex-col gap-3">
               {NAV_LINKS.map((link) => (

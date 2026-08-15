@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import Meta from "../../components/Meta.jsx";
+import Badge from "../../components/Badge.jsx";
 
 function Section({ number, title, children }) {
   return (
@@ -17,9 +18,9 @@ export default function Terms() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-12">
       <Meta title="Terms & Conditions — Duo Bro Mart" description="Duo Bro Mart's terms and conditions for customers shopping on our Pakistani multi-vendor marketplace." url={`${window.location.origin}/terms`} />
-      <span className="rounded-full bg-brand/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-brand">
+      <Badge variant="warning" className="normal-case tracking-wide">
         Placeholder — pending final legal review
-      </span>
+      </Badge>
       <h1 className="font-display mt-4 text-3xl font-bold text-gray-900">Terms &amp; Conditions</h1>
       <p className="mt-2 text-sm text-gray-500">Last updated: July 2026 · Duo Bro Mart, Pakistan</p>
 

@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { api } from "../lib/api.js";
+import RouteErrorBoundary from "../components/RouteErrorBoundary.jsx";
 
 const LOW_STOCK_THRESHOLD = 10;
 
@@ -190,7 +191,9 @@ export default function VendorLayout() {
         </header>
 
         <main id="maincontent" className="flex-1 bg-cream p-6">
-          <Outlet />
+          <RouteErrorBoundary key={location.pathname}>
+            <Outlet />
+          </RouteErrorBoundary>
         </main>
       </main>
     </div>

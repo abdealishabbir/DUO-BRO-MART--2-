@@ -5,6 +5,8 @@ import { api } from "../../lib/api.js";
 import { useAuth } from "../../auth/AuthContext.jsx";
 import FormField, { inputClass } from "../../components/FormField.jsx";
 import ImageWithFallback from "../../components/ImageWithFallback.jsx";
+import Card from "../../components/Card.jsx";
+import Button from "../../components/Button.jsx";
 
 const NOTIFICATION_DEFAULTS = [
   { key: "new_order", label: "New Order Received", desc: "Get notified when a customer places an order.", enabled: true },
@@ -80,7 +82,7 @@ export default function VendorSettings() {
 
   return (
     <div className="max-w-2xl space-y-5">
-      <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+      <Card padding="none" className="p-5">
         <div className="flex items-center justify-between">
           <h3 className="flex items-center gap-2 font-bold text-ink">
             <Store className="h-4 w-4 text-brand" /> Storefront Profile
@@ -147,13 +149,13 @@ export default function VendorSettings() {
           {shopError && <p className="text-sm text-red-600">{shopError}</p>}
           {shopSaved && <p className="text-sm text-green-700">Storefront updated.</p>}
 
-          <button type="submit" disabled={shopSaving} className="rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-dark disabled:opacity-60">
-            {shopSaving ? "Saving..." : "Save Storefront"}
-          </button>
+          <Button type="submit" loading={shopSaving} loadingText="Saving...">
+            Save Storefront
+          </Button>
         </form>
-      </div>
+      </Card>
 
-      <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+      <Card padding="none" className="p-5">
         <h3 className="font-bold text-ink">Contact Information</h3>
         <form onSubmit={saveProfile} className="mt-4 space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -174,13 +176,13 @@ export default function VendorSettings() {
           {error && <p className="text-sm text-red-600">{error}</p>}
           {saved && <p className="text-sm text-green-700">Saved.</p>}
 
-          <button type="submit" disabled={saving} className="rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-dark disabled:opacity-60">
-            {saving ? "Saving..." : "Save Changes"}
-          </button>
+          <Button type="submit" loading={saving} loadingText="Saving...">
+            Save Changes
+          </Button>
         </form>
-      </div>
+      </Card>
 
-      <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+      <Card padding="none" className="p-5">
         <h3 className="font-bold text-ink">Commission & Terms</h3>
         <p className="mt-2 text-sm text-gray-600">
           Current platform commission: <strong className="text-ink">10%</strong> (provisional flat rate — category-based rates land with Admin Settings, §7.7).
@@ -193,9 +195,9 @@ export default function VendorSettings() {
             <FileText className="h-4 w-4" /> Read Vendor Terms & Conditions
           </Link>
         </div>
-      </div>
+      </Card>
 
-      <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+      <Card padding="none" className="p-5">
         <h3 className="font-bold text-ink">Notifications</h3>
         <p className="mt-1 text-xs text-gray-400">Preferences shown here aren&apos;t saved to your account yet — this is a preview of the upcoming settings.</p>
         <div className="mt-3 space-y-3">
@@ -215,7 +217,7 @@ export default function VendorSettings() {
             </div>
           ))}
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

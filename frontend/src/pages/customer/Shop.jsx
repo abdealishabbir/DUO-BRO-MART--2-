@@ -8,6 +8,7 @@ import WishlistButton from "../../components/WishlistButton.jsx";
 import Meta from "../../components/Meta.jsx";
 import ImageWithFallback from "../../components/ImageWithFallback.jsx";
 import Card from "../../components/Card.jsx";
+import { SkeletonCard } from "../../components/Skeleton.jsx";
 import Button from "../../components/Button.jsx";
 
 const DEFAULT_FILTERS = { categories: [], brands: [], minPrice: "", maxPrice: "", dealsOnly: false, minRating: "", search: "" };
@@ -379,13 +380,17 @@ export default function Shop() {
             <ActiveFilterChips filters={filters} setFilters={updateFilters} categories={categories} />
 
             {loading ? (
-              <p className="rounded-lg border border-gray-200 bg-white p-10 text-center text-sm text-gray-500">Loading...</p>
+              <div className={view === "grid" ? "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "flex flex-col gap-4"}>
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <SkeletonCard key={i} />
+                ))}
+              </div>
             ) : items.length === 0 ? (
               <p className="rounded-lg border border-gray-200 bg-white p-10 text-center text-sm text-gray-500">
                 No products match these filters. Try adjusting them.
               </p>
             ) : (
-              <div className={view === "grid" ? "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col gap-4"}>
+              <div className={view === "grid" ? "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "flex flex-col gap-4"}>
                 {items.map((p) => <ProductCard key={p.id} product={p} view={view} />)}
               </div>
             )}

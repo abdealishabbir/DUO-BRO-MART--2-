@@ -2,6 +2,27 @@ import { useEffect, useState } from "react";
 import { RefreshCw, Eye, ShoppingBag, TrendingUp, Percent, Download, Calendar } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
+import { SkeletonStatCard, SkeletonText } from "../../components/Skeleton.jsx";
+
+function AnalyticsSkeleton() {
+  return (
+    <>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <SkeletonStatCard key={i} />
+        ))}
+      </div>
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div key={i} className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+            <div className="h-3.5 w-24 animate-pulse rounded bg-gray-200" />
+            <SkeletonText lines={4} className="mt-4" />
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
@@ -108,8 +129,9 @@ export default function VendorAnalytics() {
       {range === "custom" && (
         <form onSubmit={handleCustomApply} className="mt-3 flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
           <div>
-            <label className="block text-xs font-medium text-gray-600">From</label>
+            <label htmlFor="analytics-from-date" className="block text-xs font-medium text-gray-600">From</label>
             <input
+              id="analytics-from-date"
               type="date"
               value={fromDate}
               max={toDate}
@@ -118,8 +140,9 @@ export default function VendorAnalytics() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600">To</label>
+            <label htmlFor="analytics-to-date" className="block text-xs font-medium text-gray-600">To</label>
             <input
+              id="analytics-to-date"
               type="date"
               value={toDate}
               min={fromDate}
@@ -136,7 +159,7 @@ export default function VendorAnalytics() {
             Apply
           </button>
           {fromDate > toDate && (
-            <p className="text-xs text-red-500">"From" must be before "To"</p>
+            <p className="text-xs text-red-500">&quot;From&quot; must be before &quot;To&quot;</p>
           )}
         </form>
       )}
@@ -144,7 +167,11 @@ export default function VendorAnalytics() {
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 
       {!data ? (
-        <p className="mt-6 text-sm text-gray-400">{range === "custom" && !error ? "Select a date range and click Apply." : "Loading..."}</p>
+        range === "custom" && !error ? (
+          <p className="mt-6 text-sm text-gray-400">Select a date range and click Apply.</p>
+        ) : (
+          <AnalyticsSkeleton />
+        )
       ) : (
         <>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

@@ -4,6 +4,7 @@ import { useAuth } from "../../auth/AuthContext.jsx";
 import { api } from "../../lib/api.js";
 import FormField, { inputClass } from "../../components/FormField.jsx";
 import { formatPKR } from "../../lib/currency.js";
+import { Skeleton } from "../../components/Skeleton.jsx";
 
 const TABS = ["Profile", "Addresses", "Security", "Orders"];
 
@@ -102,7 +103,21 @@ function AddressesTab() {
     load();
   };
 
-  if (loading) return <p className="text-sm text-gray-500">Loading...</p>;
+  if (loading) {
+    return (
+      <div className="max-w-lg space-y-4">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div key={i} className="flex items-start justify-between rounded-md border border-gray-200 p-3">
+            <div className="w-full space-y-1.5">
+              <Skeleton className="h-3.5 w-1/3" />
+              <Skeleton className="h-3 w-2/3" />
+              <Skeleton className="h-3 w-3/4" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-lg space-y-4">

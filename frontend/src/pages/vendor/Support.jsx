@@ -1,4 +1,5 @@
 import { MessageCircle, Ticket, Users, HelpCircle } from "lucide-react";
+import Card from "../../components/Card.jsx";
 
 const CARDS = [
   { icon: MessageCircle, title: "Live Chat", desc: "Chat with our vendor support team", cta: "Start Chat", color: "text-green-600 bg-green-50" },
@@ -13,7 +14,7 @@ export default function VendorSupport() {
       <h2 className="text-xl font-bold text-ink">Help & Support</h2>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         {CARDS.map((card) => (
-          <div key={card.title} className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+          <Card key={card.title}>
             <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${card.color}`}>
               <card.icon className="h-4 w-4" />
             </span>
@@ -22,7 +23,7 @@ export default function VendorSupport() {
             <button disabled className="mt-2 text-sm font-medium text-gray-300" title="Support channels aren&apos;t live yet">
               {card.cta} →
             </button>
-          </div>
+          </Card>
         ))}
       </div>
       <p className="mt-4 text-xs text-gray-400">These channels aren&apos;t connected to a real support system yet — for now, reach out through the contact details on your vendor approval email.</p>

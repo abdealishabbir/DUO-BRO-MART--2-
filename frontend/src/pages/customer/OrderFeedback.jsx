@@ -6,6 +6,47 @@ import { formatPKR } from "../../lib/currency.js";
 import { inputClass } from "../../components/FormField.jsx";
 import { useAuth } from "../../auth/AuthContext.jsx";
 import ImageWithFallback from "../../components/ImageWithFallback.jsx";
+import { Skeleton } from "../../components/Skeleton.jsx";
+
+function OrderFeedbackSkeleton() {
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-8">
+      <Skeleton className="h-3.5 w-56" />
+      <Skeleton className="mt-2 h-7 w-64" />
+      <Skeleton className="mt-2 h-4 w-96 max-w-full" />
+
+      <div className="mt-5 flex flex-wrap items-center gap-6 rounded-lg border border-gray-200 bg-white p-4">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <Skeleton className="h-9 w-9 rounded-md" />
+            <div className="space-y-1.5">
+              <Skeleton className="h-2.5 w-16" />
+              <Skeleton className="h-3.5 w-20" />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-5 flex items-center gap-3">
+        <Skeleton className="h-8 w-36 rounded-full" />
+        <div className="h-px flex-1 bg-gray-100" />
+        <Skeleton className="h-8 w-36 rounded-full" />
+      </div>
+
+      <div className="mt-6 space-y-3">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-4">
+            <Skeleton className="h-14 w-14 shrink-0 rounded-md" />
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <Skeleton className="h-3.5 w-2/3" />
+              <Skeleton className="h-3 w-1/3" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const RETURN_WINDOW_DAYS = 7;
 
@@ -367,7 +408,7 @@ export default function OrderFeedback() {
       </div>
     );
   }
-  if (!order) return <div className="mx-auto max-w-3xl px-4 py-16 text-center text-sm text-gray-500">Loading...</div>;
+  if (!order) return <OrderFeedbackSkeleton />;
 
   const allHandled = Object.values(itemStates).every((s) => s === "confirmed" || s === "reported");
 

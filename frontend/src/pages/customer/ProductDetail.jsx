@@ -9,6 +9,24 @@ import WishlistButton from "../../components/WishlistButton.jsx";
 import Meta from "../../components/Meta.jsx";
 import ImageWithFallback from "../../components/ImageWithFallback.jsx";
 import Button, { buttonClasses } from "../../components/Button.jsx";
+import { Skeleton, SkeletonText } from "../../components/Skeleton.jsx";
+
+function ProductDetailSkeleton() {
+  return (
+    <section className="mx-auto grid max-w-7xl gap-8 px-4 py-6 lg:grid-cols-2 lg:px-8">
+      <Skeleton className="aspect-square w-full rounded-lg" />
+      <div>
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="mt-2 h-7 w-3/4" />
+        <Skeleton className="mt-3 h-4 w-32" />
+        <Skeleton className="mt-4 h-9 w-40" />
+        <SkeletonText lines={3} className="mt-4" />
+        <Skeleton className="mt-5 h-16 w-full rounded-lg" />
+        <Skeleton className="mt-4 h-11 w-full rounded-md" />
+      </div>
+    </section>
+  );
+}
 
 // Feeds the vendor Analytics traffic-source breakdown (§6.7/Phase 6+). No
 // UTM parsing, no session tracking — just a coarse bucket from referrer,
@@ -155,7 +173,7 @@ export default function ProductDetail() {
   }, [slug]);
 
   if (notFound) return <Navigate to="/shop" replace />;
-  if (!product) return <div className="mx-auto max-w-7xl px-4 py-16 text-center text-sm text-gray-500">Loading...</div>;
+  if (!product) return <ProductDetailSkeleton />;
 
   const handleAddToCart = () => {
     addItem(product, quantity);

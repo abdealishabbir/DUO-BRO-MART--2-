@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Store, Lock, Mail, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext.jsx";
+import Button from "../../components/Button.jsx";
 
 // §4.1/§4.3: hidden, unadvertised URL. No self-signup — credentials are
 // issued by admin after the vendor application is approved (Phase 6).
@@ -81,13 +82,9 @@ export default function VendorLogin() {
 
             {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full rounded-lg bg-brand py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-dark disabled:opacity-60"
-            >
-              {submitting ? "Signing in..." : "Sign In"}
-            </button>
+            <Button type="submit" loading={submitting} loadingText="Signing in..." fullWidth>
+              Sign In
+            </Button>
           </form>
         </div>
 

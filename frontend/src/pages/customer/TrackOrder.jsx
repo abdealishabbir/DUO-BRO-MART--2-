@@ -6,6 +6,8 @@ import { formatPKR } from "../../lib/currency.js";
 import { groupLinesByVendor } from "../../lib/vendorGrouping.js";
 import { inputClass } from "../../components/FormField.jsx";
 import ImageWithFallback from "../../components/ImageWithFallback.jsx";
+import Card from "../../components/Card.jsx";
+import Button from "../../components/Button.jsx";
 
 // PRD §5.4: Pending -> Processing -> Shipped -> Delivered (or Cancelled).
 // The admin updates this status from their panel (§6.4) — this page
@@ -71,7 +73,8 @@ export default function TrackOrder() {
       <h1 className="font-display text-2xl font-bold text-gray-900">Track Your Order</h1>
       <p className="mt-1 text-sm text-gray-500">Enter your Order ID and the email or phone number used at checkout.</p>
 
-      <form onSubmit={handleSearch} className="mt-6 space-y-4 rounded-lg border border-gray-200 bg-white p-5">
+      <form onSubmit={handleSearch} className="mt-6 space-y-4">
+        <Card padding="none" className="space-y-4 p-5">
         <label className="block text-sm">
           <span className="mb-1 block font-medium text-gray-700">Order ID</span>
           <input className={inputClass} placeholder="DBM-2026-0001" value={orderCode} onChange={(e) => setOrderCode(e.target.value)} />
@@ -81,13 +84,14 @@ export default function TrackOrder() {
           <input className={inputClass} placeholder="you@example.com or 03001234567" value={contact} onChange={(e) => setContact(e.target.value)} />
         </label>
         {error && <p className="text-sm text-red-600">{error}</p>}
-        <button type="submit" disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-md bg-brand py-3 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-60">
-          <Search className="h-4 w-4" /> {loading ? "Searching..." : "Track Order"}
-        </button>
+        <Button type="submit" loading={loading} loadingText="Searching..." icon={Search} fullWidth>
+          Track Order
+        </Button>
+        </Card>
       </form>
 
       {order && (
-        <div className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
+        <Card padding="none" className="mt-6 p-5">
           <div className="flex items-center justify-between">
             <h2 className="font-bold text-gray-900">Order #{order.order_code}</h2>
             <span className="text-sm text-gray-500">Placed {formatDate(order.created_at, 0)}</span>
@@ -204,19 +208,15 @@ export default function TrackOrder() {
           {order.status === "pending" && (
             <div className="mt-5 border-t border-gray-100 pt-4">
               {cancelError && <p className="mb-2 text-sm text-red-600">{cancelError}</p>}
-              <button
-                onClick={handleCancel}
-                disabled={cancelling}
-                className="w-full rounded-md border border-red-200 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
-              >
-                {cancelling ? "Cancelling..." : "Cancel Order"}
-              </button>
+              <Button onClick={handleCancel} loading={cancelling} loadingText="Cancelling..." variant="dangerOutline" fullWidth>
+                Cancel Order
+              </Button>
               <p className="mt-1.5 text-center text-xs text-gray-400">
                 Only available while your order is still Pending — once it starts Processing, contact support to cancel.
               </p>
             </div>
           )}
-        </div>
+        </Card>
       )}
     </div>
   );

@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../../lib/api.js";
 import { useAuth } from "../../auth/AuthContext.jsx";
 import FormField, { inputClass } from "../../components/FormField.jsx";
-import Button from "../../components/Button.jsx";
 
 // §2.4/§4.3: forced first-login password change for admin-provisioned vendor accounts.
 export default function VendorChangePassword() {
@@ -20,8 +19,14 @@ export default function VendorChangePassword() {
     e.preventDefault();
     setError("");
 
-    if (newPassword.length < 8 || !/[A-Z]/.test(newPassword) || !/\d/.test(newPassword)) {
-      setError("Min 8 characters, at least 1 uppercase letter and 1 number.");
+    if (
+      newPassword.length < 8 ||
+      !/[A-Z]/.test(newPassword) ||
+      !/[a-z]/.test(newPassword) ||
+      !/\d/.test(newPassword) ||
+      !/[^A-Za-z0-9]/.test(newPassword)
+    ) {
+      setError("Min 8 characters, with an uppercase letter, a lowercase letter, a number, and a symbol.");
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -65,9 +70,13 @@ export default function VendorChangePassword() {
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 
-        <Button type="submit" loading={submitting} loadingText="Saving..." fullWidth>
-          Save and continue
-        </Button>
+        <button
+          type="submit"
+          disabled={submitting}
+          className="w-full rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-60"
+        >
+          {submitting ? "Saving..." : "Save and continue"}
+        </button>
       </form>
     </div>
   );

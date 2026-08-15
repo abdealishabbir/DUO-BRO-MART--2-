@@ -2,11 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import {
   Store, LayoutGrid, Package, ClipboardList, BarChart3, Wallet, Settings, HelpCircle, LogOut, Bell, Percent, Boxes,
-  AlertTriangle, Info, CheckCircle2,
+  AlertTriangle, Info, CheckCircle2, Menu, X,
 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { api } from "../lib/api.js";
-import RouteErrorBoundary from "../components/RouteErrorBoundary.jsx";
 
 const LOW_STOCK_THRESHOLD = 10;
 
@@ -116,23 +115,58 @@ function NotificationsBell() {
 export default function VendorLayout() {
   const { logout, user } = useAuth();
   const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const storeName = user?.business_name || user?.name || "Your Store";
   const pageTitle = NAV_LINKS.find((l) => location.pathname.startsWith(l.to))?.label ?? "Vendor Portal";
+
+  // The sidebar is a fixed off-canvas drawer below lg (there's no room for a
+  // permanent 240px rail next to real content until then). Close it whenever
+  // the route changes — nothing is more annoying than tapping a nav link on
+  // a phone and having the drawer just sit there over the new page.
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const onKeyDown = (e) => e.key === "Escape" && setSidebarOpen(false);
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [sidebarOpen]);
 
   return (
     <div className="flex min-h-screen bg-gray-50">
       <a href="#maincontent" className="sr-only focus:not-sr-only inline-block rounded bg-white px-3 py-2 text-sm font-medium text-brand">
         Skip to main content
       </a>
-      <aside className="flex w-60 shrink-0 flex-col bg-ink text-white">
-        <div className="flex items-center gap-2 border-b border-white/10 px-4 py-4">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand">
-            <Store className="h-4 w-4 text-white" />
-          </span>
-          <div>
-            <p className="text-sm font-bold leading-tight">Duo Bro Mart</p>
-            <p className="text-[11px] text-white/50">Vendor Portal</p>
+      {sidebarOpen && (
+        // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex w-60 shrink-0 flex-col bg-ink text-white transition-transform duration-200 lg:static lg:translate-x-0 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex items-center justify-between gap-2 border-b border-white/10 px-4 py-4">
+          <div className="flex items-center gap-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand">
+              <Store className="h-4 w-4 text-white" />
+            </span>
+            <div>
+              <p className="text-sm font-bold leading-tight">Duo Bro Mart</p>
+              <p className="text-[11px] text-white/50">Vendor Portal</p>
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(false)}
+            className="text-white/60 hover:text-white lg:hidden"
+            aria-label="Close menu"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
         <div className="flex items-center gap-2 border-b border-white/10 px-4 py-4">
@@ -176,26 +210,35 @@ export default function VendorLayout() {
         </div>
       </aside>
 
-      <main id="maincontent" className="flex flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4">
-          <h1 className="text-lg font-bold text-ink">{pageTitle}</h1>
+      <div className="flex flex-1 flex-col">
+        <header className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-4 sm:px-6">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              className="text-gray-500 hover:text-gray-800 lg:hidden"
+              aria-label="Open menu"
+              aria-expanded={sidebarOpen}
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            <h1 className="text-lg font-bold text-ink">{pageTitle}</h1>
+          </div>
           <div className="flex items-center gap-4">
             <NotificationsBell />
             <Link to="/vendor/settings" className="flex items-center gap-2 rounded-md px-2 py-1 hover:bg-gray-50" title="Account settings">
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">
                 {initials(user?.name)}
               </span>
-              <span className="text-sm font-medium text-ink">{user?.name}</span>
+              <span className="hidden text-sm font-medium text-ink sm:inline">{user?.name}</span>
             </Link>
           </div>
         </header>
 
         <main id="maincontent" className="flex-1 bg-cream p-6">
-          <RouteErrorBoundary key={location.pathname}>
-            <Outlet />
-          </RouteErrorBoundary>
+          <Outlet />
         </main>
-      </main>
+      </div>
     </div>
   );
 }

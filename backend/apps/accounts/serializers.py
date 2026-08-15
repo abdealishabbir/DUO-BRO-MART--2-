@@ -9,14 +9,25 @@ from .models import Address, VendorApplication
 User = get_user_model()
 
 
+_SPECIAL_CHARS = "!@#$%^&*()_+-=[]{}|;:,.<>?/~`'\""
+
+
 def _validate_strong_password(value: str) -> None:
-    """PRD §4.2: min 8 chars (also enforced by AUTH_PASSWORD_VALIDATORS),
-    at least 1 uppercase letter, at least 1 number."""
+    """PRD §4.2 (tightened per §8 hardening pass): min 8 chars (also
+    enforced by AUTH_PASSWORD_VALIDATORS), plus the full character-mix
+    bar — at least one uppercase letter, one lowercase letter, one digit,
+    and one symbol. Vendor/admin accounts on this platform hold real
+    money (payouts, saved orders), so "uppercase + digit" alone wasn't
+    enough; lowercase and symbol were the two missing classes."""
     validate_password(value)  # runs Django's configured validators (length, common, numeric-only)
     if not re.search(r"[A-Z]", value):
         raise serializers.ValidationError("Password must contain at least one uppercase letter.")
+    if not re.search(r"[a-z]", value):
+        raise serializers.ValidationError("Password must contain at least one lowercase letter.")
     if not re.search(r"\d", value):
         raise serializers.ValidationError("Password must contain at least one number.")
+    if not any(char in _SPECIAL_CHARS for char in value):
+        raise serializers.ValidationError(f"Password must contain at least one special character ({_SPECIAL_CHARS}).")
 
 
 class SignupSerializer(serializers.Serializer):

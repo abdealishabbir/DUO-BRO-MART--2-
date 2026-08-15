@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext.jsx";
 import FormField, { inputClass } from "../../components/FormField.jsx";
 import GoogleSignInButton from "../../components/GoogleSignInButton.jsx";
-import Button from "../../components/Button.jsx";
 
 const PHONE_REGEX = /^(\+92|0)3\d{9}$/;
 
@@ -12,9 +11,10 @@ function passwordStrength(password) {
   let score = 0;
   if (password.length >= 8) score += 1;
   if (/[A-Z]/.test(password)) score += 1;
+  if (/[a-z]/.test(password)) score += 1;
   if (/\d/.test(password)) score += 1;
   if (/[^A-Za-z0-9]/.test(password)) score += 1;
-  const labels = ["Too weak", "Weak", "Okay", "Good", "Strong"];
+  const labels = ["Too weak", "Weak", "Okay", "Good", "Strong", "Very strong"];
   return { label: labels[score], score };
 }
 
@@ -38,8 +38,14 @@ export default function Signup() {
     const errors = {};
     if (!fullName.trim()) errors.full_name = "Full name is required.";
     if (!PHONE_REGEX.test(phone)) errors.phone_number = "Enter a valid Pakistani number, e.g. 03001234567.";
-    if (password.length < 8 || !/[A-Z]/.test(password) || !/\d/.test(password)) {
-      errors.password = "Min 8 characters, at least 1 uppercase letter and 1 number.";
+    if (
+      password.length < 8 ||
+      !/[A-Z]/.test(password) ||
+      !/[a-z]/.test(password) ||
+      !/\d/.test(password) ||
+      !/[^A-Za-z0-9]/.test(password)
+    ) {
+      errors.password = "Min 8 characters, with an uppercase letter, a lowercase letter, a number, and a symbol.";
     }
     if (password !== confirmPassword) errors.confirm_password = "Passwords do not match.";
     if (!termsAccepted) errors.terms_accepted = "You must agree to the Terms & Conditions.";
@@ -151,9 +157,13 @@ export default function Signup() {
 
         {formError && <p className="text-sm text-red-600">{formError}</p>}
 
-        <Button type="submit" loading={submitting} loadingText="Creating account..." fullWidth>
-          Create account
-        </Button>
+        <button
+          type="submit"
+          disabled={submitting}
+          className="w-full rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-60"
+        >
+          {submitting ? "Creating account..." : "Create account"}
+        </button>
       </form>
 
       <div className="mt-6">

@@ -14,7 +14,7 @@ from .utils import is_locked_out, record_failed_login
 
 User = get_user_model()
 
-VALID_PASSWORD = "Str0ngPass1"
+VALID_PASSWORD = "Str0ngPass1!"
 
 
 def make_customer(email="alice@example.com", password=VALID_PASSWORD, **extra):
@@ -73,6 +73,28 @@ class SignupTests(_ClearsCacheMixin, APITestCase):
             "email": "weak@example.com",
             "password": "alllowercase1",  # no uppercase
             "confirm_password": "alllowercase1",
+            "terms_accepted": True,
+        })
+        self.assertEqual(resp.status_code, 400)
+
+    def test_signup_rejects_password_missing_lowercase(self):
+        resp = self.client.post(reverse("auth-signup"), {
+            "full_name": "No Lowercase",
+            "phone_number": "03001234567",
+            "email": "nolowercase@example.com",
+            "password": "ALLUPPERCASE1!",  # no lowercase
+            "confirm_password": "ALLUPPERCASE1!",
+            "terms_accepted": True,
+        })
+        self.assertEqual(resp.status_code, 400)
+
+    def test_signup_rejects_password_missing_special_character(self):
+        resp = self.client.post(reverse("auth-signup"), {
+            "full_name": "No Symbol",
+            "phone_number": "03001234567",
+            "email": "nosymbol@example.com",
+            "password": "NoSymbolHere1",  # no special character
+            "confirm_password": "NoSymbolHere1",
             "terms_accepted": True,
         })
         self.assertEqual(resp.status_code, 400)
@@ -203,22 +225,22 @@ class ForgotResetPasswordTests(_ClearsCacheMixin, APITestCase):
 
         resp = self.client.post(reverse("auth-reset-password"), {
             "token": token.token,
-            "new_password": "NewStr0ngPass1",
-            "confirm_password": "NewStr0ngPass1",
+            "new_password": "NewStr0ngPass1!",
+            "confirm_password": "NewStr0ngPass1!",
         })
         self.assertEqual(resp.status_code, 200)
 
         user.refresh_from_db()
-        self.assertTrue(user.check_password("NewStr0ngPass1"))
+        self.assertTrue(user.check_password("NewStr0ngPass1!"))
 
     def test_reset_password_token_is_single_use(self):
         user = make_customer()
         token = PasswordResetToken.objects.create(user=user)
         self.client.post(reverse("auth-reset-password"), {
-            "token": token.token, "new_password": "NewStr0ngPass1", "confirm_password": "NewStr0ngPass1",
+            "token": token.token, "new_password": "NewStr0ngPass1!", "confirm_password": "NewStr0ngPass1!",
         })
         resp2 = self.client.post(reverse("auth-reset-password"), {
-            "token": token.token, "new_password": "AnotherPass2", "confirm_password": "AnotherPass2",
+            "token": token.token, "new_password": "AnotherPass2!", "confirm_password": "AnotherPass2!",
         })
         self.assertEqual(resp2.status_code, 400)
 
@@ -229,7 +251,7 @@ class ForgotResetPasswordTests(_ClearsCacheMixin, APITestCase):
 
         token = PasswordResetToken.objects.create(user=user)
         self.client.post(reverse("auth-reset-password"), {
-            "token": token.token, "new_password": "NewStr0ngPass1", "confirm_password": "NewStr0ngPass1",
+            "token": token.token, "new_password": "NewStr0ngPass1!", "confirm_password": "NewStr0ngPass1!",
         })
 
         # The refresh token issued at login should now be blacklisted.
@@ -266,8 +288,8 @@ class ChangePasswordTests(_ClearsCacheMixin, APITestCase):
         self.client.post(reverse("auth-login"), {"email": "alice@example.com", "password": VALID_PASSWORD})
         resp = self.client.post(reverse("account-change-password"), {
             "current_password": "wrong",
-            "new_password": "NewStr0ngPass1",
-            "confirm_password": "NewStr0ngPass1",
+            "new_password": "NewStr0ngPass1!",
+            "confirm_password": "NewStr0ngPass1!",
         })
         self.assertEqual(resp.status_code, 400)
 
@@ -276,8 +298,8 @@ class ChangePasswordTests(_ClearsCacheMixin, APITestCase):
         self.client.post(reverse("auth-vendor-login"), {"email": "vendor3@example.com", "password": VALID_PASSWORD})
         resp = self.client.post(reverse("account-change-password"), {
             "current_password": VALID_PASSWORD,
-            "new_password": "NewStr0ngPass1",
-            "confirm_password": "NewStr0ngPass1",
+            "new_password": "NewStr0ngPass1!",
+            "confirm_password": "NewStr0ngPass1!",
         })
         self.assertEqual(resp.status_code, 200)
         user.refresh_from_db()

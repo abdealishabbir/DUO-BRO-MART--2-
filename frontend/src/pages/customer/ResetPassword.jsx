@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../../lib/api.js";
 import FormField, { inputClass } from "../../components/FormField.jsx";
-import Button from "../../components/Button.jsx";
 
 export default function ResetPassword() {
   const { token } = useParams();
@@ -18,8 +17,14 @@ export default function ResetPassword() {
     e.preventDefault();
     setError("");
 
-    if (newPassword.length < 8 || !/[A-Z]/.test(newPassword) || !/\d/.test(newPassword)) {
-      setError("Min 8 characters, at least 1 uppercase letter and 1 number.");
+    if (
+      newPassword.length < 8 ||
+      !/[A-Z]/.test(newPassword) ||
+      !/[a-z]/.test(newPassword) ||
+      !/\d/.test(newPassword) ||
+      !/[^A-Za-z0-9]/.test(newPassword)
+    ) {
+      setError("Min 8 characters, with an uppercase letter, a lowercase letter, a number, and a symbol.");
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -43,9 +48,12 @@ export default function ResetPassword() {
       <div className="mx-auto max-w-sm px-4 py-16 text-center">
         <h1 className="text-2xl font-bold text-gray-900">Password updated</h1>
         <p className="mt-2 text-sm text-gray-500">All your other sessions have been signed out for security.</p>
-        <Button onClick={() => navigate("/login", { replace: true })} className="mt-6">
+        <button
+          onClick={() => navigate("/login", { replace: true })}
+          className="mt-6 rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark"
+        >
           Sign in
-        </Button>
+        </button>
       </div>
     );
   }
@@ -76,9 +84,13 @@ export default function ResetPassword() {
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 
-        <Button type="submit" loading={submitting} loadingText="Resetting..." fullWidth>
-          Reset password
-        </Button>
+        <button
+          type="submit"
+          disabled={submitting}
+          className="w-full rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-60"
+        >
+          {submitting ? "Resetting..." : "Reset password"}
+        </button>
       </form>
 
       <p className="mt-6 text-center text-sm text-gray-500">

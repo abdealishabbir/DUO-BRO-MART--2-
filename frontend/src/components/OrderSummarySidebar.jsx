@@ -2,6 +2,7 @@ import { ShieldCheck } from "lucide-react";
 import { formatPKR } from "../lib/currency.js";
 import { groupLinesByVendor } from "../lib/vendorGrouping.js";
 import ImageWithFallback from "./ImageWithFallback.jsx";
+import Card from "./Card.jsx";
 
 export default function OrderSummarySidebar({ lines, subtotal, shipping, tax = 0, discount = 0, showCoupon = false }) {
   const total = subtotal - discount + shipping + tax;
@@ -19,7 +20,7 @@ export default function OrderSummarySidebar({ lines, subtotal, shipping, tax = 0
   const showVendorGroups = vendorGroups.length > 1;
 
   return (
-    <div className="h-fit rounded-lg border border-gray-200 bg-white p-5">
+    <Card padding="none" className="h-fit p-5">
       <h2 className="font-bold text-gray-900">Order Summary</h2>
 
       <div className="mt-4 space-y-4 border-b border-gray-100 pb-4">
@@ -96,6 +97,6 @@ export default function OrderSummarySidebar({ lines, subtotal, shipping, tax = 0
       <p className="mt-4 flex items-center justify-center gap-1.5 text-xs text-gray-500">
         <ShieldCheck className="h-3.5 w-3.5 text-green-600" /> Secure Checkout
       </p>
-    </div>
+    </Card>
   );
 }

@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams, Navigate } from "react-router-dom";
-import { Minus, Plus, ShoppingCart, Zap, Store, ChevronLeft, ChevronRight, Star } from "lucide-react";
+import { Minus, Plus, ShoppingCart, Zap, Store, ChevronLeft, ChevronRight, Star, ZoomIn, X } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { useCart } from "../../cart/CartContext.jsx";
 import { formatPKR } from "../../lib/currency.js";
@@ -9,7 +9,9 @@ import WishlistButton from "../../components/WishlistButton.jsx";
 import Meta from "../../components/Meta.jsx";
 import ImageWithFallback from "../../components/ImageWithFallback.jsx";
 import Button, { buttonClasses } from "../../components/Button.jsx";
+import Card from "../../components/Card.jsx";
 import { Skeleton, SkeletonText } from "../../components/Skeleton.jsx";
+import { recordProductView, getRecentlyViewed } from "../../lib/recentlyViewed.js";
 
 function ProductDetailSkeleton() {
   return (
@@ -45,14 +47,125 @@ function detectTrafficSource() {
   }
 }
 
+/**
+ * Full-screen image viewer, opened by tapping/clicking the main product
+ * photo. Not built on the shared Modal component — Modal is a small
+ * centered white card (right for confirmations and forms, wrong shape
+ * for an edge-to-edge photo viewer) — but replicates its accessibility
+ * pattern: focus moves in on open and back to the trigger on close,
+ * background scroll locks, Escape closes, and arrow keys navigate
+ * between images.
+ */
+function ImageLightbox({ images, active, setActive, name, onClose }) {
+  const closeButtonRef = useRef(null);
+  const triggerRef = useRef(null);
+
+  useEffect(() => {
+    triggerRef.current = document.activeElement;
+    closeButtonRef.current?.focus();
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowLeft") setActive((i) => (i - 1 + images.length) % images.length);
+      if (e.key === "ArrowRight") setActive((i) => (i + 1) % images.length);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+      triggerRef.current?.focus?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onClose]);
+
+  return (
+    // Click-outside-to-close is a convenience shortcut, not the only way to
+    // close this viewer — Escape and the Close button are the accessible,
+    // keyboard-operable paths.
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions, jsx-a11y/no-noninteractive-element-interactions
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${name} — image ${active + 1} of ${images.length}`}
+      onClick={onClose}
+    >
+      <button
+        ref={closeButtonRef}
+        onClick={onClose}
+        aria-label="Close image viewer"
+        className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+      >
+        <X className="h-6 w-6" />
+      </button>
+
+      {/* stopPropagation keeps a click on the image itself from bubbling to
+          the backdrop and closing the viewer. */}
+      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/click-events-have-key-events */}
+      <img
+        src={images[active]}
+        alt={`${name} — full size`}
+        onClick={(e) => e.stopPropagation()}
+        className="max-h-[85vh] max-w-full rounded-lg object-contain"
+      />
+
+      {images.length > 1 && (
+        <>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setActive((i) => (i - 1 + images.length) % images.length);
+            }}
+            aria-label="Previous image"
+            className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 sm:left-4"
+          >
+            <ChevronLeft className="h-6 w-6" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setActive((i) => (i + 1) % images.length);
+            }}
+            aria-label="Next image"
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 sm:right-4"
+          >
+            <ChevronRight className="h-6 w-6" />
+          </button>
+          <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-sm text-white/70">
+            {active + 1} / {images.length}
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
+
 function ImageCarousel({ images, name }) {
   const [active, setActive] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const closeLightbox = useCallback(() => setLightboxOpen(false), []);
   const shown = images.length ? images : [null]; // ImageWithFallback shows its own local placeholder for a null src — no third-party dependency
 
   return (
     <div>
       <div className="relative">
-        <ImageWithFallback src={shown[active]} alt={name} className="aspect-square w-full rounded-lg object-cover" eager />
+        <button
+          type="button"
+          onClick={() => shown[active] && setLightboxOpen(true)}
+          className="group relative block w-full cursor-zoom-in"
+          aria-label="View full size image"
+        >
+          <ImageWithFallback src={shown[active]} alt={name} className="aspect-square w-full rounded-lg object-cover" eager />
+          {shown[active] && (
+            <span className="absolute bottom-3 right-3 flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 transition-opacity group-hover:opacity-100">
+              <ZoomIn className="h-3.5 w-3.5" /> Zoom
+            </span>
+          )}
+        </button>
         {shown.length > 1 && (
           <>
             <button
@@ -83,6 +196,10 @@ function ImageCarousel({ images, name }) {
           </button>
         ))}
       </div>
+
+      {lightboxOpen && shown[active] && (
+        <ImageLightbox images={shown} active={active} setActive={setActive} name={name} onClose={closeLightbox} />
+      )}
     </div>
   );
 }
@@ -128,11 +245,29 @@ function RelatedProducts({ products }) {
       <h2 className="mb-4 text-xl font-bold text-gray-900">You may also like</h2>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {products.map((p) => (
-          <Link key={p.id} to={`/product/${p.slug}`} className="rounded-lg border border-gray-200 bg-white p-3 hover:shadow-md">
+          <Card key={p.id} to={`/product/${p.slug}`} hover padding="sm">
             <ImageWithFallback src={p.images[0]} alt={p.name} className="h-32 w-full rounded-md object-cover" />
             <p className="mt-2 line-clamp-2 text-sm font-medium text-gray-900">{p.name}</p>
             <p className="mt-1 text-sm font-bold text-gray-900">{formatPKR(p.price)}</p>
-          </Link>
+          </Card>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function RecentlyViewedStrip({ products }) {
+  if (products.length === 0) return null;
+  return (
+    <section className="mx-auto max-w-7xl px-4 pb-10 lg:px-8">
+      <h2 className="mb-4 text-xl font-bold text-gray-900">Recently viewed</h2>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-5">
+        {products.map((p) => (
+          <Card key={p.id} to={`/product/${p.slug}`} hover padding="sm">
+            <ImageWithFallback src={p.image} alt={p.name} className="h-32 w-full rounded-md object-cover" />
+            <p className="mt-2 line-clamp-2 text-sm font-medium text-gray-900">{p.name}</p>
+            <p className="mt-1 text-sm font-bold text-gray-900">{formatPKR(p.price)}</p>
+          </Card>
         ))}
       </div>
     </section>
@@ -151,6 +286,7 @@ export default function ProductDetail() {
     });
   });
   const [related, setRelated] = useState([]);
+  const [recentlyViewed, setRecentlyViewed] = useState([]);
   const [notFound, setNotFound] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
@@ -171,6 +307,19 @@ export default function ProductDetail() {
       })
       .catch(() => setNotFound(true));
   }, [slug]);
+
+  // Record this view (and load the strip to show, excluding this product
+  // itself) only once we actually have product data — not on the earlier
+  // `setProduct(null)` reset above, which would try to record a null view.
+  useEffect(() => {
+    if (!product) return;
+    recordProductView(product);
+    setRecentlyViewed(getRecentlyViewed(product.id));
+    // Only re-run when the product being viewed changes, not on every
+    // in-place stock/quantity update pushed by useInventorySocket (which
+    // creates a new `product` object reference without changing its id).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?.id]);
 
   if (notFound) return <Navigate to="/shop" replace />;
   if (!product) return <ProductDetailSkeleton />;
@@ -267,6 +416,7 @@ export default function ProductDetail() {
       </section>
 
       <RelatedProducts products={related} />
+      <RecentlyViewedStrip products={recentlyViewed} />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import Meta from "../../components/Meta.jsx";
 import ImageWithFallback from "../../components/ImageWithFallback.jsx";
-import Button from "../../components/Button.jsx";
+import Button, { buttonClasses } from "../../components/Button.jsx";
+import Card from "../../components/Card.jsx";
 import { Link, useNavigate } from "react-router-dom";
 import { Minus, Plus, Trash2, ShoppingBag, ArrowRight } from "lucide-react";
 import { useCart } from "../../cart/CartContext.jsx";
@@ -13,7 +14,7 @@ function CartLine({ line, onUpdateQuantity, onRemove }) {
   const hasDiscount = product?.original_price && product.original_price > product.price;
 
   return (
-    <div className="flex gap-4 rounded-lg border border-gray-200 bg-white p-4">
+    <Card className="flex gap-4">
       <Link to={`/product/${product.slug}`} className="shrink-0">
         <ImageWithFallback
           src={product.images?.[0]}
@@ -37,7 +38,7 @@ function CartLine({ line, onUpdateQuantity, onRemove }) {
           <div className="flex items-center rounded-md border border-gray-300">
             <button
               onClick={() => onUpdateQuantity(product.id, quantity - 1)}
-              className="p-1.5 text-gray-600 hover:text-brand"
+              className="p-2 text-gray-600 hover:text-brand"
               aria-label={`Decrease quantity of ${product.name}`}
             >
               <Minus className="h-3.5 w-3.5" />
@@ -46,7 +47,7 @@ function CartLine({ line, onUpdateQuantity, onRemove }) {
             <button
               onClick={() => onUpdateQuantity(product.id, Math.min(product.stock_quantity, quantity + 1))}
               disabled={quantity >= product.stock_quantity}
-              className="p-1.5 text-gray-600 hover:text-brand disabled:opacity-40"
+              className="p-2 text-gray-600 hover:text-brand disabled:opacity-40"
               aria-label={`Increase quantity of ${product.name}`}
             >
               <Plus className="h-3.5 w-3.5" />
@@ -60,7 +61,7 @@ function CartLine({ line, onUpdateQuantity, onRemove }) {
           </div>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -70,7 +71,7 @@ function EmptyCart() {
       <ShoppingBag className="mx-auto h-12 w-12 text-gray-300" />
       <h1 className="font-display mt-4 text-xl font-bold text-gray-900">Your cart is empty</h1>
       <p className="mt-2 text-sm text-gray-500">Looks like you haven&apos;t added anything yet.</p>
-      <Link to="/shop" className="mt-6 inline-flex items-center gap-2 rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-white hover:bg-brand-dark">
+      <Link to="/shop" className={buttonClasses({ className: "mt-6 rounded-full" })}>
         Browse Shop <ArrowRight className="h-4 w-4" />
       </Link>
     </div>

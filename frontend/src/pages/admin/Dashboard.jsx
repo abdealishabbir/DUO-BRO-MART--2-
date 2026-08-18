@@ -5,6 +5,7 @@ import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
 import ImageWithFallback from "../../components/ImageWithFallback.jsx";
 import { Skeleton, SkeletonStatCard, SkeletonTable } from "../../components/Skeleton.jsx";
+import Card from "../../components/Card.jsx";
 
 function DashboardSkeleton() {
   return (
@@ -18,11 +19,11 @@ function DashboardSkeleton() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="rounded-lg border border-gray-200 bg-white p-4 lg:col-span-2">
+        <Card padding="md" className="lg:col-span-2">
           <Skeleton className="mb-3 h-4 w-28" />
           <SkeletonTable columns={6} rows={5} cellClassName="p-1.5" />
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
+        </Card>
+        <Card padding="md">
           <Skeleton className="mb-3 h-4 w-36" />
           <div className="space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
@@ -35,7 +36,7 @@ function DashboardSkeleton() {
               </div>
             ))}
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );
@@ -72,7 +73,7 @@ function ChangeIndicator({ pct }) {
 
 function KpiCard({ label, value, sublabel, children }) {
   return (
-    <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+    <div className="rounded-xl border border-gray-100 bg-surface p-4 shadow-sm">
       <p className="text-xs font-medium text-gray-500">{label}</p>
       <p className="mt-1 text-2xl font-bold text-gray-900">{value}</p>
       {sublabel && <p className="mt-0.5 text-xs text-gray-400">{sublabel}</p>}
@@ -120,7 +121,7 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="rounded-lg border border-gray-200 bg-white p-4 lg:col-span-2">
+        <Card padding="md" className="lg:col-span-2">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-bold text-gray-900">Recent Orders</h2>
             <Link to="/admin/orders" className="text-xs font-medium text-brand hover:underline">View All</Link>
@@ -155,9 +156,9 @@ export default function AdminDashboard() {
               </tbody>
             </table>
           </div>
-        </div>
+        </Card>
 
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <Card padding="md">
           <h2 className="mb-3 text-sm font-bold text-gray-900">Top Products This Week</h2>
           <div className="space-y-3">
             {data.top_products.length === 0 ? (
@@ -180,7 +181,7 @@ export default function AdminDashboard() {
               ))
             )}
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );

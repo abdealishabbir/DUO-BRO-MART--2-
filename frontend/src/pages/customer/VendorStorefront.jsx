@@ -88,7 +88,7 @@ export default function VendorStorefront() {
   return (
     <div className="bg-gray-50">
       <Meta title={store.shop_name} description={store.shop_description} url={storeUrl} image={store.shop_logo} />
-      <div className="border-b border-gray-200 bg-white">
+      <div className="border-b border-gray-200 bg-surface">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-6 sm:flex-row sm:items-center lg:px-8">
           {store.shop_logo ? (
             <ImageWithFallback src={store.shop_logo} alt={store.shop_name} className="h-20 w-20 shrink-0 rounded-full border border-gray-200 object-cover" iconClassName="h-8 w-8" />

@@ -32,18 +32,18 @@ export default function VendorPayouts() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-ink">Payouts</h2>
+          <h2 className="text-xl font-bold text-heading">Payouts</h2>
           <p className="text-sm text-gray-500">Your earnings from delivered orders, and every payout batch sent to you.</p>
         </div>
         <div className="flex items-center gap-2">
           <a
             href={`${API_BASE}/orders/vendor/payouts/export/`}
             download
-            className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:border-brand hover:text-brand"
+            className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-surface px-3 py-2 text-sm font-medium text-gray-600 hover:border-brand hover:text-brand"
           >
             <Download className="h-4 w-4" /> Export CSV
           </a>
-          <button onClick={load} className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:border-brand hover:text-brand">
+          <button onClick={load} className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-surface px-3 py-2 text-sm font-medium text-gray-600 hover:border-brand hover:text-brand">
             <RefreshCw className="h-4 w-4" /> Refresh
           </button>
         </div>
@@ -58,25 +58,25 @@ export default function VendorPayouts() {
             <SkeletonStatCard />
             <SkeletonStatCard />
           </div>
-          <div className="mt-6 overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
+          <div className="mt-6 overflow-x-auto rounded-xl border border-gray-100 bg-surface shadow-sm">
             <SkeletonTable columns={5} rows={5} />
           </div>
         </>
       ) : (
         <>
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+            <div className="rounded-xl border border-gray-100 bg-surface p-4 shadow-sm">
               <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Accruing Balance</p>
               <p className="mt-1 text-lg font-bold text-amber-700">{formatPKR(data.pending_balance)}</p>
               <p className="mt-0.5 text-xs text-gray-400">{data.pending_item_count} delivered item{data.pending_item_count !== 1 ? "s" : ""} not yet batched</p>
             </div>
-            <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+            <div className="rounded-xl border border-gray-100 bg-surface p-4 shadow-sm">
               <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Lifetime Paid</p>
               <p className="mt-1 text-lg font-bold text-green-700">{formatPKR(data.lifetime_paid)}</p>
             </div>
-            <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+            <div className="rounded-xl border border-gray-100 bg-surface p-4 shadow-sm">
               <p className="flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-gray-400"><Clock className="h-3.5 w-3.5" /> Next Batch Eligible</p>
-              <p className="mt-1 text-sm font-semibold text-ink">
+              <p className="mt-1 text-sm font-semibold text-heading">
                 {data.next_eligible_at ? new Date(data.next_eligible_at).toLocaleDateString() : "As soon as you have eligible earnings"}
               </p>
             </div>
@@ -86,7 +86,7 @@ export default function VendorPayouts() {
             Delivered orders become payout-eligible a few days after delivery (covers the return window), then get batched together on a set cycle. No live bank transfer is connected yet — an admin sends the money and marks each batch paid here.
           </p>
 
-          <div className="mt-6 overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
+          <div className="mt-6 overflow-x-auto rounded-xl border border-gray-100 bg-surface shadow-sm">
             {data.payouts.length === 0 ? (
               <div className="p-10 text-center">
                 <Wallet className="mx-auto h-8 w-8 text-gray-300" />

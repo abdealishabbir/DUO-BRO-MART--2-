@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  ArrowRight, ChevronLeft, ChevronRight, Zap, ShieldCheck, Truck, RotateCcw, Headphones,
+  ArrowRight, ChevronLeft, ChevronRight, Zap, ShieldCheck, Truck, Wallet, Store,
   Laptop, Shirt, Home as HomeIcon, Dumbbell, BookOpen, Sparkles, Gamepad2, Coffee, Star,
 } from "lucide-react";
 import CountdownTimer from "../../components/CountdownTimer.jsx";
 import Meta from "../../components/Meta.jsx";
 import ImageWithFallback from "../../components/ImageWithFallback.jsx";
 import Button from "../../components/Button.jsx";
+import Card from "../../components/Card.jsx";
 import { api } from "../../lib/api.js";
 import { useCart } from "../../cart/CartContext.jsx";
 import { heroSlides as fallbackHeroSlides, promoTiles } from "../../data/homeMockData.js";
@@ -129,7 +130,7 @@ function Hero() {
 function PromoTiles() {
   const variantClasses = {
     dark: "bg-ink text-white",
-    gold: "bg-gold text-ink",
+    gold: "bg-gold text-heading",
     brand: "bg-brand text-white",
   };
   return (
@@ -181,7 +182,7 @@ function FlashDeals({ items }) {
         {items.map((item) => {
           const discountPct = item.original_price ? Math.round((1 - item.price / item.original_price) * 100) : 0;
           return (
-            <Link key={item.id} to={`/product/${item.slug}`} className="rounded-lg border border-gray-200 bg-white p-3 hover:shadow-md">
+            <Card key={item.id} to={`/product/${item.slug}`} hover padding="sm">
               <div className="relative">
                 <span className="absolute left-0 top-0 rounded-br-md rounded-tl-md bg-red-600 px-2 py-0.5 text-xs font-bold text-white">
                   -{discountPct}%
@@ -210,7 +211,7 @@ function FlashDeals({ items }) {
               <Button onClick={(e) => handleAdd(e, item)} variant="secondary" size="sm" fullWidth className="mt-2">
                 {addedSlug === item.slug ? "Added ✓" : "Add to Cart"}
               </Button>
-            </Link>
+            </Card>
           );
         })}
       </div>
@@ -377,7 +378,7 @@ function TopSelling({ items }) {
       </div>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
         {items.map((item) => (
-          <Link key={item.id} to={`/product/${item.slug}`} className="rounded-lg border border-gray-200 bg-white p-3 hover:shadow-md">
+          <Card key={item.id} to={`/product/${item.slug}`} hover padding="sm">
             <div className="relative">
               {item.is_deal_active && (
                 <span className="absolute left-0 top-0 rounded-br-md rounded-tl-md bg-ink px-2 py-0.5 text-xs font-bold text-white">
@@ -407,7 +408,7 @@ function TopSelling({ items }) {
                 Buy Now
               </Button>
             </div>
-          </Link>
+          </Card>
         ))}
       </div>
     </section>
@@ -436,20 +437,20 @@ function BestOfStrip({ items }) {
 
 function TrustStrip() {
   const items = [
-    { icon: ShieldCheck, title: "Secure Payment", desc: "Your transactions are protected and encrypted." },
-    { icon: Truck, title: "Fast Delivery", desc: "Quick and reliable shipping across Pakistan." },
-    { icon: RotateCcw, title: "Easy Returns", desc: "30-day hassle-free return policy." },
-    { icon: Headphones, title: "24/7 Support", desc: "We're here to help anytime, day or night." },
+    { icon: Wallet, title: "Cash on Delivery", desc: "Pay in cash when your order arrives at your door." },
+    { icon: Truck, title: "Nationwide Delivery", desc: "Shipping to cities and rural areas across Pakistan." },
+    { icon: ShieldCheck, title: "Verified Vendors", desc: "Every seller is reviewed before they can list products." },
+    { icon: Store, title: "Multi-Vendor Marketplace", desc: "Thousands of products from local Pakistani sellers." },
   ];
   return (
     <section className="mx-auto max-w-7xl px-4 py-12 lg:px-8">
       <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
         {items.map((item) => (
-          <div key={item.title} className="rounded-xl border border-gray-200 bg-white p-6 text-center">
+          <Card key={item.title} padding="lg" className="text-center">
             <item.icon className="mx-auto h-7 w-7 text-brand" />
             <h3 className="mt-3 text-sm font-bold text-gray-900">{item.title}</h3>
             <p className="mt-1 text-xs text-gray-500">{item.desc}</p>
-          </div>
+          </Card>
         ))}
       </div>
     </section>
@@ -459,8 +460,8 @@ function TrustStrip() {
 function NewsletterBanner() {
   return (
     <section className="bg-gold px-4 py-14 text-center">
-      <h2 className="font-display text-2xl font-bold text-ink">Get 15% off your first order</h2>
-      <p className="mx-auto mt-2 max-w-md text-sm text-ink/80">
+      <h2 className="font-display text-2xl font-bold text-heading">Get 15% off your first order</h2>
+      <p className="mx-auto mt-2 max-w-md text-sm text-heading/80">
         Join our newsletter and be the first to know about new arrivals, sales, and exclusive offers.
       </p>
       <form className="mx-auto mt-6 flex max-w-md gap-2" onSubmit={(e) => e.preventDefault()}>

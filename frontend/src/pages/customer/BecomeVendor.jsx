@@ -4,6 +4,7 @@ import { ChevronDown, Upload, CheckCircle2, Megaphone, Wallet, ShieldCheck, Tren
 import FormField, { inputClass } from "../../components/FormField.jsx";
 import { api } from "../../lib/api.js";
 import Meta from "../../components/Meta.jsx";
+import { cardClasses } from "../../components/Card.jsx";
 
 const BUSINESS_TYPES = ["Retailer", "Wholesaler", "Manufacturer", "Home Business", "Importer", "Other"];
 
@@ -195,7 +196,7 @@ export default function BecomeVendor() {
               "Receive vendor login credentials",
               "Start selling",
             ].map((step, i) => (
-              <div key={step} className="rounded-lg bg-white p-4 text-center shadow-sm">
+              <div key={step} className="rounded-lg bg-surface p-4 text-center shadow-sm">
                 <span className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-brand text-sm font-bold text-white">{i + 1}</span>
                 <p className="mt-2 text-sm font-medium text-gray-800">{step}</p>
               </div>
@@ -206,7 +207,7 @@ export default function BecomeVendor() {
 
       <section className="mx-auto max-w-2xl px-4 py-12">
         <h2 className="text-xl font-bold text-gray-900">Vendor Application</h2>
-        <form onSubmit={handleSubmit} className="mt-5 space-y-4 rounded-lg border border-gray-200 bg-white p-5">
+        <form onSubmit={handleSubmit} className={cardClasses({ padding: "none", className: "mt-5 space-y-4 p-5" })}>
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField label="Business Name">
               <input className={inputClass} value={form.business_name} onChange={(e) => setForm({ ...form, business_name: e.target.value })} />

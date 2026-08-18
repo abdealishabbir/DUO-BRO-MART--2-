@@ -4,6 +4,7 @@ import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
 import { inputClass } from "../../components/FormField.jsx";
 import { Skeleton, SkeletonText, SkeletonTable } from "../../components/Skeleton.jsx";
+import Card from "../../components/Card.jsx";
 
 function PricingSkeleton() {
   return (
@@ -13,24 +14,24 @@ function PricingSkeleton() {
         <Skeleton className="h-4 w-16" />
       </div>
 
-      <div className="rounded-lg border border-gray-200 bg-white p-4">
+      <Card padding="md">
         <Skeleton className="mb-3 h-4 w-40" />
         <SkeletonText lines={3} />
-      </div>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {Array.from({ length: 2 }).map((_, i) => (
-          <div key={i} className="rounded-lg border border-gray-200 bg-white p-4">
+          <Card key={i} padding="md">
             <Skeleton className="mb-3 h-4 w-44" />
             <SkeletonText lines={3} />
-          </div>
+          </Card>
         ))}
       </div>
 
-      <div className="rounded-lg border border-gray-200 bg-white p-4">
+      <Card padding="md">
         <Skeleton className="mb-3 h-4 w-32" />
         <SkeletonTable columns={8} rows={5} cellClassName="p-2" />
-      </div>
+      </Card>
     </div>
   );
 }
@@ -57,7 +58,7 @@ function CommissionRatesCard({ rates, onSaved }) {
   };
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
+    <Card padding="md">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-sm font-bold text-gray-900">Commission Rates by Category</h2>
         <button
@@ -85,7 +86,7 @@ function CommissionRatesCard({ rates, onSaved }) {
           </div>
         ))}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -137,7 +138,7 @@ function ChangeRequestRow({ request, kind, onChanged }) {
 
 function RequestQueueCard({ title, requests, kind, onChanged }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
+    <Card padding="md">
       <h2 className="mb-3 text-sm font-bold text-gray-900">{title} ({requests.length})</h2>
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
@@ -157,7 +158,7 @@ function RequestQueueCard({ title, requests, kind, onChanged }) {
           </tbody>
         </table>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -205,7 +206,7 @@ export default function AdminPricing() {
         <RequestQueueCard title="Pending Restock Requests" requests={stockRequests} kind="stock" onChanged={load} />
       </div>
 
-      <div className="rounded-lg border border-gray-200 bg-white p-4">
+      <Card padding="md">
         <h2 className="mb-3 text-sm font-bold text-gray-900">Pricing Manager</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
@@ -245,7 +246,7 @@ export default function AdminPricing() {
           To change a product&apos;s price directly, use the Products page — this table is read-only and reflects the category
           commission rates above.
         </p>
-      </div>
+      </Card>
     </div>
   );
 }

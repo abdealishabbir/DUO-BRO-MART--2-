@@ -66,7 +66,7 @@ export default function Modal({ open, onClose, title, children, footer }) {
         aria-labelledby={title ? "modal-title" : undefined}
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md rounded-lg bg-white shadow-xl outline-none"
+        className="w-full max-w-md rounded-lg bg-surface shadow-xl outline-none"
       >
         {title && (
           <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">

@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { api } from "../lib/api.js";
+import ThemeSwitcher from "../theme/ThemeSwitcher.jsx";
 
 const LOW_STOCK_THRESHOLD = 10;
 
@@ -90,7 +91,7 @@ function NotificationsBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-20 mt-2 w-80 rounded-lg border border-gray-100 bg-white p-2 shadow-lg">
+        <div className="absolute right-0 top-full z-20 mt-2 w-80 rounded-lg border border-gray-100 bg-surface p-2 shadow-lg">
           <p className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">Notifications</p>
           {notifications.length === 0 ? (
             <div className="flex items-center gap-2 px-2 py-4 text-sm text-gray-500">
@@ -136,7 +137,7 @@ export default function VendorLayout() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <a href="#maincontent" className="sr-only focus:not-sr-only inline-block rounded bg-white px-3 py-2 text-sm font-medium text-brand">
+      <a href="#maincontent" className="sr-only focus:not-sr-only inline-block rounded bg-surface px-3 py-2 text-sm font-medium text-brand">
         Skip to main content
       </a>
       {sidebarOpen && (
@@ -211,7 +212,7 @@ export default function VendorLayout() {
       </aside>
 
       <div className="flex flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-4 sm:px-6">
+        <header className="flex items-center justify-between border-b border-gray-200 bg-surface px-4 py-4 sm:px-6">
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -222,15 +223,16 @@ export default function VendorLayout() {
             >
               <Menu className="h-5 w-5" />
             </button>
-            <h1 className="text-lg font-bold text-ink">{pageTitle}</h1>
+            <h1 className="text-lg font-bold text-heading">{pageTitle}</h1>
           </div>
           <div className="flex items-center gap-4">
+            <ThemeSwitcher />
             <NotificationsBell />
             <Link to="/vendor/settings" className="flex items-center gap-2 rounded-md px-2 py-1 hover:bg-gray-50" title="Account settings">
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">
                 {initials(user?.name)}
               </span>
-              <span className="hidden text-sm font-medium text-ink sm:inline">{user?.name}</span>
+              <span className="hidden text-sm font-medium text-heading sm:inline">{user?.name}</span>
             </Link>
           </div>
         </header>

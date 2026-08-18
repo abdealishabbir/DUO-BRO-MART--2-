@@ -84,7 +84,7 @@ export default function VendorSettings() {
     <div className="max-w-2xl space-y-5">
       <Card padding="none" className="p-5">
         <div className="flex items-center justify-between">
-          <h3 className="flex items-center gap-2 font-bold text-ink">
+          <h3 className="flex items-center gap-2 font-bold text-heading">
             <Store className="h-4 w-4 text-brand" /> Storefront Profile
           </h3>
           {user?.id && (
@@ -122,7 +122,7 @@ export default function VendorSettings() {
               onChange={(e) => handleLogoChange(e.target.files?.[0] ?? null)}
             />
             <div>
-              <p className="text-sm font-medium text-ink">Shop Logo</p>
+              <p className="text-sm font-medium text-heading">Shop Logo</p>
               <p className="text-xs text-gray-400">JPG or PNG, up to 3MB.</p>
             </div>
           </div>
@@ -156,7 +156,7 @@ export default function VendorSettings() {
       </Card>
 
       <Card padding="none" className="p-5">
-        <h3 className="font-bold text-ink">Contact Information</h3>
+        <h3 className="font-bold text-heading">Contact Information</h3>
         <form onSubmit={saveProfile} className="mt-4 space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField label="First Name">
@@ -183,9 +183,9 @@ export default function VendorSettings() {
       </Card>
 
       <Card padding="none" className="p-5">
-        <h3 className="font-bold text-ink">Commission & Terms</h3>
+        <h3 className="font-bold text-heading">Commission & Terms</h3>
         <p className="mt-2 text-sm text-gray-600">
-          Current platform commission: <strong className="text-ink">10%</strong> (provisional flat rate — category-based rates land with Admin Settings, §7.7).
+          Current platform commission: <strong className="text-heading">10%</strong> (provisional flat rate — category-based rates land with Admin Settings, §7.7).
         </p>
         <div className="mt-3 flex flex-wrap gap-4">
           <Link to="/vendor/change-password" className="flex items-center gap-1.5 text-sm font-medium text-brand hover:underline">
@@ -198,13 +198,13 @@ export default function VendorSettings() {
       </Card>
 
       <Card padding="none" className="p-5">
-        <h3 className="font-bold text-ink">Notifications</h3>
+        <h3 className="font-bold text-heading">Notifications</h3>
         <p className="mt-1 text-xs text-gray-400">Preferences shown here aren&apos;t saved to your account yet — this is a preview of the upcoming settings.</p>
         <div className="mt-3 space-y-3">
           {notifications.map((n) => (
             <div key={n.key} className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-sm font-medium text-ink">{n.label}</p>
+                <p className="text-sm font-medium text-heading">{n.label}</p>
                 <p className="text-xs text-gray-400">{n.desc}</p>
               </div>
               <button
@@ -212,7 +212,7 @@ export default function VendorSettings() {
                 onClick={() => setNotifications((ns) => ns.map((x) => (x.key === n.key ? { ...x, enabled: !x.enabled } : x)))}
                 className={`h-5 w-9 shrink-0 rounded-full transition-colors ${n.enabled ? "bg-brand" : "bg-gray-300"}`}
               >
-                <span className={`block h-4 w-4 translate-y-0.5 rounded-full bg-white shadow transition-transform ${n.enabled ? "translate-x-[18px]" : "translate-x-0.5"}`} />
+                <span className={`block h-4 w-4 translate-y-0.5 rounded-full bg-surface shadow transition-transform ${n.enabled ? "translate-x-[18px]" : "translate-x-0.5"}`} />
               </button>
             </div>
           ))}

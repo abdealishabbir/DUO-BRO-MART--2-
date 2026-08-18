@@ -7,6 +7,7 @@ import { inputClass } from "../../components/FormField.jsx";
 import { useAuth } from "../../auth/AuthContext.jsx";
 import ImageWithFallback from "../../components/ImageWithFallback.jsx";
 import { Skeleton } from "../../components/Skeleton.jsx";
+import Card, { cardClasses } from "../../components/Card.jsx";
 
 function OrderFeedbackSkeleton() {
   return (
@@ -15,7 +16,7 @@ function OrderFeedbackSkeleton() {
       <Skeleton className="mt-2 h-7 w-64" />
       <Skeleton className="mt-2 h-4 w-96 max-w-full" />
 
-      <div className="mt-5 flex flex-wrap items-center gap-6 rounded-lg border border-gray-200 bg-white p-4">
+      <Card padding="md" className="mt-5 flex flex-wrap items-center gap-6">
         {Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className="flex items-center gap-2">
             <Skeleton className="h-9 w-9 rounded-md" />
@@ -25,7 +26,7 @@ function OrderFeedbackSkeleton() {
             </div>
           </div>
         ))}
-      </div>
+      </Card>
 
       <div className="mt-5 flex items-center gap-3">
         <Skeleton className="h-8 w-36 rounded-full" />
@@ -35,7 +36,7 @@ function OrderFeedbackSkeleton() {
 
       <div className="mt-6 space-y-3">
         {Array.from({ length: 2 }).map((_, i) => (
-          <div key={i} className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-4">
+          <div key={i} className={cardClasses({ className: "flex items-center gap-3" })}>
             <Skeleton className="h-14 w-14 shrink-0 rounded-md" />
             <div className="min-w-0 flex-1 space-y-1.5">
               <Skeleton className="h-3.5 w-2/3" />
@@ -172,7 +173,7 @@ function ItemCard({ item, state, contact, onConfirm, onReport }) {
   };
 
   const style =
-    state === "confirmed" ? "border-green-300 bg-green-50" : state === "reported" ? "border-red-300 bg-red-50" : "border-gray-200 bg-white";
+    state === "confirmed" ? "border-green-300 bg-green-50" : state === "reported" ? "border-red-300 bg-red-50" : "border-gray-200 bg-surface";
 
   return (
     <div className={`rounded-lg border p-4 ${style}`}>
@@ -372,7 +373,7 @@ export default function OrderFeedback() {
         <p className="mt-1 text-sm text-gray-500">
           Confirm the email or phone number used at checkout for order <span className="font-semibold text-gray-700">{orderCode}</span>.
         </p>
-        <form onSubmit={handleVerify} className="mt-5 space-y-4 rounded-lg border border-gray-200 bg-white p-5">
+        <form onSubmit={handleVerify} className={cardClasses({ padding: "none", className: "mt-5 space-y-4 p-5" })}>
           <label className="block text-sm">
             <span className="mb-1 block font-medium text-gray-700">Email or Phone Number</span>
             <input
@@ -433,7 +434,7 @@ export default function OrderFeedback() {
       <h1 className="font-display mt-1 text-2xl font-bold text-gray-900">Confirm Your Order</h1>
       <p className="mt-1 text-sm text-gray-500">Please verify that all items in your order are correct before submitting your feedback.</p>
 
-      <div className="mt-5 flex flex-wrap items-center gap-6 rounded-lg border border-gray-200 bg-white p-4 text-sm">
+      <Card padding="md" className="mt-5 flex flex-wrap items-center gap-6 text-sm">
         <div className="flex items-center gap-2">
           <span className="flex h-9 w-9 items-center justify-center rounded-md bg-green-100 text-green-700"><Package className="h-4 w-4" /></span>
           <div><p className="text-xs text-gray-400">Order Number</p><p className="font-semibold text-gray-900">{order.order_code}</p></div>
@@ -451,7 +452,7 @@ export default function OrderFeedback() {
           <span className="flex h-9 w-9 items-center justify-center rounded-md bg-purple-100 text-purple-700"><RotateCcw className="h-4 w-4" /></span>
           <div><p className="text-xs text-gray-400">Return Window</p><p className="font-semibold text-gray-900">{daysRemaining(order.delivered_at)} days remaining</p></div>
         </div>
-      </div>
+      </Card>
 
       <div className="mt-5 flex items-center gap-3">
         <span className={`rounded-full px-4 py-1.5 text-sm font-semibold ${step === 1 ? "bg-brand text-white" : "bg-gray-100 text-gray-500"}`}>1  Confirm Items</span>
@@ -474,7 +475,7 @@ export default function OrderFeedback() {
           )}
         </div>
       ) : (
-        <div className="mt-5 space-y-5 rounded-lg border border-gray-200 bg-white p-5">
+        <div className={cardClasses({ padding: "none", className: "mt-5 space-y-5 p-5" })}>
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 items-center justify-center rounded-md bg-brand/10 text-brand"><Star className="h-5 w-5 fill-brand" /></span>
             <div><p className="font-bold text-gray-900">Share Your Feedback</p><p className="text-xs text-gray-500">Rate your experience below</p></div>

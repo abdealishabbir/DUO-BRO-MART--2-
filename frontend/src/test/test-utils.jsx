@@ -5,6 +5,7 @@ import { AuthProvider } from "../auth/AuthContext.jsx";
 import { CartProvider } from "../cart/CartContext.jsx";
 import { WishlistProvider } from "../wishlist/WishlistContext.jsx";
 import { CheckoutProvider } from "../cart/CheckoutContext.jsx";
+import { ThemeProvider } from "../theme/ThemeContext.jsx";
 
 /**
  * Mirrors the exact provider nesting in main.jsx, so a component that
@@ -19,24 +20,26 @@ export function renderWithProviders(ui, { route = "/", path = "/", ...renderOpti
   function Wrapper({ children }) {
     return (
       <MemoryRouter initialEntries={[route]}>
-        <AuthProvider>
-          <CartProvider>
-            <WishlistProvider>
-              <CheckoutProvider>
-                <HelmetProvider>
-                  <Routes>
-                    <Route path={path} element={children} />
-                    {/* Catches wherever a login/checkout success redirects to (e.g. /shop,
-                        /checkout/confirmation) so React Router doesn't warn about an
-                        unmatched location — the destination page itself isn't under test
-                        here, just that navigation away actually happened. */}
-                    <Route path="*" element={null} />
-                  </Routes>
-                </HelmetProvider>
-              </CheckoutProvider>
-            </WishlistProvider>
-          </CartProvider>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <CartProvider>
+              <WishlistProvider>
+                <CheckoutProvider>
+                  <HelmetProvider>
+                    <Routes>
+                      <Route path={path} element={children} />
+                      {/* Catches wherever a login/checkout success redirects to (e.g. /shop,
+                          /checkout/confirmation) so React Router doesn't warn about an
+                          unmatched location — the destination page itself isn't under test
+                          here, just that navigation away actually happened. */}
+                      <Route path="*" element={null} />
+                    </Routes>
+                  </HelmetProvider>
+                </CheckoutProvider>
+              </WishlistProvider>
+            </CartProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </MemoryRouter>
     );
   }

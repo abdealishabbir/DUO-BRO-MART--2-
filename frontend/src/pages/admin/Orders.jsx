@@ -66,7 +66,7 @@ function OrderDetailRow({ order, onChanged }) {
             <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Items</h4>
             <div className="mt-2 space-y-2">
               {order.items.map((item) => (
-                <div key={item.id} className="flex items-center justify-between rounded-md border border-gray-200 bg-white p-2 text-xs">
+                <div key={item.id} className="flex items-center justify-between rounded-md border border-gray-200 bg-surface p-2 text-xs">
                   <div>
                     <p className="font-medium text-gray-900">{item.product_name}</p>
                     <p className="text-gray-500">Qty {item.quantity} · Vendor: {item.vendor_name ?? "—"}</p>
@@ -173,7 +173,7 @@ export default function AdminOrders() {
           <a
             href={`${API_BASE}/orders/admin/export/orders/${statusFilter ? `?status=${statusFilter}` : ""}`}
             download
-            className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:border-brand hover:text-brand"
+            className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-surface px-3 py-2 text-sm font-medium text-gray-600 hover:border-brand hover:text-brand"
           >
             <Download className="h-4 w-4" /> Export CSV
           </a>
@@ -184,7 +184,7 @@ export default function AdminOrders() {
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-1 rounded-md border border-gray-200 bg-white p-1">
+        <div className="flex gap-1 rounded-md border border-gray-200 bg-surface p-1">
           {STATUS_TABS.map((tab) => (
             <button
               key={tab.value}
@@ -216,7 +216,7 @@ export default function AdminOrders() {
         <span>Each row shows Sale Price (what the customer paid) → Commission (platform&apos;s cut) → Net to Vendor (transferred to vendor).</span>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+      <div className="overflow-x-auto rounded-lg border border-gray-200 bg-surface">
         <table className="w-full text-left text-xs">
           <thead className="bg-gray-50 text-gray-500">
             <tr>

@@ -171,11 +171,11 @@ export default function SearchAutocomplete({ placeholder = "Search for products,
         aria-autocomplete="list"
         aria-haspopup="listbox"
         aria-activedescendant={activeDescendant}
-        className="w-full rounded-full border border-gray-300 bg-white py-2 pl-9 pr-4 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+        className="w-full rounded-full border border-gray-300 bg-surface py-2 pl-9 pr-4 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
       />
 
       {showDropdown && (
-        <div id="search-autocomplete-list" role="listbox" aria-label="Search suggestions" className="absolute left-0 right-0 top-full z-40 mt-2 max-h-96 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
+        <div id="search-autocomplete-list" role="listbox" aria-label="Search suggestions" className="absolute left-0 right-0 top-full z-40 mt-2 max-h-96 overflow-y-auto rounded-lg border border-gray-200 bg-surface shadow-lg">
           {query.trim().length >= MIN_QUERY_LENGTH ? (
             loading ? (
               <p className="px-4 py-3 text-sm text-gray-400">Searching...</p>

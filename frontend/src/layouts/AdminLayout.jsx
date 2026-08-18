@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { Menu, X, Store } from "lucide-react";
 import { useAuth } from "../auth/AuthContext.jsx";
+import ThemeSwitcher from "../theme/ThemeSwitcher.jsx";
 
 // Full 7-section admin nav (§6.1-§6.7), all built out as of Phase 6.
 const NAV_LINKS = [
@@ -37,7 +38,7 @@ export default function AdminLayout() {
 
   return (
     <div className="flex min-h-screen">
-      <a href="#maincontent" className="sr-only focus:not-sr-only inline-block rounded bg-white px-3 py-2 text-sm font-medium text-brand">
+      <a href="#maincontent" className="sr-only focus:not-sr-only inline-block rounded bg-surface px-3 py-2 text-sm font-medium text-brand">
         Skip to main content
       </a>
 
@@ -90,20 +91,23 @@ export default function AdminLayout() {
       </aside>
 
       <div className="flex flex-1 flex-col">
-        <header className="flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3 lg:hidden">
-          <button
-            type="button"
-            onClick={() => setSidebarOpen(true)}
-            className="text-gray-500 hover:text-gray-800"
-            aria-label="Open menu"
-            aria-expanded={sidebarOpen}
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-          <div className="flex items-center gap-1.5">
-            <Store className="h-4 w-4 text-brand" />
-            <span className="text-sm font-bold text-ink">Duo Bro Mart Admin</span>
+        <header className="flex items-center justify-between gap-3 border-b border-gray-200 bg-surface px-4 py-3">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              className="text-gray-500 hover:text-gray-800 lg:hidden"
+              aria-label="Open menu"
+              aria-expanded={sidebarOpen}
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            <div className="flex items-center gap-1.5">
+              <Store className="h-4 w-4 text-brand" />
+              <span className="text-sm font-bold text-heading">Duo Bro Mart Admin</span>
+            </div>
           </div>
+          <ThemeSwitcher />
         </header>
 
         <main id="maincontent" className="flex-1 bg-cream">

@@ -278,7 +278,7 @@ export default function AdminVendors() {
 
       <section>
         <h2 className="mb-3 text-sm font-bold text-gray-900">Pending Applications ({applications.length})</h2>
-        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-surface">
           <table className="w-full text-left text-xs">
             <thead className="bg-gray-50 text-gray-500">
               <tr>
@@ -308,7 +308,7 @@ export default function AdminVendors() {
         <p className="mb-3 text-xs text-gray-500">
           Payout Hold/Cycle columns are editable — click a value to give that vendor a faster (or slower) payout schedule than the platform default.
         </p>
-        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-surface">
           <table className="w-full text-left text-xs">
             <thead className="bg-gray-50 text-gray-500">
               <tr>

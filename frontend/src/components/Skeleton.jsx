@@ -31,7 +31,7 @@ export function SkeletonText({ lines = 1, className = "", lineClassName = "h-3",
 /** Matches ProductCard's shape: square image, title, subline, price. Used across Shop.jsx and similar product grids. */
 export function SkeletonCard({ className = "" }) {
   return (
-    <div className={`animate-pulse overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm ${className}`}>
+    <div className={`animate-pulse overflow-hidden rounded-lg border border-gray-200 bg-surface shadow-sm ${className}`}>
       <div className="aspect-square w-full bg-gray-200" />
       <div className="space-y-2 p-3">
         <div className="h-3.5 w-4/5 rounded bg-gray-200" />
@@ -45,7 +45,7 @@ export function SkeletonCard({ className = "" }) {
 /** Stat/KPI card shape used on Dashboard and Analytics pages: a label line and a large value line. Matches the rounded-xl/border-gray-100/shadow-sm treatment every real stat card in the app uses, so nothing visibly "pops" once real data replaces the skeleton. */
 export function SkeletonStatCard({ className = "" }) {
   return (
-    <div className={`animate-pulse rounded-xl border border-gray-100 bg-white p-4 shadow-sm ${className}`}>
+    <div className={`animate-pulse rounded-xl border border-gray-100 bg-surface p-4 shadow-sm ${className}`}>
       <div className="h-3 w-20 rounded bg-gray-200" />
       <div className="mt-3 h-6 w-16 rounded bg-gray-200" />
     </div>

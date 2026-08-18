@@ -108,35 +108,35 @@ export default function VendorOrders() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-ink">Orders</h2>
+          <h2 className="text-xl font-bold text-heading">Orders</h2>
           <p className="text-sm text-gray-500">
             {orders === null ? <span className="inline-block h-3.5 w-48 animate-pulse rounded bg-gray-200 align-middle" /> : `${rows.length} order${rows.length !== 1 ? "s" : ""} contain your products`}
           </p>
         </div>
-        <button onClick={load} className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:border-brand hover:text-brand">
+        <button onClick={load} className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-surface px-3 py-2 text-sm font-medium text-gray-600 hover:border-brand hover:text-brand">
           <RefreshCw className="h-4 w-4" /> Refresh
         </button>
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-gray-100 bg-surface p-4 shadow-sm">
           <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Orders (filtered view)</p>
-          <p className="mt-1 text-lg font-bold text-ink">{rows.length}</p>
+          <p className="mt-1 text-lg font-bold text-heading">{rows.length}</p>
         </div>
-        <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-gray-100 bg-surface p-4 shadow-sm">
           <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Delivered — Your Earnings</p>
           <p className="mt-1 text-lg font-bold text-green-700">{formatPKR(totalDue)}</p>
         </div>
-        <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-gray-100 bg-surface p-4 shadow-sm">
           <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Pending / Processing</p>
-          <p className="mt-1 text-lg font-bold text-ink">
+          <p className="mt-1 text-lg font-bold text-heading">
             {rows.filter(({ order }) => order.status === "pending" || order.status === "processing").length}
           </p>
         </div>
       </div>
 
       <div className="mt-4 flex flex-wrap gap-3">
-        <div className="flex flex-1 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2">
+        <div className="flex flex-1 items-center gap-2 rounded-lg border border-gray-200 bg-surface px-3 py-2">
           <Search className="h-4 w-4 text-gray-400" />
           <input
             className="w-full bg-transparent text-sm outline-none placeholder:text-gray-400"
@@ -162,7 +162,7 @@ export default function VendorOrders() {
 
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 
-      <div className="mt-4 overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
+      <div className="mt-4 overflow-x-auto rounded-xl border border-gray-100 bg-surface shadow-sm">
         {orders === null ? (
           <SkeletonTable columns={6} rows={6} />
         ) : filtered.length === 0 ? (
@@ -187,7 +187,7 @@ export default function VendorOrders() {
             <tbody>
               {filtered.map(({ order, myItems, myTotal }) => (
                 <tr key={order.id} className="border-b border-gray-50 last:border-0 align-top">
-                  <td className="px-4 py-3 font-medium text-ink">{order.order_code}</td>
+                  <td className="px-4 py-3 font-medium text-heading">{order.order_code}</td>
                   <td className="px-4 py-3 text-xs text-gray-600">
                     {order.shipping_full_name}
                     <br />

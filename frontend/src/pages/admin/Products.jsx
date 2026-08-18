@@ -149,7 +149,7 @@ function CategoryResolutionModal({ product, categories, onResolved, onCancel }) 
   return (
     <tr className="border-t border-gray-100 bg-amber-50/60">
       <td colSpan={8} className="p-3">
-        <div className="rounded-md border border-amber-200 bg-white p-3">
+        <div className="rounded-md border border-amber-200 bg-surface p-3">
           <p className="text-xs font-semibold text-amber-800">
             &quot;{product.name}&quot; doesn&apos;t match any existing category — the vendor requested &quot;{product.requested_category_name}&quot;.
           </p>
@@ -345,7 +345,7 @@ export default function AdminProducts() {
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex gap-1 rounded-md border border-gray-200 bg-white p-1">
+        <div className="flex gap-1 rounded-md border border-gray-200 bg-surface p-1">
           {STATUS_TABS.map((tab) => (
             <button
               key={tab.value}
@@ -383,7 +383,7 @@ export default function AdminProducts() {
         </form>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+      <div className="overflow-x-auto rounded-lg border border-gray-200 bg-surface">
         <table className="w-full text-left text-xs">
           <thead className="bg-gray-50 text-gray-500">
             <tr>

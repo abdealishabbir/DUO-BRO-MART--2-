@@ -43,8 +43,8 @@ function NewStockRequestForm({ products, initialProductId, onDone }) {
   };
 
   return (
-    <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
-      <h3 className="text-lg font-bold text-ink">New Restock Request</h3>
+    <div className="rounded-xl border border-gray-100 bg-surface p-6 shadow-sm">
+      <h3 className="text-lg font-bold text-heading">New Restock Request</h3>
 
       <div className="mt-3 flex items-start gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-800">
         <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -112,7 +112,7 @@ export default function VendorStock() {
   if (showForm) {
     return (
       <div>
-        <button onClick={closeForm} className="mb-4 text-sm font-medium text-gray-500 hover:text-ink">← Back to Stock Requests</button>
+        <button onClick={closeForm} className="mb-4 text-sm font-medium text-gray-500 hover:text-heading">← Back to Stock Requests</button>
         <NewStockRequestForm products={products} initialProductId={searchParams.get("product")} onDone={closeForm} onCancel={closeForm} />
       </div>
     );
@@ -122,7 +122,7 @@ export default function VendorStock() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-ink">Stock Requests</h2>
+          <h2 className="text-xl font-bold text-heading">Stock Requests</h2>
           <p className="text-sm text-gray-500">Restock increases need admin approval — track their status here.</p>
         </div>
         <button
@@ -137,7 +137,7 @@ export default function VendorStock() {
 
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 
-      <div className="mt-5 rounded-xl border border-gray-100 bg-white shadow-sm">
+      <div className="mt-5 rounded-xl border border-gray-100 bg-surface shadow-sm">
         {requests === null ? (
           <SkeletonTable columns={5} rows={5} />
         ) : requests.length === 0 ? (
@@ -166,7 +166,7 @@ export default function VendorStock() {
             <tbody>
               {requests.map((r) => (
                 <tr key={r.id} className="border-b border-gray-50 last:border-0">
-                  <td className="px-4 py-3 font-medium text-ink">{r.product_name}</td>
+                  <td className="px-4 py-3 font-medium text-heading">{r.product_name}</td>
                   <td className="px-4 py-3 text-gray-600">+{r.requested_increase} units</td>
                   <td className="max-w-xs truncate px-4 py-3 text-gray-500">{r.note || "—"}</td>
                   <td className="px-4 py-3">

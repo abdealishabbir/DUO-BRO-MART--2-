@@ -78,10 +78,10 @@ function NewRequestForm({ products, initialProductId, onDone, onCancel }) {
   };
 
   return (
-    <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+    <div className="rounded-xl border border-gray-100 bg-surface p-6 shadow-sm">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-bold text-ink">New Pricing Request</h3>
-        <button type="button" onClick={onCancel} aria-label="Close pricing request form" className="text-gray-400 hover:text-ink">
+        <h3 className="text-lg font-bold text-heading">New Pricing Request</h3>
+        <button type="button" onClick={onCancel} aria-label="Close pricing request form" className="text-gray-400 hover:text-heading">
           <X className="h-5 w-5" />
         </button>
       </div>
@@ -171,7 +171,7 @@ export default function VendorDeals() {
   if (showForm) {
     return (
       <div>
-        <button onClick={closeForm} className="mb-4 text-sm font-medium text-gray-500 hover:text-ink">← Back to Deals & Pricing</button>
+        <button onClick={closeForm} className="mb-4 text-sm font-medium text-gray-500 hover:text-heading">← Back to Deals & Pricing</button>
         <NewRequestForm products={products} initialProductId={searchParams.get("product")} onDone={closeForm} onCancel={closeForm} />
       </div>
     );
@@ -181,7 +181,7 @@ export default function VendorDeals() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-ink">Deals & Pricing</h2>
+          <h2 className="text-xl font-bold text-heading">Deals & Pricing</h2>
           <p className="text-sm text-gray-500">Request discounts, flash deals, or price changes on your live products.</p>
         </div>
         <button
@@ -196,7 +196,7 @@ export default function VendorDeals() {
 
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 
-      <div className="mt-5 rounded-xl border border-gray-100 bg-white shadow-sm">
+      <div className="mt-5 rounded-xl border border-gray-100 bg-surface shadow-sm">
         {requests === null ? (
           <SkeletonTable columns={5} rows={5} />
         ) : requests.length === 0 ? (
@@ -225,7 +225,7 @@ export default function VendorDeals() {
             <tbody>
               {requests.map((r) => (
                 <tr key={r.id} className="border-b border-gray-50 last:border-0">
-                  <td className="px-4 py-3 font-medium text-ink">{r.product_name}</td>
+                  <td className="px-4 py-3 font-medium text-heading">{r.product_name}</td>
                   <td className="px-4 py-3 text-gray-600">{CHANGE_TYPES.find((t) => t.value === r.change_type)?.label}</td>
                   <td className="px-4 py-3 text-gray-600"><RequestSummary request={r} /></td>
                   <td className="px-4 py-3">

@@ -37,12 +37,12 @@ export default function VendorLogin() {
           <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand text-white">
             <Store className="h-6 w-6" />
           </span>
-          <p className="mt-3 text-lg font-bold text-ink">Duo Bro Mart</p>
+          <p className="mt-3 text-lg font-bold text-heading">Duo Bro Mart</p>
           <p className="text-xs font-medium text-brand">Vendor Portal</p>
         </div>
 
-        <div className="rounded-2xl border border-black/5 bg-white p-6 shadow-sm">
-          <h1 className="text-xl font-bold text-ink">Vendor Sign In</h1>
+        <div className="rounded-2xl border border-black/5 bg-surface p-6 shadow-sm">
+          <h1 className="text-xl font-bold text-heading">Vendor Sign In</h1>
           <p className="mt-1 text-sm text-gray-500">Use the credentials emailed to you after approval.</p>
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
@@ -52,7 +52,7 @@ export default function VendorLogin() {
                 <Mail className="h-4 w-4 shrink-0 text-gray-400" />
                 <input
                   type="email" required
-                  className="w-full bg-transparent text-sm text-ink outline-none placeholder:text-gray-400"
+                  className="w-full bg-transparent text-sm text-heading outline-none placeholder:text-gray-400"
                   placeholder="you@yourstore.pk"
                   value={email} onChange={(e) => setEmail(e.target.value)}
                 />
@@ -65,7 +65,7 @@ export default function VendorLogin() {
                 <Lock className="h-4 w-4 shrink-0 text-gray-400" />
                 <input
                   type={showPassword ? "text" : "password"} required
-                  className="w-full bg-transparent text-sm text-ink outline-none placeholder:text-gray-400"
+                  className="w-full bg-transparent text-sm text-heading outline-none placeholder:text-gray-400"
                   placeholder="••••••••"
                   value={password} onChange={(e) => setPassword(e.target.value)}
                 />

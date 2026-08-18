@@ -10,6 +10,7 @@ import FormField, { inputClass } from "../../components/FormField.jsx";
 import CheckoutSteps from "../../components/CheckoutSteps.jsx";
 import OrderSummarySidebar from "../../components/OrderSummarySidebar.jsx";
 import Button from "../../components/Button.jsx";
+import Card from "../../components/Card.jsx";
 import { PROVINCES, citiesFor } from "../../lib/pkLocations.js";
 import { formatPKR, DEFAULT_SHIPPING_RATE } from "../../lib/currency.js";
 import { Skeleton } from "../../components/Skeleton.jsx";
@@ -130,7 +131,7 @@ export default function CheckoutShipping() {
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <div className="rounded-lg border border-gray-200 bg-white p-5">
+          <Card padding="none" className="p-5">
             <h1 className="flex items-center gap-2 font-bold text-gray-900">
               <Truck className="h-4 w-4 text-brand" /> Shipping Details
             </h1>
@@ -248,9 +249,9 @@ export default function CheckoutShipping() {
                 )}
               </div>
             )}
-          </div>
+          </Card>
 
-          <div className="rounded-lg border border-gray-200 bg-white p-5">
+          <Card padding="none" className="p-5">
             <h2 className="font-bold text-gray-900">Delivery Method</h2>
             <div className="mt-3 space-y-2">
               {DELIVERY_METHODS.map((m) => (
@@ -272,7 +273,7 @@ export default function CheckoutShipping() {
                 </label>
               ))}
             </div>
-          </div>
+          </Card>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 

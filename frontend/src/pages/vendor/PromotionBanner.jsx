@@ -5,6 +5,7 @@ import { formatPKR } from "../../lib/currency.js";
 import FormField, { inputClass } from "../../components/FormField.jsx";
 import ImageWithFallback from "../../components/ImageWithFallback.jsx";
 import { Skeleton } from "../../components/Skeleton.jsx";
+import Card, { cardClasses } from "../../components/Card.jsx";
 
 function PromotionBannerSkeleton() {
   return (
@@ -16,7 +17,7 @@ function PromotionBannerSkeleton() {
 
       <section>
         <Skeleton className="mb-3 h-3.5 w-40" />
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <Card padding="md">
           <div className="flex items-start gap-3">
             <Skeleton className="h-16 w-28 shrink-0 rounded-md" />
             <div className="flex-1 space-y-2">
@@ -24,16 +25,16 @@ function PromotionBannerSkeleton() {
               <Skeleton className="h-3 w-1/2" />
             </div>
           </div>
-        </div>
+        </Card>
       </section>
 
       <section>
         <Skeleton className="mb-3 h-3.5 w-56" />
-        <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-4">
+        <Card padding="md" className="space-y-3">
           <Skeleton className="h-24 w-full" />
           <Skeleton className="h-8 w-full" />
           <Skeleton className="h-8 w-full" />
-        </div>
+        </Card>
       </section>
 
       <section>
@@ -183,7 +184,7 @@ function ApplicationForm({ platformSettings, availability, onSubmitted }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border border-gray-200 bg-white p-5">
+    <form onSubmit={handleSubmit} className={cardClasses({ padding: "none", className: "space-y-4 p-5" })}>
       <div className="rounded-md bg-cream px-3 py-2 text-sm text-gray-700">
         Current rate: <strong>{formatPKR(pricePerDay)}/day</strong> · Hero slots:{" "}
         <strong>{availability?.slots_occupied ?? "—"}/{availability?.carousel_slot_limit ?? "—"}</strong> in use
@@ -281,7 +282,7 @@ function ApplicationsList({ applications }) {
   return (
     <div className="space-y-2">
       {applications.map((app) => (
-        <div key={app.id} className="flex items-center justify-between rounded-md border border-gray-200 bg-white p-3 text-sm">
+        <div key={app.id} className="flex items-center justify-between rounded-md border border-gray-200 bg-surface p-3 text-sm">
           <div className="flex items-center gap-3">
             <ImageWithFallback src={app.image} alt="" className="h-10 w-16 rounded object-cover" iconClassName="h-4 w-4" />
             <div>
@@ -298,7 +299,7 @@ function ApplicationsList({ applications }) {
 
 function BannerPaymentCard({ banner }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
+    <Card padding="md">
       <div className="flex items-start gap-3">
         <ImageWithFallback src={banner.image} alt="" className="h-16 w-28 rounded-md object-cover" iconClassName="h-5 w-5" />
         <div className="flex-1">
@@ -338,7 +339,7 @@ function BannerPaymentCard({ banner }) {
           Overdue {banner.days_overdue} day(s) — Rs. 100/day penalty is accruing. Account is suspended automatically after 3 unpaid days.
         </p>
       )}
-    </div>
+    </Card>
   );
 }
 

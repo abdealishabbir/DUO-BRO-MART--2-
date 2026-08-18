@@ -27,9 +27,9 @@ export default function CountdownTimer({ durationSeconds = 2 * 3600 + 34 * 60 + 
   return (
     <div className="flex items-center gap-1 text-xs font-bold text-white">
       <span className="rounded bg-ink px-1.5 py-1">{pad(hours)}</span>
-      <span className="text-ink">:</span>
+      <span className="text-heading">:</span>
       <span className="rounded bg-ink px-1.5 py-1">{pad(minutes)}</span>
-      <span className="text-ink">:</span>
+      <span className="text-heading">:</span>
       <span className="rounded bg-ink px-1.5 py-1">{pad(seconds)}</span>
     </div>
   );

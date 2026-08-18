@@ -7,6 +7,7 @@ import { useCheckout } from "../../cart/CheckoutContext.jsx";
 import CheckoutSteps from "../../components/CheckoutSteps.jsx";
 import OrderSummarySidebar from "../../components/OrderSummarySidebar.jsx";
 import Button from "../../components/Button.jsx";
+import Card from "../../components/Card.jsx";
 import FormField, { inputClass } from "../../components/FormField.jsx";
 import { PROVINCES, citiesFor } from "../../lib/pkLocations.js";
 import { DELIVERY_METHODS } from "./CheckoutShipping.jsx";
@@ -99,7 +100,7 @@ export default function CheckoutPayment() {
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <div className="rounded-lg border border-gray-200 bg-white p-5">
+          <Card padding="none" className="p-5">
             <h1 className="flex items-center gap-2 font-bold text-gray-900">
               <CreditCard className="h-4 w-4 text-brand" /> Payment Details
             </h1>
@@ -188,18 +189,18 @@ export default function CheckoutPayment() {
               <span className="flex items-center gap-1"><ShieldCheck className="h-3.5 w-3.5 text-green-600" /> SSL Encrypted</span>
               <span className="flex items-center gap-1"><ShieldCheck className="h-3.5 w-3.5 text-green-600" /> Secure Checkout</span>
             </div>
-          </div>
+          </Card>
 
-          <div className="rounded-lg border border-gray-200 bg-white p-5">
+          <Card padding="none" className="p-5">
             <h2 className="font-bold text-gray-900">Delivery Address</h2>
             <p className="mt-2 text-sm text-gray-600">
               {address.full_name} · {address.phone_number}<br />
               {address.address_line}, {address.city}
               {address.landmark && <><br />Landmark: {address.landmark}</>}
             </p>
-          </div>
+          </Card>
 
-          <div className="rounded-lg border border-gray-200 bg-white p-5">
+          <Card padding="none" className="p-5">
             <h2 className="font-bold text-gray-900">Billing Address</h2>
             <label className="mt-3 flex items-center gap-2 text-sm text-gray-600">
               <input type="checkbox" checked={billingSameAsShipping} onChange={(e) => setBillingSameAsShipping(e.target.checked)} />
@@ -238,7 +239,7 @@ export default function CheckoutPayment() {
                 </FormField>
               </div>
             )}
-          </div>
+          </Card>
 
           <div className="flex items-center gap-2">
             <input

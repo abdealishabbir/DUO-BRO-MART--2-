@@ -5,6 +5,7 @@ import { formatPKR } from "../../lib/currency.js";
 import { inputClass } from "../../components/FormField.jsx";
 import ImageWithFallback from "../../components/ImageWithFallback.jsx";
 import { Skeleton, SkeletonTable } from "../../components/Skeleton.jsx";
+import Card, { cardClasses } from "../../components/Card.jsx";
 
 function BannersPromotionSkeleton() {
   return (
@@ -14,17 +15,17 @@ function BannersPromotionSkeleton() {
         <Skeleton className="h-4 w-16" />
       </div>
 
-      <div className="flex flex-wrap items-end gap-4 rounded-lg border border-gray-200 bg-white p-4">
+      <Card padding="md" className="flex flex-wrap items-end gap-4">
         <div><Skeleton className="mb-1.5 h-3 w-24" /><Skeleton className="h-8 w-32" /></div>
         <div><Skeleton className="mb-1.5 h-3 w-24" /><Skeleton className="h-8 w-32" /></div>
         <Skeleton className="h-9 w-24 rounded-md" />
-      </div>
+      </Card>
 
       <section>
         <Skeleton className="mb-3 h-3.5 w-32" />
         <div className="space-y-3">
           {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3">
+            <div key={i} className={cardClasses({ padding: "sm", className: "flex items-center gap-3" })}>
               <Skeleton className="h-14 w-24 shrink-0 rounded-md" />
               <div className="min-w-0 flex-1 space-y-1.5">
                 <Skeleton className="h-3.5 w-1/3" />
@@ -84,7 +85,7 @@ function SettingsPanel({ settings, onSaved }) {
   };
 
   return (
-    <form onSubmit={save} className="flex flex-wrap items-end gap-4 rounded-lg border border-gray-200 bg-white p-4">
+    <form onSubmit={save} className={cardClasses({ padding: "md", className: "flex flex-wrap items-end gap-4" })}>
       <label className="text-sm">
         <span className="mb-1 block font-medium text-gray-700">Price per day (Rs.)</span>
         <input type="number" min={0} className={`${inputClass} w-32`} value={price} onChange={(e) => setPrice(e.target.value)} />
@@ -116,7 +117,7 @@ function PendingApplications({ applications, onDecided }) {
   return (
     <div className="space-y-2">
       {applications.map((app) => (
-        <div key={app.id} className="flex items-center justify-between rounded-md border border-gray-200 bg-white p-3">
+        <div key={app.id} className="flex items-center justify-between rounded-md border border-gray-200 bg-surface p-3">
           <div className="flex items-center gap-3">
             <ImageWithFallback src={app.image} alt="" className="h-12 w-20 rounded object-cover" iconClassName="h-4 w-4" />
             <div className="text-sm">
@@ -209,7 +210,7 @@ function ApprovedAwaitingPublish({ applications, slotLimit, onPublished }) {
               onCancel={() => setPublishingId(null)}
             />
           ) : (
-            <div key={app.id} className="flex items-center justify-between rounded-md border border-gray-200 bg-white p-3 text-sm">
+            <div key={app.id} className="flex items-center justify-between rounded-md border border-gray-200 bg-surface p-3 text-sm">
               <div className="flex items-center gap-3">
                 <ImageWithFallback src={app.image} alt="" className="h-10 w-16 rounded object-cover" iconClassName="h-4 w-4" />
                 <span className="font-medium text-gray-900">{app.headline}</span>
@@ -263,7 +264,7 @@ function LiveBannersTable({ banners, onChanged }) {
   if (banners.length === 0) return <p className="text-sm text-gray-500">No published banners yet.</p>;
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+    <div className="overflow-x-auto rounded-lg border border-gray-200 bg-surface">
       <table className="w-full text-left text-xs">
         <thead className="bg-gray-50 text-gray-500">
           <tr>

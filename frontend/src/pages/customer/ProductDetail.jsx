@@ -171,14 +171,14 @@ function ImageCarousel({ images, name }) {
             <button
               onClick={() => setActive((i) => (i - 1 + shown.length) % shown.length)}
               aria-label="Previous image"
-              className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-1.5 shadow hover:bg-white"
+              className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-1.5 shadow hover:bg-surface"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
             <button
               onClick={() => setActive((i) => (i + 1) % shown.length)}
               aria-label="Next image"
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-1.5 shadow hover:bg-white"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-1.5 shadow hover:bg-surface"
             >
               <ChevronRight className="h-4 w-4" />
             </button>

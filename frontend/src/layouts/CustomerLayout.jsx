@@ -5,6 +5,7 @@ import { useAuth } from "../auth/AuthContext.jsx";
 import { useCart } from "../cart/CartContext.jsx";
 import { useWishlist } from "../wishlist/WishlistContext.jsx";
 import SearchAutocomplete from "../components/SearchAutocomplete.jsx";
+import ThemeSwitcher from "../theme/ThemeSwitcher.jsx";
 
 // Matched to the ShopNest reference (see UI_BUILD_TRACKER.md for the
 // nav/footer -> route mapping). "Vendors" here plays the role our PRD
@@ -53,7 +54,7 @@ export default function CustomerLayout() {
 
   return (
     <div className="flex min-h-screen flex-col bg-cream">
-      <a href="#maincontent" className="sr-only focus:not-sr-only inline-block rounded bg-white px-3 py-2 text-sm font-medium text-brand">
+      <a href="#maincontent" className="sr-only focus:not-sr-only inline-block rounded bg-surface px-3 py-2 text-sm font-medium text-brand">
         Skip to main content
       </a>
       <header className={`sticky top-0 z-30 border-b border-gray-200 bg-cream transition-shadow duration-200 ${scrolled ? "shadow-md" : ""}`}>
@@ -76,6 +77,7 @@ export default function CustomerLayout() {
           </div>
 
           <div className="ml-auto hidden items-center gap-3 md:flex md:gap-4 lg:gap-6">
+            <ThemeSwitcher />
             <Link
               to={isAuthenticated ? "/account" : "/login"}
               className="flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-brand"
@@ -125,7 +127,10 @@ export default function CustomerLayout() {
 
         {menuOpen && (
           <nav className="space-y-3 border-t border-gray-200 bg-cream px-4 py-3 md:hidden">
-            <SearchAutocomplete placeholder="Search..." onNavigate={() => setMenuOpen(false)} />
+            <div className="flex items-center gap-2">
+              <div className="flex-1"><SearchAutocomplete placeholder="Search..." onNavigate={() => setMenuOpen(false)} /></div>
+              <ThemeSwitcher />
+            </div>
             <div className="flex flex-col gap-3">
               {NAV_LINKS.map((link) => (
                 <NavItem key={link.label} {...link} />

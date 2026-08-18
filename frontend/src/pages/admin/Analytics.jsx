@@ -14,7 +14,7 @@ function AnalyticsSkeleton() {
       </div>
       <div className="mt-6 grid gap-4 lg:grid-cols-3">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+          <div key={i} className="rounded-xl border border-gray-100 bg-surface p-4 shadow-sm">
             <div className="h-3.5 w-24 animate-pulse rounded bg-gray-200" />
             <SkeletonText lines={4} className="mt-4" />
           </div>
@@ -48,9 +48,9 @@ const SOURCE_COLORS = { direct: "bg-brand", search: "bg-blue-500", social: "bg-p
 
 function StatCard({ icon: Icon, label, value, hint }) {
   return (
-    <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+    <div className="rounded-xl border border-gray-100 bg-surface p-4 shadow-sm">
       <div className="flex items-center gap-1.5 text-gray-400"><Icon className="h-3.5 w-3.5" /><p className="text-xs font-medium uppercase tracking-wide">{label}</p></div>
-      <p className="mt-1 text-lg font-bold text-ink">{value}</p>
+      <p className="mt-1 text-lg font-bold text-heading">{value}</p>
       {hint && <p className="mt-0.5 text-xs text-gray-400">{hint}</p>}
     </div>
   );
@@ -100,7 +100,7 @@ export default function AdminAnalytics() {
     <div className="p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-ink">Analytics</h2>
+          <h2 className="text-xl font-bold text-heading">Analytics</h2>
           <p className="text-sm text-gray-500">Platform-wide revenue, views and conversion for any date range.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -113,13 +113,13 @@ export default function AdminAnalytics() {
               {r.value === "custom" ? <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> Custom</span> : r.label}
             </button>
           ))}
-          <button onClick={load} aria-label="Refresh analytics" className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:border-brand hover:text-brand">
+          <button onClick={load} aria-label="Refresh analytics" className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-surface px-3 py-2 text-sm font-medium text-gray-600 hover:border-brand hover:text-brand">
             <RefreshCw className="h-4 w-4" />
           </button>
           <a
             href={buildExportUrl()}
             download
-            className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:border-brand hover:text-brand"
+            className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-surface px-3 py-2 text-sm font-medium text-gray-600 hover:border-brand hover:text-brand"
           >
             <Download className="h-4 w-4" /> Export CSV
           </a>
@@ -188,8 +188,8 @@ export default function AdminAnalytics() {
           </div>
 
           <div className="mt-6 grid gap-4 lg:grid-cols-3">
-            <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-              <h3 className="text-sm font-bold text-ink">Top Products</h3>
+            <div className="rounded-xl border border-gray-100 bg-surface p-4 shadow-sm">
+              <h3 className="text-sm font-bold text-heading">Top Products</h3>
               {data.top_products.length === 0 ? (
                 <p className="mt-3 text-sm text-gray-400">No sales in this range yet.</p>
               ) : (
@@ -197,15 +197,15 @@ export default function AdminAnalytics() {
                   {data.top_products.map((p) => (
                     <div key={p.name} className="flex items-center justify-between text-sm">
                       <span className="truncate text-gray-700">{p.name}</span>
-                      <span className="ml-2 shrink-0 font-medium text-ink">{formatPKR(p.revenue)} <span className="text-xs text-gray-400">({p.units} units)</span></span>
+                      <span className="ml-2 shrink-0 font-medium text-heading">{formatPKR(p.revenue)} <span className="text-xs text-gray-400">({p.units} units)</span></span>
                     </div>
                   ))}
                 </div>
               )}
             </div>
 
-            <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-              <h3 className="text-sm font-bold text-ink">Top Vendors</h3>
+            <div className="rounded-xl border border-gray-100 bg-surface p-4 shadow-sm">
+              <h3 className="text-sm font-bold text-heading">Top Vendors</h3>
               {data.top_vendors.length === 0 ? (
                 <p className="mt-3 text-sm text-gray-400">No sales in this range yet.</p>
               ) : (
@@ -213,15 +213,15 @@ export default function AdminAnalytics() {
                   {data.top_vendors.map((v) => (
                     <div key={v.name} className="flex items-center justify-between text-sm">
                       <span className="truncate text-gray-700">{v.name}</span>
-                      <span className="ml-2 shrink-0 font-medium text-ink">{formatPKR(v.revenue)} <span className="text-xs text-gray-400">({v.units} units)</span></span>
+                      <span className="ml-2 shrink-0 font-medium text-heading">{formatPKR(v.revenue)} <span className="text-xs text-gray-400">({v.units} units)</span></span>
                     </div>
                   ))}
                 </div>
               )}
             </div>
 
-            <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-              <h3 className="text-sm font-bold text-ink">Traffic Sources</h3>
+            <div className="rounded-xl border border-gray-100 bg-surface p-4 shadow-sm">
+              <h3 className="text-sm font-bold text-heading">Traffic Sources</h3>
               {totalViews === 0 ? (
                 <p className="mt-3 text-sm text-gray-400">No product views recorded in this range yet.</p>
               ) : (

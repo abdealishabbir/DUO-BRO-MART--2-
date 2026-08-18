@@ -60,10 +60,10 @@ export default function AdminAuditLog() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-ink">Audit Log</h2>
+          <h2 className="text-xl font-bold text-heading">Audit Log</h2>
           <p className="text-sm text-gray-500">Who approved, rejected, or changed what, and when.</p>
         </div>
-        <button onClick={load} className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:border-brand hover:text-brand">
+        <button onClick={load} className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-surface px-3 py-2 text-sm font-medium text-gray-600 hover:border-brand hover:text-brand">
           <RefreshCw className="h-4 w-4" /> Refresh
         </button>
       </div>
@@ -79,7 +79,7 @@ export default function AdminAuditLog() {
 
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 
-      <div className="mt-4 overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
+      <div className="mt-4 overflow-x-auto rounded-xl border border-gray-100 bg-surface shadow-sm">
         {entries === null ? (
           <SkeletonTable columns={5} rows={6} />
         ) : entries.length === 0 ? (

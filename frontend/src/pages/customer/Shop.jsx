@@ -7,7 +7,7 @@ import { formatPKR } from "../../lib/currency.js";
 import WishlistButton from "../../components/WishlistButton.jsx";
 import Meta from "../../components/Meta.jsx";
 import ImageWithFallback from "../../components/ImageWithFallback.jsx";
-import Card from "../../components/Card.jsx";
+import Card, { cardClasses } from "../../components/Card.jsx";
 import { SkeletonCard } from "../../components/Skeleton.jsx";
 import Button from "../../components/Button.jsx";
 
@@ -172,7 +172,7 @@ function ActiveFilterChips({ filters, setFilters, categories }) {
   return (
     <div className="mb-4 flex flex-wrap items-center gap-2">
       {chips.map((chip) => (
-        <span key={chip.key} className="flex items-center gap-1 rounded-full border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700">
+        <span key={chip.key} className="flex items-center gap-1 rounded-full border border-gray-300 bg-surface px-3 py-1 text-xs font-medium text-gray-700">
           {chip.label}
           <button onClick={chip.onRemove} aria-label={`Remove ${chip.label} filter`} className="text-gray-400 hover:text-red-600">
             <X className="h-3 w-3" />
@@ -352,7 +352,7 @@ export default function Shop() {
           <FiltersSidebar filters={filters} setFilters={updateFilters} categories={categories} brands={brands} />
 
           <div className="flex-1">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white p-3">
+            <Card padding="sm" className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm text-gray-600">
                 Showing <strong>{items.length}</strong> of <strong>{count}</strong> products
               </p>
@@ -375,7 +375,7 @@ export default function Shop() {
                   </button>
                 </div>
               </div>
-            </div>
+            </Card>
 
             <ActiveFilterChips filters={filters} setFilters={updateFilters} categories={categories} />
 
@@ -386,7 +386,7 @@ export default function Shop() {
                 ))}
               </div>
             ) : items.length === 0 ? (
-              <p className="rounded-lg border border-gray-200 bg-white p-10 text-center text-sm text-gray-500">
+              <p className={cardClasses({ padding: "none", className: "p-10 text-center text-sm text-gray-500" })}>
                 No products match these filters. Try adjusting them.
               </p>
             ) : (

@@ -12,6 +12,16 @@
     <meta property="og:site_name" content="Duo Bro Mart">
     <meta name="twitter:card" content="summary">
 
+    <!-- vite-plugin-pwa injects the manifest link + registers the service
+         worker automatically at build time. Apple doesn't read the web
+         manifest for its own install UI, so iOS-specific tags still need
+         to be declared by hand here. -->
+    <meta name="theme-color" content="#9A4A1D">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Duo Bro Mart">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
     <!-- Bricolage Grotesque (display headings) + Figtree (body/UI text).
          Chosen deliberately as a sans+sans pairing, not the high-contrast
          serif you'd default to on a warm cream/terracotta palette — see
@@ -19,6 +29,27 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Applies the saved palette/mode before React mounts, so returning
+         visitors who picked dark mode or an alternate palette don't see a
+         flash of the default terracotta/light theme first. Mirrors what
+         ThemeContext.jsx does on every change after mount — kept in sync
+         manually since this has to run before any JS module loads. -->
+    <script>
+      (function () {
+        try {
+          var saved = JSON.parse(localStorage.getItem("dbm_theme_v1"));
+          var palettes = ["terracotta", "ocean", "forest", "berry"];
+          var palette = saved && palettes.indexOf(saved.palette) !== -1 ? saved.palette : "terracotta";
+          var mode = saved && saved.mode === "dark" ? "dark" : "light";
+          document.documentElement.setAttribute("data-palette", palette);
+          document.documentElement.setAttribute("data-mode", mode);
+        } catch (e) {
+          document.documentElement.setAttribute("data-palette", "terracotta");
+          document.documentElement.setAttribute("data-mode", "light");
+        }
+      })();
+    </script>
   </head>
   <body>
     <a href="#maincontent" class="skip-to-content">Skip to main content</a>

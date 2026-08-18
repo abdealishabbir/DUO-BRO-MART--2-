@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import { api } from "../../lib/api.js";
 import { inputClass } from "../../components/FormField.jsx";
 import { Skeleton } from "../../components/Skeleton.jsx";
+import Card from "../../components/Card.jsx";
 
 function SkeletonFormCard({ fields = 3 }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
+    <Card padding="md">
       <Skeleton className="mb-3 h-4 w-36" />
       <div className="space-y-3">
         {Array.from({ length: fields }).map((_, i) => (
@@ -15,7 +16,7 @@ function SkeletonFormCard({ fields = 3 }) {
           </div>
         ))}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -40,7 +41,7 @@ function Toggle({ checked, onChange }) {
       onClick={() => onChange(!checked)}
       className={`relative h-6 w-11 shrink-0 rounded-full transition ${checked ? "bg-brand" : "bg-gray-300"}`}
     >
-      <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${checked ? "left-5" : "left-0.5"}`} />
+      <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-surface shadow transition ${checked ? "left-5" : "left-0.5"}`} />
     </button>
   );
 }
@@ -50,8 +51,8 @@ function RecoveryCodesDisplay({ codes, onDone }) {
     <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3">
       <p className="text-xs font-semibold text-amber-800">Save these recovery codes now — they won&apos;t be shown again.</p>
       <p className="mt-0.5 text-[10px] text-amber-700">Each works once, if you ever lose access to your authenticator app.</p>
-      <div className="mt-2 grid grid-cols-2 gap-1.5 font-mono text-xs text-ink">
-        {codes.map((c) => <div key={c} className="rounded bg-white px-2 py-1 text-center">{c}</div>)}
+      <div className="mt-2 grid grid-cols-2 gap-1.5 font-mono text-xs text-heading">
+        {codes.map((c) => <div key={c} className="rounded bg-surface px-2 py-1 text-center">{c}</div>)}
       </div>
       <button onClick={onDone} className="mt-3 rounded-md bg-ink px-3 py-1.5 text-xs font-semibold text-white hover:bg-black">
         I&apos;ve saved these
@@ -144,7 +145,7 @@ function MFASettingsCard() {
   if (!status) return null;
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
+    <Card padding="md">
       <h2 className="mb-3 text-sm font-bold text-gray-900">Security — Two-Factor Authentication</h2>
 
       {recoveryCodes ? (
@@ -198,7 +199,7 @@ function MFASettingsCard() {
       )}
 
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
-    </div>
+    </Card>
   );
 }
 
@@ -235,7 +236,7 @@ export default function AdminSettings() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <Card padding="md">
           <h2 className="mb-3 text-sm font-bold text-gray-900">General Settings</h2>
           <div className="space-y-3">
             <label className="block text-xs">
@@ -252,9 +253,9 @@ export default function AdminSettings() {
               <span className="mt-1 block text-[10px] text-gray-400">Duo Bro Mart is PKR-only for now.</span>
             </label>
           </div>
-        </div>
+        </Card>
 
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <Card padding="md">
           <h2 className="mb-3 text-sm font-bold text-gray-900">Shipping Settings</h2>
           <div className="space-y-3">
             <label className="block text-xs">
@@ -275,9 +276,9 @@ export default function AdminSettings() {
               </select>
             </label>
           </div>
-        </div>
+        </Card>
 
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <Card padding="md">
           <h2 className="mb-3 text-sm font-bold text-gray-900">Payment Settings</h2>
           <div className="space-y-3">
             {[
@@ -292,9 +293,9 @@ export default function AdminSettings() {
               </div>
             ))}
           </div>
-        </div>
+        </Card>
 
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <Card padding="md">
           <h2 className="mb-3 text-sm font-bold text-gray-900">Payout Schedule</h2>
           <div className="space-y-3">
             <label className="block text-xs">
@@ -308,9 +309,9 @@ export default function AdminSettings() {
               <span className="mt-1 block text-[10px] text-gray-400">Minimum gap between payout batches for the same vendor.</span>
             </label>
           </div>
-        </div>
+        </Card>
 
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <Card padding="md">
           <h2 className="mb-3 text-sm font-bold text-gray-900">Email Notifications</h2>
           <div className="space-y-3">
             {[
@@ -329,7 +330,7 @@ export default function AdminSettings() {
             All four alerts fire for real to your store email below. Delivery depends on SMTP being configured — without
             it, emails print to the backend console instead of reaching an inbox.
           </p>
-        </div>
+        </Card>
 
         <MFASettingsCard />
       </div>

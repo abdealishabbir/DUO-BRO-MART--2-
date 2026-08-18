@@ -34,7 +34,7 @@ function ToggleSwitch({ checked, onChange, disabled }) {
       className={`h-5 w-9 shrink-0 rounded-full transition-colors ${checked ? "bg-brand" : "bg-gray-300"} ${disabled ? "opacity-40" : ""}`}
       aria-pressed={checked}
     >
-      <span className={`block h-4 w-4 translate-y-0.5 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-[18px]" : "translate-x-0.5"}`} />
+      <span className={`block h-4 w-4 translate-y-0.5 rounded-full bg-surface shadow transition-transform ${checked ? "translate-x-[18px]" : "translate-x-0.5"}`} />
     </button>
   );
 }
@@ -110,8 +110,8 @@ function ProductForm({ categories, editingProduct, onDone }) {
   };
 
   return (
-    <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
-      <h3 className="text-lg font-bold text-ink">{editingProduct ? "Edit Product" : "New Product Listing"}</h3>
+    <div className="rounded-xl border border-gray-100 bg-surface p-6 shadow-sm">
+      <h3 className="text-lg font-bold text-heading">{editingProduct ? "Edit Product" : "New Product Listing"}</h3>
 
       {!editingProduct && (
         <div className="mt-3 flex items-start gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-800">
@@ -288,7 +288,7 @@ export default function VendorProducts() {
   if (view === "create" || view === "edit") {
     return (
       <div>
-        <button onClick={closeForm} className="mb-4 flex items-center gap-1 text-sm font-medium text-gray-500 hover:text-ink">
+        <button onClick={closeForm} className="mb-4 flex items-center gap-1 text-sm font-medium text-gray-500 hover:text-heading">
           <ArrowLeft className="h-4 w-4" /> Back to My Products
         </button>
         <ProductForm categories={categories} editingProduct={editingProduct} onDone={closeForm} />
@@ -300,7 +300,7 @@ export default function VendorProducts() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-ink">My Products</h2>
+          <h2 className="text-xl font-bold text-heading">My Products</h2>
           <p className="text-sm text-gray-500">
             {products === null ? <span className="inline-block h-3.5 w-56 animate-pulse rounded bg-gray-200 align-middle" /> : `${products.length} listing${products.length !== 1 ? "s" : ""} · ${outOfStockCount} out of stock`}
           </p>
@@ -314,7 +314,7 @@ export default function VendorProducts() {
       </div>
 
       <div className="mt-4 flex flex-wrap gap-3">
-        <div className="flex flex-1 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2">
+        <div className="flex flex-1 items-center gap-2 rounded-lg border border-gray-200 bg-surface px-3 py-2">
           <Search className="h-4 w-4 text-gray-400" />
           <input
             className="w-full bg-transparent text-sm outline-none placeholder:text-gray-400"
@@ -324,7 +324,7 @@ export default function VendorProducts() {
         </div>
         <button
           onClick={() => setShowFilter((v) => !v)}
-          className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:border-brand"
+          className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-surface px-4 py-2 text-sm font-medium text-gray-700 hover:border-brand"
         >
           <Filter className="h-4 w-4" /> Filter
         </button>
@@ -353,7 +353,7 @@ export default function VendorProducts() {
 
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 
-      <div className="mt-4 overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
+      <div className="mt-4 overflow-x-auto rounded-xl border border-gray-100 bg-surface shadow-sm">
         {products === null ? (
           <SkeletonTable columns={9} rows={6} />
         ) : filtered.length === 0 ? (
@@ -387,7 +387,7 @@ export default function VendorProducts() {
                           <ImageWithFallback src={p.images?.[0]?.image} alt="" className="h-full w-full object-cover" iconClassName="h-3.5 w-3.5" />
                         </span>
                         <div className="min-w-0">
-                          <p className="truncate font-medium text-ink">{p.name}</p>
+                          <p className="truncate font-medium text-heading">{p.name}</p>
                           {p.status === "rejected" && p.admin_notes && (
                             <p className="truncate text-xs text-red-500">{p.admin_notes}</p>
                           )}
@@ -399,7 +399,7 @@ export default function VendorProducts() {
                     </td>
                     <td className="px-4 py-3 text-xs text-gray-400">{p.sku || "—"}</td>
                     <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
-                    <td className="px-4 py-3 font-medium text-ink">{formatPKR(p.selling_price)}</td>
+                    <td className="px-4 py-3 font-medium text-heading">{formatPKR(p.selling_price)}</td>
                     <td className="px-4 py-3 font-medium text-green-700">{formatPKR(p.base_price)}</td>
                     <td className="px-4 py-3 text-xs text-red-500">-{formatPKR(fee)} ({feePct}%)</td>
                     <td className={`px-4 py-3 ${p.stock_quantity === 0 ? "font-medium text-red-600" : p.stock_quantity <= 10 ? "font-medium text-amber-600" : "text-gray-700"}`}>

@@ -10,11 +10,11 @@ const LOW_STOCK_THRESHOLD = 10;
 
 function StatCard({ icon: Icon, value, label, sub }) {
   return (
-    <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+    <div className="rounded-xl border border-gray-100 bg-surface p-4 shadow-sm">
       <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand/10 text-brand">
         <Icon className="h-4 w-4" />
       </span>
-      <p className="mt-3 text-2xl font-bold text-ink">{value}</p>
+      <p className="mt-3 text-2xl font-bold text-heading">{value}</p>
       <p className="text-xs text-gray-500">{label}</p>
       {sub && <p className="mt-0.5 text-xs text-gray-400">{sub}</p>}
     </div>
@@ -59,7 +59,7 @@ export default function VendorDashboard() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-ink">Welcome back, {user?.name?.split(" ")[0] ?? "there"} 👋</h2>
+          <h2 className="text-xl font-bold text-heading">Welcome back, {user?.name?.split(" ")[0] ?? "there"} 👋</h2>
           <p className="text-sm text-gray-500">Here&apos;s how your store is doing today.</p>
         </div>
         <Link
@@ -88,9 +88,9 @@ export default function VendorDashboard() {
       </div>
 
       <div className="mt-5 grid gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+        <div className="rounded-xl border border-gray-100 bg-surface p-5 shadow-sm">
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="font-bold text-ink">Recent Products</h3>
+            <h3 className="font-bold text-heading">Recent Products</h3>
             <Link to="/vendor/products" className="text-xs font-medium text-brand hover:underline">View all</Link>
           </div>
           {loading ? (
@@ -114,7 +114,7 @@ export default function VendorDashboard() {
               {recentProducts.map((p) => (
                 <li key={p.id} className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-ink">{p.name}</p>
+                    <p className="truncate text-sm font-medium text-heading">{p.name}</p>
                     <p className="text-xs text-gray-400">{formatPKR(p.selling_price)}</p>
                   </div>
                   <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium capitalize ${STATUS_BADGE[p.status]}`}>
@@ -126,8 +126,8 @@ export default function VendorDashboard() {
           )}
         </div>
 
-        <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
-          <h3 className="mb-3 font-bold text-ink">Pending Actions</h3>
+        <div className="rounded-xl border border-gray-100 bg-surface p-5 shadow-sm">
+          <h3 className="mb-3 font-bold text-heading">Pending Actions</h3>
           <div className="space-y-2">
             {counts.rejected > 0 && (
               <div className="flex items-start gap-2 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">

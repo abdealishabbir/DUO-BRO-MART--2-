@@ -4,6 +4,7 @@ import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
 import { inputClass } from "../../components/FormField.jsx";
 import { SkeletonTable } from "../../components/Skeleton.jsx";
+import { cardClasses } from "../../components/Card.jsx";
 
 const EMPTY_FORM = {
   code: "", discount_type: "percent", discount_value: "", min_order_value: "0",
@@ -59,7 +60,7 @@ function CouponForm({ initial, onSaved, onCancel }) {
   };
 
   return (
-    <form onSubmit={submit} className="rounded-lg border border-gray-200 bg-white p-4">
+    <form onSubmit={submit} className={cardClasses()}>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-xs">
           <span className="mb-1 block font-medium text-gray-700">Code *</span>
@@ -138,7 +139,7 @@ export default function AdminCoupons() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-ink">Coupons</h2>
+          <h2 className="text-xl font-bold text-heading">Coupons</h2>
           <p className="text-sm text-gray-500">Discount codes customers can apply at checkout.</p>
         </div>
         {!showForm && !editing && (
@@ -161,7 +162,7 @@ export default function AdminCoupons() {
 
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 
-      <div className="mt-4 overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
+      <div className="mt-4 overflow-x-auto rounded-xl border border-gray-100 bg-surface shadow-sm">
         {coupons === null ? (
           <SkeletonTable columns={7} rows={5} />
         ) : coupons.length === 0 ? (
@@ -182,7 +183,7 @@ export default function AdminCoupons() {
             <tbody>
               {coupons.map((c) => (
                 <tr key={c.id} className="border-b border-gray-50 last:border-0">
-                  <td className="px-4 py-3 font-mono font-semibold text-ink">{c.code}</td>
+                  <td className="px-4 py-3 font-mono font-semibold text-heading">{c.code}</td>
                   <td className="px-4 py-3 text-xs text-gray-600">
                     {c.discount_type === "percent" ? `${c.discount_value}% off` : `${formatPKR(c.discount_value)} off`}
                   </td>

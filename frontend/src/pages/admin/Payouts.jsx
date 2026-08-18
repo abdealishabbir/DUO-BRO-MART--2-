@@ -167,18 +167,18 @@ export default function AdminPayouts() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-ink">Payouts</h2>
+          <h2 className="text-xl font-bold text-heading">Payouts</h2>
           <p className="text-sm text-gray-500">Vendor earnings ledger — no live bank transfer is wired up, so batches are marked paid manually once you&apos;ve actually sent the money.</p>
         </div>
         <div className="flex items-center gap-2">
           <a
             href={`${API_BASE}/orders/admin/export/payouts/`}
             download
-            className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:border-brand hover:text-brand"
+            className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-surface px-3 py-2 text-sm font-medium text-gray-600 hover:border-brand hover:text-brand"
           >
             <Download className="h-4 w-4" /> Export CSV
           </a>
-          <button onClick={load} className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:border-brand hover:text-brand">
+          <button onClick={load} className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-surface px-3 py-2 text-sm font-medium text-gray-600 hover:border-brand hover:text-brand">
             <RefreshCw className="h-4 w-4" /> Refresh
           </button>
           <button onClick={generate} disabled={generating} className="flex items-center gap-1.5 rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-60">
@@ -190,11 +190,11 @@ export default function AdminPayouts() {
       {generateMsg && <p className="mt-2 text-sm text-gray-600">{generateMsg}</p>}
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-gray-100 bg-surface p-4 shadow-sm">
           <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Batches (filtered view)</p>
-          <p className="mt-1 text-lg font-bold text-ink">{payouts.length}</p>
+          <p className="mt-1 text-lg font-bold text-heading">{payouts.length}</p>
         </div>
-        <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-gray-100 bg-surface p-4 shadow-sm">
           <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Owed (not yet paid)</p>
           <p className="mt-1 text-lg font-bold text-amber-700">{formatPKR(totalPending)}</p>
         </div>
@@ -214,7 +214,7 @@ export default function AdminPayouts() {
         ))}
       </div>
 
-      <div className="mt-4 overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
+      <div className="mt-4 overflow-x-auto rounded-xl border border-gray-100 bg-surface shadow-sm">
         {loading ? (
           <SkeletonTable columns={7} rows={5} />
         ) : payouts.length === 0 ? (
@@ -238,7 +238,7 @@ export default function AdminPayouts() {
               {payouts.map((p) => (
                 <Fragment key={p.id}>
                   <tr className="border-b border-gray-50 last:border-0">
-                    <td className="px-4 py-3 font-medium text-ink">{p.vendor_name}</td>
+                    <td className="px-4 py-3 font-medium text-heading">{p.vendor_name}</td>
                     <td className="px-4 py-3 text-xs text-gray-500">{p.period_start} → {p.period_end}</td>
                     <td className="px-4 py-3 text-xs text-gray-500">{p.items.length}</td>
                     <td className="px-4 py-3 font-medium text-green-700">{formatPKR(p.total_amount)}</td>

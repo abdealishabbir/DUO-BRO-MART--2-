@@ -82,7 +82,7 @@ export default function AdminComplaints() {
         </button>
       </div>
 
-      <div className="flex gap-1 rounded-md border border-gray-200 bg-white p-1">
+      <div className="flex gap-1 rounded-md border border-gray-200 bg-surface p-1">
         {STATUS_TABS.map(([value, label]) => (
           <button
             key={value}
@@ -94,7 +94,7 @@ export default function AdminComplaints() {
         ))}
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+      <div className="overflow-x-auto rounded-lg border border-gray-200 bg-surface">
         <table className="w-full text-left text-xs">
           <thead className="bg-gray-50 text-gray-500">
             <tr>

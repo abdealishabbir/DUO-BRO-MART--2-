@@ -53,7 +53,7 @@ export default function CustomerLayout() {
   }, []);
 
   return (
-    <div className="flex min-h-screen flex-col bg-cream">
+    <div className="flex min-h-dvh flex-col bg-cream">
       <a href="#maincontent" className="sr-only focus:not-sr-only inline-block rounded bg-surface px-3 py-2 text-sm font-medium text-brand">
         Skip to main content
       </a>

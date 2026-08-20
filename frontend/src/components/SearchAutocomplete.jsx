@@ -171,7 +171,7 @@ export default function SearchAutocomplete({ placeholder = "Search for products,
         aria-autocomplete="list"
         aria-haspopup="listbox"
         aria-activedescendant={activeDescendant}
-        className="w-full rounded-full border border-gray-300 bg-surface py-2 pl-9 pr-4 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+        className="w-full rounded-full border border-gray-300 bg-surface py-2 pl-9 pr-4 text-base focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
       />
 
       {showDropdown && (

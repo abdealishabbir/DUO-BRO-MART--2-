@@ -37,7 +37,7 @@ export default function AdminLayout() {
   }, [sidebarOpen]);
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-dvh">
       <a href="#maincontent" className="sr-only focus:not-sr-only inline-block rounded bg-surface px-3 py-2 text-sm font-medium text-brand">
         Skip to main content
       </a>

@@ -55,7 +55,7 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-ink px-4 py-10">
+    <div className="flex min-h-dvh items-center justify-center bg-ink px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center text-center">
           <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand text-white">
@@ -78,7 +78,7 @@ export default function AdminLogin() {
                     <Mail className="h-4 w-4 shrink-0 text-gray-500" />
                     <input
                       type="email" required
-                      className="w-full bg-transparent text-sm text-white outline-none placeholder:text-gray-500"
+                      className="w-full bg-transparent text-base text-white outline-none placeholder:text-gray-500"
                       placeholder="you@duobromart.pk"
                       value={email} onChange={(e) => setEmail(e.target.value)}
                     />
@@ -91,7 +91,7 @@ export default function AdminLogin() {
                     <Lock className="h-4 w-4 shrink-0 text-gray-500" />
                     <input
                       type={showPassword ? "text" : "password"} required
-                      className="w-full bg-transparent text-sm text-white outline-none placeholder:text-gray-500"
+                      className="w-full bg-transparent text-base text-white outline-none placeholder:text-gray-500"
                       placeholder="••••••••"
                       value={password} onChange={(e) => setPassword(e.target.value)}
                     />

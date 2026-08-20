@@ -4,8 +4,16 @@ import { groupLinesByVendor } from "../lib/vendorGrouping.js";
 import ImageWithFallback from "./ImageWithFallback.jsx";
 import Card from "./Card.jsx";
 
-export default function OrderSummarySidebar({ lines, subtotal, shipping, tax = 0, discount = 0, showCoupon = false }) {
-  const total = subtotal - discount + shipping + tax;
+export default function OrderSummarySidebar({ lines, subtotal, shipping, tax = 0, discount = 0 }) {
+  // subtotal already reflects each line's current (deal) price — see
+  // CartContext, which sums product.price × quantity, not
+  // original_price. `discount` here is purely the informational "you
+  // saved Rs. X from active deals" figure for display, so it must NOT
+  // be subtracted again below; doing so was double-counting the same
+  // discount and showing a lower total on this page than what checkout
+  // (correctly, since it never received a discount prop at all) would
+  // actually charge.
+  const total = subtotal + shipping + tax;
 
   const vendorGroups = groupLinesByVendor(
     lines.map((line) => ({
@@ -81,18 +89,15 @@ export default function OrderSummarySidebar({ lines, subtotal, shipping, tax = 0
         </div>
       </div>
 
-      {showCoupon && (
-        <form className="mt-4 flex gap-2" onSubmit={(e) => e.preventDefault()}>
-          <input
-            type="text"
-            placeholder="COUPON CODE"
-            className="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 text-xs uppercase tracking-wide focus:border-brand focus:outline-none"
-          />
-          <button type="submit" className="rounded-md bg-ink px-4 py-2 text-xs font-semibold text-white hover:bg-black">
-            Apply
-          </button>
-        </form>
-      )}
+      {/* No coupon box here — the real, working one lives on
+          CheckoutPayment right before "Place Order," wired to the
+          backend's actual validate-at-order-creation contract
+          (coupon_code sent with the order, applied server-side, shown
+          on the confirmation page). This page previously had a second,
+          decorative one — no value/onChange on the input, submit
+          handler was only e.preventDefault() — sitting right next to
+          the totals a customer is deciding whether to trust. Removed
+          rather than left silently broken. */}
 
       <p className="mt-4 flex items-center justify-center gap-1.5 text-xs text-gray-500">
         <ShieldCheck className="h-3.5 w-3.5 text-green-600" /> Secure Checkout

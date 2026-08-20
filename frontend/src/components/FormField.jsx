@@ -8,5 +8,9 @@ export default function FormField({ label, error, children }) {
   );
 }
 
+// text-base (16px), not text-sm — iOS Safari auto-zooms the whole page
+// when a focused input's font-size is under 16px, which feels broken on
+// every text field in the app (every page using inputClass, i.e. most
+// forms) if left at the smaller size.
 export const inputClass =
-  "w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand";
+  "w-full rounded-md border border-gray-300 px-3 py-2 text-base shadow-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand";

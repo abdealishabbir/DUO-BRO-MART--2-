@@ -104,13 +104,16 @@ function ImageLightbox({ images, active, setActive, name, onClose }) {
       </button>
 
       {/* stopPropagation keeps a click on the image itself from bubbling to
-          the backdrop and closing the viewer. */}
+          the backdrop and closing the viewer. eager: it's already the
+          on-screen focus the instant this viewer opens, so lazy-loading
+          would only add a delay with no bandwidth benefit. */}
       {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/click-events-have-key-events */}
-      <img
+      <ImageWithFallback
         src={images[active]}
         alt={`${name} — full size`}
         onClick={(e) => e.stopPropagation()}
         className="max-h-[85vh] max-w-full rounded-lg object-contain"
+        eager
       />
 
       {images.length > 1 && (
@@ -247,8 +250,8 @@ function RelatedProducts({ products }) {
         {products.map((p) => (
           <Card key={p.id} to={`/product/${p.slug}`} hover padding="sm">
             <ImageWithFallback src={p.images[0]} alt={p.name} className="h-32 w-full rounded-md object-cover" />
-            <p className="mt-2 line-clamp-2 text-sm font-medium text-gray-900">{p.name}</p>
-            <p className="mt-1 text-sm font-bold text-gray-900">{formatPKR(p.price)}</p>
+            <p className="mt-2 line-clamp-2 text-base font-medium text-gray-900">{p.name}</p>
+            <p className="mt-1 text-base font-bold text-gray-900">{formatPKR(p.price)}</p>
           </Card>
         ))}
       </div>
@@ -265,8 +268,8 @@ function RecentlyViewedStrip({ products }) {
         {products.map((p) => (
           <Card key={p.id} to={`/product/${p.slug}`} hover padding="sm">
             <ImageWithFallback src={p.image} alt={p.name} className="h-32 w-full rounded-md object-cover" />
-            <p className="mt-2 line-clamp-2 text-sm font-medium text-gray-900">{p.name}</p>
-            <p className="mt-1 text-sm font-bold text-gray-900">{formatPKR(p.price)}</p>
+            <p className="mt-2 line-clamp-2 text-base font-medium text-gray-900">{p.name}</p>
+            <p className="mt-1 text-base font-bold text-gray-900">{formatPKR(p.price)}</p>
           </Card>
         ))}
       </div>

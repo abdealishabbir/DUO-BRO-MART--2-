@@ -6,6 +6,7 @@ import { formatPKR } from "../../lib/currency.js";
 import ImageWithFallback from "../../components/ImageWithFallback.jsx";
 import { Skeleton, SkeletonStatCard, SkeletonTable } from "../../components/Skeleton.jsx";
 import Card from "../../components/Card.jsx";
+import Badge from "../../components/Badge.jsx";
 
 function DashboardSkeleton() {
   return (
@@ -42,20 +43,16 @@ function DashboardSkeleton() {
   );
 }
 
-const STATUS_STYLES = {
-  pending: "bg-amber-100 text-amber-700",
-  processing: "bg-blue-100 text-blue-700",
-  shipped: "bg-indigo-100 text-indigo-700",
-  delivered: "bg-green-100 text-green-700",
-  cancelled: "bg-red-100 text-red-700",
+const STATUS_VARIANTS = {
+  pending: "warning",
+  processing: "info",
+  shipped: "indigo",
+  delivered: "success",
+  cancelled: "danger",
 };
 
 function StatusBadge({ status }) {
-  return (
-    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${STATUS_STYLES[status] || "bg-gray-100 text-gray-600"}`}>
-      {status}
-    </span>
-  );
+  return <Badge variant={STATUS_VARIANTS[status] || "neutral"}>{status}</Badge>;
 }
 
 function ChangeIndicator({ pct }) {

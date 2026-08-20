@@ -5,6 +5,7 @@ import { formatPKR } from "../../lib/currency.js";
 import { inputClass } from "../../components/FormField.jsx";
 import { SkeletonTable } from "../../components/Skeleton.jsx";
 import { cardClasses } from "../../components/Card.jsx";
+import Badge from "../../components/Badge.jsx";
 
 const EMPTY_FORM = {
   code: "", discount_type: "percent", discount_value: "", min_order_value: "0",
@@ -192,11 +193,11 @@ export default function AdminCoupons() {
                   <td className="px-4 py-3 text-xs text-gray-500">{c.valid_until ? new Date(c.valid_until).toLocaleDateString() : "No expiry"}</td>
                   <td className="px-4 py-3">
                     {!c.is_active ? (
-                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-500">Inactive</span>
+                      <Badge variant="neutral">Inactive</Badge>
                     ) : isExpired(c) ? (
-                      <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-600">Expired</span>
+                      <Badge variant="danger">Expired</Badge>
                     ) : (
-                      <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">Active</span>
+                      <Badge variant="success">Active</Badge>
                     )}
                   </td>
                   <td className="px-4 py-3">

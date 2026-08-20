@@ -4,6 +4,7 @@ import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
 import { inputClass } from "../../components/FormField.jsx";
 import { SkeletonTableRows } from "../../components/Skeleton.jsx";
+import Badge from "../../components/Badge.jsx";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
@@ -16,20 +17,16 @@ const STATUS_TABS = [
   { value: "cancelled", label: "Cancelled" },
 ];
 
-const STATUS_STYLES = {
-  pending: "bg-amber-100 text-amber-700",
-  processing: "bg-blue-100 text-blue-700",
-  shipped: "bg-indigo-100 text-indigo-700",
-  delivered: "bg-green-100 text-green-700",
-  cancelled: "bg-red-100 text-red-700",
+const STATUS_VARIANTS = {
+  pending: "warning",
+  processing: "info",
+  shipped: "indigo",
+  delivered: "success",
+  cancelled: "danger",
 };
 
 function StatusBadge({ status }) {
-  return (
-    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${STATUS_STYLES[status] || "bg-gray-100 text-gray-600"}`}>
-      {status}
-    </span>
-  );
+  return <Badge variant={STATUS_VARIANTS[status] || "neutral"}>{status}</Badge>;
 }
 
 function productSummary(order) {

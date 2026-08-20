@@ -6,23 +6,22 @@ import {
 import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
 import FormField, { inputClass } from "../../components/FormField.jsx";
+import Badge from "../../components/Badge.jsx";
 import ImageWithFallback from "../../components/ImageWithFallback.jsx";
 import { SkeletonTable } from "../../components/Skeleton.jsx";
 
 const OTHER_CATEGORY = "__other__";
 const EMPTY_FORM = { name: "", sku: "", category: "", customCategory: "", base_price: "", stock_quantity: "", description: "" };
 
-const STATUS_BADGE = {
-  draft: "bg-gray-100 text-gray-600",
-  pending: "bg-amber-100 text-amber-700",
-  approved: "bg-green-100 text-green-700",
-  rejected: "bg-red-100 text-red-700",
+const STATUS_VARIANTS = {
+  draft: "neutral",
+  pending: "warning",
+  approved: "success",
+  rejected: "danger",
 };
 
 function StatusBadge({ status }) {
-  return (
-    <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${STATUS_BADGE[status]}`}>{status}</span>
-  );
+  return <Badge variant={STATUS_VARIANTS[status] || "neutral"}>{status}</Badge>;
 }
 
 function ToggleSwitch({ checked, onChange, disabled }) {

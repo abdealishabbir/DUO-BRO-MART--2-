@@ -3,14 +3,15 @@ import { RefreshCw, Wallet, Clock, Download } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
 import { SkeletonTable, SkeletonStatCard } from "../../components/Skeleton.jsx";
+import Badge from "../../components/Badge.jsx";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
-const STATUS_STYLES = {
-  pending: "bg-amber-100 text-amber-700",
-  processing: "bg-blue-100 text-blue-700",
-  paid: "bg-green-100 text-green-700",
-  failed: "bg-red-100 text-red-700",
+const STATUS_VARIANTS = {
+  pending: "warning",
+  processing: "info",
+  paid: "success",
+  failed: "danger",
 };
 
 export default function VendorPayouts() {
@@ -110,7 +111,7 @@ export default function VendorPayouts() {
                       <td className="px-4 py-3 text-xs text-gray-500">{p.items.length}</td>
                       <td className="px-4 py-3 font-medium text-green-700">{formatPKR(p.total_amount)}</td>
                       <td className="px-4 py-3">
-                        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${STATUS_STYLES[p.status]}`}>{p.status}</span>
+                        <Badge variant={STATUS_VARIANTS[p.status] || "neutral"}>{p.status}</Badge>
                         {p.status === "failed" && p.failure_reason && (
                           <p className="mt-1 max-w-[220px] text-xs text-red-500">{p.failure_reason} — we&apos;ll retry this shortly.</p>
                         )}

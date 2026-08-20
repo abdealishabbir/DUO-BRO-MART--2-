@@ -6,6 +6,7 @@ import { inputClass } from "../../components/FormField.jsx";
 import ImageWithFallback from "../../components/ImageWithFallback.jsx";
 import { Skeleton, SkeletonTable } from "../../components/Skeleton.jsx";
 import Card, { cardClasses } from "../../components/Card.jsx";
+import Badge from "../../components/Badge.jsx";
 
 function BannersPromotionSkeleton() {
   return (
@@ -44,25 +45,21 @@ function BannersPromotionSkeleton() {
   );
 }
 
-const STATUS_STYLES = {
-  pending: "bg-amber-100 text-amber-700",
-  approved: "bg-blue-100 text-blue-700",
-  rejected: "bg-red-100 text-red-700",
-  cancelled: "bg-gray-100 text-gray-600",
-  awaiting_payment: "bg-amber-100 text-amber-700",
-  scheduled: "bg-blue-100 text-blue-700",
-  live: "bg-green-100 text-green-700",
-  completed: "bg-gray-100 text-gray-600",
-  overdue: "bg-red-100 text-red-700",
-  suspended: "bg-red-200 text-red-900",
+const STATUS_VARIANTS = {
+  pending: "warning",
+  approved: "info",
+  rejected: "danger",
+  cancelled: "neutral",
+  awaiting_payment: "warning",
+  scheduled: "info",
+  live: "success",
+  completed: "neutral",
+  overdue: "danger",
+  suspended: "severe",
 };
 
 function StatusBadge({ status }) {
-  return (
-    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${STATUS_STYLES[status] || "bg-gray-100 text-gray-600"}`}>
-      {status.replace("_", " ")}
-    </span>
-  );
+  return <Badge variant={STATUS_VARIANTS[status] || "neutral"}>{status.replace("_", " ")}</Badge>;
 }
 
 function SettingsPanel({ settings, onSaved }) {

@@ -4,6 +4,7 @@ import { Package, Clock, CheckCircle2, ShoppingBag, Info, AlertTriangle, PlusCir
 import { useAuth } from "../../auth/AuthContext.jsx";
 import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
+import Badge from "../../components/Badge.jsx";
 import { Skeleton } from "../../components/Skeleton.jsx";
 
 const LOW_STOCK_THRESHOLD = 10;
@@ -21,11 +22,11 @@ function StatCard({ icon: Icon, value, label, sub }) {
   );
 }
 
-const STATUS_BADGE = {
-  draft: "bg-gray-100 text-gray-600",
-  pending: "bg-amber-100 text-amber-700",
-  approved: "bg-green-100 text-green-700",
-  rejected: "bg-red-100 text-red-700",
+const STATUS_VARIANTS = {
+  draft: "neutral",
+  pending: "warning",
+  approved: "success",
+  rejected: "danger",
 };
 
 export default function VendorDashboard() {
@@ -117,9 +118,9 @@ export default function VendorDashboard() {
                     <p className="truncate text-sm font-medium text-heading">{p.name}</p>
                     <p className="text-xs text-gray-400">{formatPKR(p.selling_price)}</p>
                   </div>
-                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium capitalize ${STATUS_BADGE[p.status]}`}>
+                  <Badge variant={STATUS_VARIANTS[p.status] || "neutral"} className="shrink-0">
                     {p.status}
-                  </span>
+                  </Badge>
                 </li>
               ))}
             </ul>

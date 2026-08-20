@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { RefreshCw, ScrollText } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { SkeletonTable } from "../../components/Skeleton.jsx";
+import Badge from "../../components/Badge.jsx";
 
 const ACTION_LABELS = {
   "product.approved": "Product Approved",
@@ -23,21 +24,21 @@ const ACTION_LABELS = {
   "payout.marked_failed": "Payout Marked Failed (Reopened)",
 };
 
-const ACTION_COLORS = {
-  approved: "bg-green-100 text-green-700",
-  rejected: "bg-red-100 text-red-700",
-  suspended: "bg-red-100 text-red-700",
-  reinstated: "bg-green-100 text-green-700",
-  changed: "bg-blue-100 text-blue-700",
-  paid: "bg-green-100 text-green-700",
-  failed: "bg-red-100 text-red-700",
+const ACTION_VARIANTS = {
+  approved: "success",
+  rejected: "danger",
+  suspended: "danger",
+  reinstated: "success",
+  changed: "info",
+  paid: "success",
+  failed: "danger",
 };
 
-function badgeColor(action) {
-  for (const [key, cls] of Object.entries(ACTION_COLORS)) {
-    if (action.includes(key)) return cls;
+function badgeVariant(action) {
+  for (const [key, variant] of Object.entries(ACTION_VARIANTS)) {
+    if (action.includes(key)) return variant;
   }
-  return "bg-gray-100 text-gray-600";
+  return "neutral";
 }
 
 export default function AdminAuditLog() {
@@ -102,9 +103,9 @@ export default function AdminAuditLog() {
               {entries.map((e) => (
                 <tr key={e.id} className="border-b border-gray-50 last:border-0 align-top">
                   <td className="px-4 py-3">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${badgeColor(e.action)}`}>
+                    <Badge variant={badgeVariant(e.action)}>
                       {ACTION_LABELS[e.action] || e.action}
-                    </span>
+                    </Badge>
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-600">
                     {e.target_repr || `${e.target_type} #${e.target_id}`}

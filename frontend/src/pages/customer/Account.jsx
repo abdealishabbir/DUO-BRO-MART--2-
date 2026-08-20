@@ -5,6 +5,19 @@ import { api } from "../../lib/api.js";
 import FormField, { inputClass } from "../../components/FormField.jsx";
 import { formatPKR } from "../../lib/currency.js";
 import { Skeleton } from "../../components/Skeleton.jsx";
+import Badge from "../../components/Badge.jsx";
+
+// Same order-status pipeline as the admin/vendor Orders tables (kept in
+// sync with those) — previously this page rendered every status in the
+// same flat brand-colored pill, so a customer couldn't tell "delivered"
+// from "cancelled" at a glance in their own order history.
+const STATUS_VARIANTS = {
+  pending: "warning",
+  processing: "info",
+  shipped: "indigo",
+  delivered: "success",
+  cancelled: "danger",
+};
 
 const TABS = ["Profile", "Addresses", "Security", "Orders"];
 
@@ -265,9 +278,9 @@ function OrdersTab() {
         <div key={order.id} className="rounded-md border border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <p className="font-mono text-sm font-semibold text-gray-900">#{order.order_code}</p>
-            <span className="rounded-full bg-cream px-2.5 py-0.5 text-xs font-medium capitalize text-brand">
+            <Badge variant={STATUS_VARIANTS[order.status] || "neutral"}>
               {order.status}
-            </span>
+            </Badge>
           </div>
           <p className="mt-1 text-xs text-gray-500">
             Placed {new Date(order.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}

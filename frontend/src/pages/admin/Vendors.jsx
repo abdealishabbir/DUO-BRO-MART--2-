@@ -4,6 +4,7 @@ import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
 import { inputClass } from "../../components/FormField.jsx";
 import { SkeletonTableRows } from "../../components/Skeleton.jsx";
+import Badge from "../../components/Badge.jsx";
 
 function ApplicationRow({ application, onChanged }) {
   const [busy, setBusy] = useState(false);
@@ -51,13 +52,13 @@ function ApplicationRow({ application, onChanged }) {
         </td>
         <td className="p-2">
           {application.cnic_matches ? (
-            <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">CNIC Match</span>
+            <Badge variant="success">CNIC Match</Badge>
           ) : (
-            <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">CNIC Mismatch</span>
+            <Badge variant="danger">CNIC Mismatch</Badge>
           )}
         </td>
         <td className="p-2">
-          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">Pending</span>
+          <Badge variant="warning">Pending</Badge>
         </td>
         <td className="p-2">
           <div className="flex flex-wrap items-center gap-2">
@@ -224,9 +225,9 @@ function VendorRow({ vendor, defaults, onChanged }) {
       </td>
       <td className="p-2">
         {vendor.is_active ? (
-          <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">Active</span>
+          <Badge variant="success">Active</Badge>
         ) : (
-          <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">Suspended</span>
+          <Badge variant="danger">Suspended</Badge>
         )}
       </td>
       <td className="p-2">

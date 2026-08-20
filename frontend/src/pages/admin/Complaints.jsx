@@ -3,16 +3,17 @@ import { RefreshCw } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { inputClass } from "../../components/FormField.jsx";
 import { SkeletonTableRows } from "../../components/Skeleton.jsx";
+import Badge from "../../components/Badge.jsx";
 
 const STATUS_TABS = [
   ["", "All"], ["open", "Open"], ["under_review", "Under Review"],
   ["resolved_refund", "Refunded"], ["resolved_replacement", "Replaced"], ["rejected", "Rejected"],
 ];
 
-const STATUS_STYLES = {
-  open: "bg-red-100 text-red-700", under_review: "bg-amber-100 text-amber-700",
-  resolved_refund: "bg-green-100 text-green-700", resolved_replacement: "bg-green-100 text-green-700",
-  rejected: "bg-gray-100 text-gray-600",
+const STATUS_VARIANTS = {
+  open: "danger", under_review: "warning",
+  resolved_refund: "success", resolved_replacement: "success",
+  rejected: "neutral",
 };
 
 function ComplaintRow({ complaint, onChanged }) {
@@ -50,9 +51,9 @@ function ComplaintRow({ complaint, onChanged }) {
         </button>
       </td>
       <td className="p-2">
-        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_STYLES[complaint.status] || "bg-gray-100 text-gray-600"}`}>
+        <Badge variant={STATUS_VARIANTS[complaint.status] || "neutral"}>
           {complaint.status.replaceAll("_", " ")}
-        </span>
+        </Badge>
       </td>
     </tr>
   );

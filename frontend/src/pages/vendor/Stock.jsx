@@ -4,11 +4,12 @@ import { Boxes, Plus, Info } from "lucide-react";
 import { api } from "../../lib/api.js";
 import FormField, { inputClass } from "../../components/FormField.jsx";
 import { SkeletonTable } from "../../components/Skeleton.jsx";
+import Badge from "../../components/Badge.jsx";
 
-const STATUS_BADGE = {
-  pending: "bg-amber-100 text-amber-700",
-  approved: "bg-green-100 text-green-700",
-  rejected: "bg-red-100 text-red-700",
+const STATUS_VARIANTS = {
+  pending: "warning",
+  approved: "success",
+  rejected: "danger",
 };
 
 function NewStockRequestForm({ products, initialProductId, onDone }) {
@@ -170,7 +171,7 @@ export default function VendorStock() {
                   <td className="px-4 py-3 text-gray-600">+{r.requested_increase} units</td>
                   <td className="max-w-xs truncate px-4 py-3 text-gray-500">{r.note || "—"}</td>
                   <td className="px-4 py-3">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${STATUS_BADGE[r.status]}`}>{r.status}</span>
+                    <Badge variant={STATUS_VARIANTS[r.status] || "neutral"}>{r.status}</Badge>
                     {r.status === "rejected" && r.admin_notes && <p className="mt-0.5 text-xs text-red-500">{r.admin_notes}</p>}
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-400">{new Date(r.created_at).toLocaleDateString()}</td>

@@ -4,6 +4,7 @@ import { Percent, Plus, Info, X } from "lucide-react";
 import { api } from "../../lib/api.js";
 import { formatPKR } from "../../lib/currency.js";
 import FormField, { inputClass } from "../../components/FormField.jsx";
+import Badge from "../../components/Badge.jsx";
 import { SkeletonTable } from "../../components/Skeleton.jsx";
 
 const CHANGE_TYPES = [
@@ -14,10 +15,10 @@ const CHANGE_TYPES = [
   { value: "gift_card_eligible", label: "Gift-Card Eligible" },
 ];
 
-const STATUS_BADGE = {
-  pending: "bg-amber-100 text-amber-700",
-  approved: "bg-green-100 text-green-700",
-  rejected: "bg-red-100 text-red-700",
+const STATUS_VARIANTS = {
+  pending: "warning",
+  approved: "success",
+  rejected: "danger",
 };
 
 const EMPTY_FORM = { product: "", change_type: "discount", new_price: "", discount_percent: "", deal_starts_at: "", deal_ends_at: "", note: "" };
@@ -229,7 +230,7 @@ export default function VendorDeals() {
                   <td className="px-4 py-3 text-gray-600">{CHANGE_TYPES.find((t) => t.value === r.change_type)?.label}</td>
                   <td className="px-4 py-3 text-gray-600"><RequestSummary request={r} /></td>
                   <td className="px-4 py-3">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${STATUS_BADGE[r.status]}`}>{r.status}</span>
+                    <Badge variant={STATUS_VARIANTS[r.status] || "neutral"}>{r.status}</Badge>
                     {r.status === "rejected" && r.admin_notes && <p className="mt-0.5 text-xs text-red-500">{r.admin_notes}</p>}
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-400">{new Date(r.created_at).toLocaleDateString()}</td>

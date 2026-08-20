@@ -12,6 +12,13 @@ const VARIANTS = {
   info: "bg-blue-100 text-blue-700",
   neutral: "bg-gray-100 text-gray-600",
   brand: "bg-ink text-white",
+  // "shipped" (order pipeline) is a deliberately distinct stage from
+  // "processing" (info/blue) — added rather than collapsed into info,
+  // which would lose that distinction on both Orders tables that use it.
+  indigo: "bg-indigo-100 text-indigo-700",
+  // "suspended" (banner promotions) is a deliberately stronger red than
+  // ordinary danger/rejected — added rather than collapsed into danger.
+  severe: "bg-red-200 text-red-900",
 };
 
 export default function Badge({ variant = "neutral", className = "", children }) {

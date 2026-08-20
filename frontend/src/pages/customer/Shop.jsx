@@ -87,12 +87,12 @@ function FiltersSidebar({ filters, setFilters, categories, brands }) {
         <h4 className="mb-2 text-sm font-semibold text-gray-700">Price Range (PKR)</h4>
         <div className="flex items-center gap-2">
           <input
-            type="number" placeholder="Min" className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+            type="number" placeholder="Min" className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-base"
             value={filters.minPrice} onChange={(e) => setFilters((f) => ({ ...f, minPrice: e.target.value }))}
           />
           <span className="text-gray-400">-</span>
           <input
-            type="number" placeholder="Max" className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+            type="number" placeholder="Max" className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-base"
             value={filters.maxPrice} onChange={(e) => setFilters((f) => ({ ...f, maxPrice: e.target.value }))}
           />
         </div>
@@ -359,7 +359,7 @@ export default function Shop() {
               <div className="flex items-center gap-3">
                 <label className="flex items-center gap-2 text-sm text-gray-600">
                   Sort by:
-                  <select className="rounded-md border border-gray-300 px-2 py-1.5 text-sm" value={sort} onChange={(e) => { setSort(e.target.value); setPage(1); }}>
+                  <select className="rounded-md border border-gray-300 px-2 py-1.5 text-base" value={sort} onChange={(e) => { setSort(e.target.value); setPage(1); }}>
                     <option value="newest">Newest Arrivals</option>
                     <option value="price-asc">Price: Low to High</option>
                     <option value="price-desc">Price: High to Low</option>

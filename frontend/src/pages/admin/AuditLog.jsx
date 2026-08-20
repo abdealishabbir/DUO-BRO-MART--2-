@@ -69,7 +69,7 @@ export default function AdminAuditLog() {
       </div>
 
       <div className="mt-4">
-        <select className="rounded-md border border-gray-300 px-3 py-1.5 text-sm" value={actionFilter} onChange={(e) => setActionFilter(e.target.value)}>
+        <select className="rounded-md border border-gray-300 px-3 py-1.5 text-base" value={actionFilter} onChange={(e) => setActionFilter(e.target.value)}>
           <option value="">All actions</option>
           {Object.entries(ACTION_LABELS).map(([value, label]) => (
             <option key={value} value={value}>{label}</option>

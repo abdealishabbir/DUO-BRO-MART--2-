@@ -227,7 +227,7 @@ function QuantityStepper({ quantity, setQuantity, max }) {
           const v = Number(e.target.value);
           if (v >= 1 && v <= max) setQuantity(v);
         }}
-        className="w-14 border-x border-gray-300 py-2.5 text-center text-sm focus:outline-none"
+        className="w-14 border-x border-gray-300 py-2.5 text-center text-base focus:outline-none"
       />
       <button
         onClick={() => setQuantity((q) => Math.min(max, q + 1))}

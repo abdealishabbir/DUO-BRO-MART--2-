@@ -469,7 +469,7 @@ function NewsletterBanner() {
           type="email"
           required
           placeholder="Enter your email address"
-          className="flex-1 rounded-full border-0 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ink"
+          className="flex-1 rounded-full border-0 px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-ink"
         />
         <button type="submit" className="rounded-full bg-ink px-6 py-2.5 text-sm font-semibold text-white hover:bg-black">
           Subscribe

@@ -125,7 +125,7 @@ export default function AdminLogin() {
                     <KeyRound className="h-4 w-4 shrink-0 text-gray-500" />
                     <input
                       required
-                      className="w-full bg-transparent text-sm tracking-widest text-white outline-none placeholder:text-gray-500 placeholder:tracking-normal"
+                      className="w-full bg-transparent text-base tracking-widest text-white outline-none placeholder:text-gray-500 placeholder:tracking-normal"
                       placeholder="123456 or xxxx-xxxx"
                       value={code} onChange={(e) => setCode(e.target.value)}
                     />

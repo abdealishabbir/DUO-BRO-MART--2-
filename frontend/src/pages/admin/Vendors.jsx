@@ -180,7 +180,7 @@ function PayoutScheduleCell({ vendor, field, defaultDays, onChanged }) {
         type="number"
         min="0"
         max="90"
-        className="w-14 rounded border border-gray-300 px-1.5 py-0.5 text-xs"
+        className="w-14 rounded border border-gray-300 px-1.5 py-0.5 text-base"
         placeholder={String(defaultDays)}
         value={value}
         onChange={(e) => setValue(e.target.value)}

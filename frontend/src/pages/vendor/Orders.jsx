@@ -139,7 +139,7 @@ export default function VendorOrders() {
         <div className="flex flex-1 items-center gap-2 rounded-lg border border-gray-200 bg-surface px-3 py-2">
           <Search className="h-4 w-4 text-gray-400" />
           <input
-            className="w-full bg-transparent text-sm outline-none placeholder:text-gray-400"
+            className="w-full bg-transparent text-base outline-none placeholder:text-gray-400"
             placeholder="Search by order code or product..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}

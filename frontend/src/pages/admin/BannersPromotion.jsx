@@ -246,7 +246,7 @@ function RecordPaymentForm({ bannerId, onRecorded }) {
     <form onSubmit={submit} className="flex items-center gap-1">
       <input
         type="number" min={1} required
-        className="w-20 rounded border border-gray-300 px-1.5 py-0.5 text-xs"
+        className="w-20 rounded border border-gray-300 px-1.5 py-0.5 text-base"
         value={amount} onChange={(e) => setAmount(e.target.value)}
       />
       <button type="submit" className="rounded bg-brand px-2 py-0.5 text-xs font-semibold text-white">Save</button>
